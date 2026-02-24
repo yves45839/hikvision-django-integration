@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: saas
+      POSTGRES_USER: saas
+      POSTGRES_PASSWORD: saas_pass_change_me
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  web:
+    image: python:3.12-slim
+    working_dir: /app
+    volumes:
+      - ./app:/app
+    environment:
+      DJANGO_SECRET_KEY: change_me_secret
+      DJANGO_DEBUG: "1"
+      ALLOWED_HOSTS: "213.156.133.202,localhost,127.0.0.1"
+    depends_on:
+      - db
+    command: >
+      sh -c "
+      pip install --no-cache-dir django djangorestframework gunicorn psycopg[binary] python-dotenv dj-database-url &&
+      if [ ! -f manage.py ]; then django-admin startproject config .; fi &&
+      python -c \"import os; p=os.path.join('config','settings.py'); s=open(p).read(); 
+      s=s.replace('ALLOWED_HOSTS = []','ALLOWED_HOSTS = os.getenv(\\\"ALLOWED_HOSTS\\\", \\\"\\\").split(\\\",\\\")'); 
+      open(p,'w').write('import os\\n'+s)\" &&
+      python manage.py migrate &&
+      python manage.py runserver 0.0.0.0:8000
+      "
+    ports:
+      - "80:8000"
+    restart: unless-stopped
+
+volumes:
+  pgdata:

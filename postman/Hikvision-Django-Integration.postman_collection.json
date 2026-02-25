@@ -1,0 +1,470 @@
+{
+  "info": {
+    "_postman_id": "f0b16d89-5c38-4fab-b708-8e4be17d9f6b",
+    "name": "Hikvision Django Integration API",
+    "description": "Collection exhaustive des endpoints exposés par l'application Django (JWT, tenants, devices, events, webhook Hikvision).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.collectionVariables.get('baseUrl')) {",
+          "    pm.collectionVariables.set('baseUrl', 'http://localhost:8000');",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8000" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "tenantId", "value": "1" },
+    { "key": "deviceId", "value": "1" },
+    { "key": "eventId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "Auth JWT",
+      "item": [
+        {
+          "name": "Obtenir token (pair)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/token/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "token", ""]
+            },
+            "description": "Retourne access/refresh token (Simple JWT)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const data = pm.response.json();",
+                  "if (data.access) pm.collectionVariables.set('accessToken', data.access);",
+                  "if (data.refresh) pm.collectionVariables.set('refreshToken', data.refresh);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh token",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/refresh/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "refresh", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tenants",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          { "key": "token", "value": "{{accessToken}}", "type": "string" }
+        ]
+      },
+      "item": [
+        {
+          "name": "Lister tenants",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/tenants/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tenants", ""]
+            }
+          }
+        },
+        {
+          "name": "Créer tenant",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Siège Casablanca\",\n  \"code\": \"HQ-CASA\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tenants/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tenants", ""]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const jsonData = pm.response.json();",
+                  "  if (jsonData.id) pm.collectionVariables.set('tenantId', jsonData.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Détail tenant",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/tenants/{{tenantId}}/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tenants", "{{tenantId}}", ""]
+            }
+          }
+        },
+        {
+          "name": "Remplacer tenant (PUT)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Siège Casablanca Updated\",\n  \"code\": \"HQ-CASA\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tenants/{{tenantId}}/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tenants", "{{tenantId}}", ""]
+            }
+          }
+        },
+        {
+          "name": "Modifier tenant (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Siège Casa (Patch)\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tenants/{{tenantId}}/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tenants", "{{tenantId}}", ""]
+            }
+          }
+        },
+        {
+          "name": "Supprimer tenant",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/tenants/{{tenantId}}/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tenants", "{{tenantId}}", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Devices",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          { "key": "token", "value": "{{accessToken}}", "type": "string" }
+        ]
+      },
+      "item": [
+        {
+          "name": "Lister devices (filtrés par owner connecté)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/devices/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "devices", ""]
+            }
+          }
+        },
+        {
+          "name": "Créer device",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenant\": {{tenantId}},\n  \"port\": 7661,\n  \"serial_number\": \"ABC123456\",\n  \"dev_index\": \"DEV-0001\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/devices/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "devices", ""]
+            },
+            "description": "owner est implicite (CurrentUserDefault). protocol est forcé à ISUP côté API."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const jsonData = pm.response.json();",
+                  "  if (jsonData.id) pm.collectionVariables.set('deviceId', jsonData.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Détail device",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/devices/{{deviceId}}/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "devices", "{{deviceId}}", ""]
+            }
+          }
+        },
+        {
+          "name": "Remplacer device (PUT)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenant\": {{tenantId}},\n  \"port\": 7660,\n  \"serial_number\": \"ABC123456\",\n  \"dev_index\": \"DEV-0001\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/devices/{{deviceId}}/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "devices", "{{deviceId}}", ""]
+            }
+          }
+        },
+        {
+          "name": "Modifier device (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"port\": 7661\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/devices/{{deviceId}}/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "devices", "{{deviceId}}", ""]
+            }
+          }
+        },
+        {
+          "name": "Supprimer device",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/devices/{{deviceId}}/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "devices", "{{deviceId}}", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Attendance Events",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          { "key": "token", "value": "{{accessToken}}", "type": "string" }
+        ]
+      },
+      "item": [
+        {
+          "name": "Lister events",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/events/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "events", ""]
+            }
+          }
+        },
+        {
+          "name": "Créer event",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenant\": {{tenantId}},\n  \"device\": {{deviceId}},\n  \"user_id\": \"E1001\",\n  \"timestamp\": \"2026-01-15T08:30:00Z\",\n  \"event_type\": \"checkin\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/events/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "events", ""]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const jsonData = pm.response.json();",
+                  "  if (jsonData.id) pm.collectionVariables.set('eventId', jsonData.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Détail event",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "events", "{{eventId}}", ""]
+            }
+          }
+        },
+        {
+          "name": "Remplacer event (PUT)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenant\": {{tenantId}},\n  \"device\": {{deviceId}},\n  \"user_id\": \"E1001\",\n  \"timestamp\": \"2026-01-15T17:30:00Z\",\n  \"event_type\": \"checkout\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "events", "{{eventId}}", ""]
+            }
+          }
+        },
+        {
+          "name": "Modifier event (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event_type\": \"breakout\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "events", "{{eventId}}", ""]
+            }
+          }
+        },
+        {
+          "name": "Supprimer event",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "events", "{{eventId}}", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Hikvision Webhook",
+      "item": [
+        {
+          "name": "Webhook access event (POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-HIK-TOKEN", "value": "optional-shared-secret", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"EventNotificationAlert\": {\n    \"ipAddress\": \"10.0.0.10\",\n    \"portNo\": 80,\n    \"protocol\": \"HTTP\",\n    \"macAddress\": \"00:11:22:33:44:55\",\n    \"channelID\": 1,\n    \"dateTime\": \"2026-01-15T08:35:00+00:00\",\n    \"activePostCount\": 1,\n    \"eventType\": \"AccessControllerEvent\",\n    \"eventState\": \"active\",\n    \"eventDescription\": \"Access Controller Event\",\n    \"devIndex\": \"DEV-0001\",\n    \"AccessControllerEvent\": {\n      \"serialNo\": 31,\n      \"frontSerialNo\": 31,\n      \"majorEventType\": 5,\n      \"subEventType\": 1,\n      \"name\": \"door access\",\n      \"cardReaderKind\": 1,\n      \"cardReaderNo\": 1,\n      \"verifyNo\": 1,\n      \"employeeNoString\": \"E1001\",\n      \"reportChannel\": 1,\n      \"byEmployeeNo\": 0,\n      \"employeeNo\": 1001,\n      \"deviceNo\": 1,\n      \"userType\": \"normal\",\n      \"currentVerifyMode\": \"card\",\n      \"frontEventType\": 0,\n      \"attendanceStatus\": \"checkin\",\n      \"label\": \"main gate\",\n      \"statusValue\": 0,\n      \"mask\": \"unknown\",\n      \"picturesNumber\": 0,\n      \"picEnable\": false,\n      \"cardNo\": \"1234567890\",\n      \"doorNo\": 1,\n      \"verifyType\": 1,\n      \"time\": \"2026-01-15T08:35:00+00:00\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/hikvision/events",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "hikvision", "events"]
+            },
+            "description": "Endpoint webhook non protégé par JWT; peut être protégé via allowlist IP + X-HIK-TOKEN selon settings."
+          }
+        },
+        {
+          "name": "Webhook - payload invalide (test 400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{invalid-json}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/hikvision/events",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "hikvision", "events"]
+            },
+            "description": "Exemple de requête pour déclencher la réponse 400 Invalid JSON."
+          }
+        }
+      ]
+    }
+  ]
+}

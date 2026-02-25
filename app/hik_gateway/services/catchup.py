@@ -21,18 +21,19 @@ def _extract_acs_info(payload: dict) -> tuple[list[dict], int]:
 
 
 def catchup_device(device: Device, max_results: int = 50) -> int:
-    cursor, _ = DeviceCursor.objects.get_or_create(device=device)
+    cursor, _ = DeviceCursor.objects.get_or_create(device=device, defaults={"tenant": device.tenant})
 
     now = timezone.now()
     start_time = (cursor.last_event_time or (now - timedelta(minutes=30))) - timedelta(minutes=2)
     end_time = now
     search_id = cursor.last_search_id or f"{device.tenant_id}-{device.dev_index}"
-    position = 0
+    position = cursor.last_search_result_position
 
     client = HikGatewayClient(device.gateway.base_url, device.gateway.username, device.gateway.password)
 
     processed = 0
     max_processed_time = cursor.last_event_time
+    max_serial_no = cursor.last_serial_no
 
     while True:
         condition = {
@@ -51,6 +52,9 @@ def catchup_device(device: Device, max_results: int = 50) -> int:
 
         for event in events:
             raw_event, attendance = ingest_acs_event(device, event)
+            if raw_event:
+                if raw_event.serial_no is not None and (max_serial_no is None or raw_event.serial_no > max_serial_no):
+                    max_serial_no = raw_event.serial_no
             if raw_event and attendance:
                 processed += 1
                 if max_processed_time is None or attendance.timestamp > max_processed_time:
@@ -62,8 +66,9 @@ def catchup_device(device: Device, max_results: int = 50) -> int:
 
     cursor.last_event_time = max_processed_time or cursor.last_event_time
     cursor.last_search_id = search_id
-    cursor.last_result_position = position
-    cursor.save(update_fields=["last_event_time", "last_search_id", "last_result_position", "updated_at"])
+    cursor.last_search_result_position = position
+    cursor.last_serial_no = max_serial_no
+    cursor.save(update_fields=["last_event_time", "last_search_id", "last_search_result_position", "last_serial_no", "updated_at"])
     return processed
 
 

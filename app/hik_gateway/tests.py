@@ -1,3 +1,8 @@
+from io import StringIO
+from unittest.mock import patch
+
+from django.core.management import call_command
+from django.core.management.base import CommandError
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -98,3 +103,62 @@ class HikWebhookTenantRoutingTests(APITestCase):
         self.assertEqual(response.json()["detail"], "Unknown tenant")
         self.assertEqual(RawEvent.objects.count(), 0)
         self.assertEqual(AttendanceLog.objects.count(), 0)
+
+
+class HikCheckDeviceCommandTests(APITestCase):
+    def setUp(self):
+        self.tenant = Tenant.objects.create(name="Tenant Cmd", code="tenant-cmd")
+        self.gateway = Gateway.objects.create(
+            tenant=self.tenant,
+            base_url="https://gw.local",
+            username="admin",
+            password="pass",
+        )
+
+    @patch("hik_gateway.management.commands.hik_check_device.HikGatewayClient.device_list")
+    def test_command_returns_success_when_device_is_found(self, mock_device_list):
+        mock_device_list.return_value = {
+            "DeviceList": {
+                "Device": [
+                    {
+                        "serialNumber": "SN-FOUND",
+                        "devIndex": "IDX-001",
+                        "status": "online",
+                    }
+                ]
+            }
+        }
+
+        stdout = StringIO()
+        call_command(
+            "hik_check_device",
+            "--tenant",
+            "tenant-cmd",
+            "--serial",
+            "SN-FOUND",
+            stdout=stdout,
+        )
+
+        self.assertIn("Communication OK", stdout.getvalue())
+        mock_device_list.assert_called_once()
+
+    @patch("hik_gateway.management.commands.hik_check_device.HikGatewayClient.device_list")
+    def test_command_raises_error_when_device_is_missing(self, mock_device_list):
+        mock_device_list.return_value = {"DeviceList": {"Device": []}}
+
+        with self.assertRaises(CommandError) as exc:
+            call_command(
+                "hik_check_device",
+                "--tenant",
+                "tenant-cmd",
+                "--serial",
+                "SN-UNKNOWN",
+            )
+
+        self.assertIn("Device introuvable", str(exc.exception))
+
+    def test_command_raises_error_when_no_lookup_is_provided(self):
+        with self.assertRaises(CommandError) as exc:
+            call_command("hik_check_device", "--tenant", "tenant-cmd")
+
+        self.assertIn("--serial ou --dev-index", str(exc.exception))

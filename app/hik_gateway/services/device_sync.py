@@ -52,11 +52,13 @@ def sync_gateway_devices(gateway: Gateway) -> int:
 
         last_seen = _as_aware(parse_datetime(item.get("lastOnlineTime", "")))
         Device.objects.update_or_create(
+            tenant=gateway.tenant,
             dev_index=dev_index,
             defaults={
                 "gateway": gateway,
                 "tenant": gateway.tenant,
                 "serial_number": serial_number,
+                "device_id": item.get("deviceID", "") or item.get("deviceId", ""),
                 "device_name": item.get("deviceName", ""),
                 "protocol_type": item.get("protocolType", ""),
                 "status": item.get("status", ""),

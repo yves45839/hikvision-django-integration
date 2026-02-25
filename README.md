@@ -146,6 +146,24 @@ Sur l’appareil :
 
 # 📡 Synchronisation Gateway
 
+## Test simple de communication Django ↔ Gateway
+
+Tu peux vérifier rapidement qu'un device déjà ajouté est bien visible depuis Django via sa gateway :
+
+```bash
+docker compose exec web python manage.py hik_check_device --tenant <tenant_code> --serial <serial_number>
+```
+
+ou avec le `devIndex` :
+
+```bash
+docker compose exec web python manage.py hik_check_device --tenant <tenant_code> --dev-index <dev_index>
+```
+
+Si tout est correct, la commande retourne `Communication OK ✅` avec le statut du device.
+
+---
+
 ## Endpoint interne
 
 ```

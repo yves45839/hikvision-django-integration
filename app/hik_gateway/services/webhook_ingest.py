@@ -4,11 +4,13 @@ import hashlib
 from datetime import datetime, timezone as dt_timezone
 
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
 from hik_gateway.models import AttendanceLog, Device, DeviceReaderConfig, RawEvent
 from hik_gateway.services.device_sync import sync_gateway_devices
+from tenants.models import Tenant
 
 ATTENDANCE_DIRECTION_MAP = {
     "checkin": "IN",
@@ -21,6 +23,7 @@ ATTENDANCE_DIRECTION_MAP = {
 
 AUTH_SUCCESS_SUB_TYPES = {1, 2, 15, 16, 38, 40, 43, 46}
 IGNORED_SUB_TYPES = {3, 6, 25, 26, 27, 28}
+CONNECTED_DEVICE_STATUSES = ("online", "active", "connected")
 
 
 def _as_aware(dt: datetime | None) -> datetime:
@@ -90,22 +93,43 @@ def _resolve_direction(device: Device, access_event: dict) -> tuple[str, bool]:
     return "UNKNOWN", False
 
 
-def _get_or_resync_device(dev_index: str) -> Device | None:
-    device = Device.objects.filter(dev_index=dev_index).select_related("gateway").first()
+def _connected_status_filter() -> Q:
+    connected_filter = Q(status__iexact=CONNECTED_DEVICE_STATUSES[0])
+    for status_value in CONNECTED_DEVICE_STATUSES[1:]:
+        connected_filter |= Q(status__iexact=status_value)
+    return connected_filter
+
+
+def _get_or_resync_device(dev_index: str, tenant: Tenant | None = None) -> Device | None:
+    queryset = Device.objects.filter(dev_index=dev_index)
+    if tenant is not None:
+        queryset = queryset.filter(tenant=tenant)
+
+    device = queryset.filter(_connected_status_filter()).select_related("gateway").first()
     if device:
         return device
 
     from hik_gateway.models import Gateway
 
-    for gateway in Gateway.objects.all().iterator():
+    gateways = Gateway.objects.all()
+    if tenant is not None:
+        gateways = gateways.filter(tenant=tenant)
+
+    for gateway in gateways.iterator():
         sync_gateway_devices(gateway)
-        device = Device.objects.filter(dev_index=dev_index).select_related("gateway").first()
+        device = (
+            Device.objects.filter(gateway=gateway, dev_index=dev_index)
+            .filter(_connected_status_filter())
+            .select_related("gateway")
+            .first()
+        )
         if device:
             return device
-    return None
+
+    return queryset.select_related("gateway").first()
 
 
-def ingest_event(payload: dict, source: str) -> tuple[RawEvent | None, AttendanceLog | None]:
+def ingest_event(payload: dict, source: str, tenant: Tenant | None = None) -> tuple[RawEvent | None, AttendanceLog | None]:
     root = _event_root(payload)
     if root.get("eventType") != "AccessControllerEvent":
         return None, None
@@ -115,7 +139,7 @@ def ingest_event(payload: dict, source: str) -> tuple[RawEvent | None, Attendanc
     if not dev_index:
         return None, None
 
-    device = _get_or_resync_device(dev_index)
+    device = _get_or_resync_device(dev_index, tenant=tenant)
     if not device:
         return None, None
 

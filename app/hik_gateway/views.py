@@ -9,6 +9,7 @@ from django.views.decorators.http import require_POST
 
 from hik_gateway.models import AttendanceLog
 from hik_gateway.services.webhook_ingest import ingest_event
+from tenants.models import Tenant
 
 
 def _client_ip(request: HttpRequest) -> str:
@@ -23,6 +24,18 @@ def _is_allowed_ip(ip: str) -> bool:
     if not allowed:
         return True
     return ip in allowed
+
+
+def _resolve_tenant(request: HttpRequest, payload: dict) -> Tenant | None:
+    tenant_code = request.headers.get("X-TENANT-CODE", "").strip()
+    root = payload.get("EventNotificationAlert", payload) if isinstance(payload, dict) else {}
+    if not tenant_code and isinstance(root, dict):
+        tenant_code = str(root.get("tenantCode") or payload.get("tenantCode") or "").strip()
+
+    if not tenant_code:
+        return None
+
+    return Tenant.objects.filter(code=tenant_code).first()
 
 
 def _is_allowed_token(request: HttpRequest) -> bool:
@@ -45,7 +58,11 @@ def hik_event_webhook(request: HttpRequest) -> JsonResponse:
     except json.JSONDecodeError:
         return JsonResponse({"detail": "Invalid JSON"}, status=400)
 
-    raw_event, attendance = ingest_event(payload, source=AttendanceLog.SOURCE_REALTIME)
+    tenant = _resolve_tenant(request, payload)
+    if request.headers.get("X-TENANT-CODE") and tenant is None:
+        return JsonResponse({"detail": "Unknown tenant"}, status=400)
+
+    raw_event, attendance = ingest_event(payload, source=AttendanceLog.SOURCE_REALTIME, tenant=tenant)
     if raw_event is None:
         return JsonResponse({"status": "ignored"}, status=202)
 

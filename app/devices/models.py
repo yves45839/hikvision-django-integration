@@ -1,8 +1,23 @@
 from django.db import models
+from django.contrib.auth import get_user_model
 from tenants.models import Tenant
 
+
+User = get_user_model()
+
+
+ISUP_PORT_CHOICES = (
+    (7660, '7660'),
+    (7661, '7661'),
+)
+
 class Device(models.Model):
-    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE)
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='devices', null=True, blank=True)
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, null=True, blank=True)
+
+    ip_address = models.GenericIPAddressField(default='213.156.133.202', editable=False)
+    port = models.PositiveIntegerField(choices=ISUP_PORT_CHOICES, default=7661)
+    serial_number = models.CharField(max_length=9, blank=True, default='')
 
     dev_index = models.CharField(max_length=64, unique=True)
 

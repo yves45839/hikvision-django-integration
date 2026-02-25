@@ -10,7 +10,7 @@ services:
     restart: unless-stopped
 
   web:
-    image: python:3.12-slim
+    build: .
     working_dir: /app
     volumes:
       - ./app:/app
@@ -18,15 +18,11 @@ services:
       DJANGO_SECRET_KEY: change_me_secret
       DJANGO_DEBUG: "1"
       ALLOWED_HOSTS: "213.156.133.202,localhost,127.0.0.1"
+      DATABASE_URL: "postgres://saas:saas_pass_change_me@db:5432/saas"
     depends_on:
       - db
     command: >
       sh -c "
-      pip install --no-cache-dir django djangorestframework gunicorn psycopg[binary] python-dotenv dj-database-url &&
-      if [ ! -f manage.py ]; then django-admin startproject config .; fi &&
-      python -c \"import os; p=os.path.join('config','settings.py'); s=open(p).read(); 
-      s=s.replace('ALLOWED_HOSTS = []','ALLOWED_HOSTS = os.getenv(\\\"ALLOWED_HOSTS\\\", \\\"\\\").split(\\\",\\\")'); 
-      open(p,'w').write('import os\\n'+s)\" &&
       python manage.py migrate &&
       python manage.py runserver 0.0.0.0:8000
       "

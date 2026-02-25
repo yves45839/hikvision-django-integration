@@ -90,7 +90,7 @@ class Migration(migrations.Migration):
                 ),
             ],
             options={
-                "indexes": [models.Index(fields=["device", "door_no", "card_reader_no"])],
+                "indexes": [models.Index(fields=["device", "door_no", "card_reader_no"], name="idx_hik_rawevent_dev_door_reader")],
             },
         ),
         migrations.AddConstraint(

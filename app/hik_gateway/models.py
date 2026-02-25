@@ -136,4 +136,5 @@ class DeviceReaderConfig(models.Model):
                 name="uq_hik_reader_direction",
             )
         ]
-        indexes = [models.Index(fields=["device", "door_no", "card_reader_no"])]
+        indexes = [models.Index(fields=["device", "door_no", "card_reader_no"], name="idx_hik_access_dev_door_reader")]
+

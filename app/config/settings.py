@@ -139,4 +139,4 @@ HIK_GATEWAY_WEBHOOK_TOKEN = os.getenv("HIK_GATEWAY_WEBHOOK_TOKEN", "")
 HIK_GATEWAY_ALLOWED_IPS = [ip.strip() for ip in os.getenv("HIK_GATEWAY_ALLOWED_IPS", "").split(",") if ip.strip()]
 HIK_WEBHOOK_IP = os.getenv("HIK_WEBHOOK_IP", "")
 HIK_WEBHOOK_PORT = int(os.getenv("HIK_WEBHOOK_PORT", "443"))
-HIK_WEBHOOK_URL = os.getenv("HIK_WEBHOOK_URL", "/api/hikvision/events")
+HIK_WEBHOOK_URL = os.getenv("HIK_WEBHOOK_URL", "/api/hik/events")

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 
 from django.conf import settings
 from django.http import HttpRequest, JsonResponse
@@ -10,6 +11,9 @@ from django.views.decorators.http import require_POST
 from hik_gateway.models import AttendanceLog
 from hik_gateway.services.webhook_ingest import ingest_event
 from tenants.models import Tenant
+
+
+logger = logging.getLogger(__name__)
 
 
 def _client_ip(request: HttpRequest) -> str:
@@ -53,8 +57,11 @@ def hik_event_webhook(request: HttpRequest) -> JsonResponse:
     if not _is_allowed_ip(ip) or not _is_allowed_token(request):
         return JsonResponse({"detail": "Unauthorized source"}, status=403)
 
+    raw_body = request.body.decode("utf-8", errors="replace")
+    logger.info("Hikvision webhook payload received", extra={"client_ip": ip, "raw_body": raw_body})
+
     try:
-        payload = json.loads(request.body.decode("utf-8") or "{}")
+        payload = json.loads(raw_body or "{}")
     except json.JSONDecodeError:
         return JsonResponse({"detail": "Invalid JSON"}, status=400)
 

@@ -77,6 +77,33 @@ class HikWebhookTenantRoutingTests(APITestCase):
         self.assertEqual(attendance.tenant, self.tenant_b)
         self.assertEqual(attendance.device, self.device_b)
 
+
+    def test_webhook_accepts_short_hik_events_endpoint(self):
+        payload = {
+            "EventNotificationAlert": {
+                "eventType": "AccessControllerEvent",
+                "devIndex": "shared-dev-index",
+                "dateTime": "2026-02-01T08:00:00Z",
+                "AccessControllerEvent": {
+                    "attendanceStatus": "checkin",
+                    "employeeNoString": "E1002",
+                    "serialNo": "101",
+                    "subEventType": 1,
+                },
+            }
+        }
+
+        response = self.client.post(
+            "/api/hik/events",
+            payload,
+            format="json",
+            HTTP_X_TENANT_CODE="tenant-a",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(RawEvent.objects.count(), 1)
+        self.assertEqual(AttendanceLog.objects.count(), 1)
+
     def test_webhook_rejects_unknown_tenant_code(self):
         payload = {
             "EventNotificationAlert": {
@@ -162,3 +189,41 @@ class HikCheckDeviceCommandTests(APITestCase):
             call_command("hik_check_device", "--tenant", "tenant-cmd")
 
         self.assertIn("--serial ou --dev-index", str(exc.exception))
+
+
+class HikRegisterWebhooksCommandTests(APITestCase):
+    def setUp(self):
+        self.tenant = Tenant.objects.create(name="Tenant Hook", code="tenant-hook")
+        self.gateway = Gateway.objects.create(
+            tenant=self.tenant,
+            base_url="https://gw-hook.local",
+            username="admin",
+            password="pass",
+        )
+        self.device = Device.objects.create(
+            gateway=self.gateway,
+            tenant=self.tenant,
+            serial_number="SN-HOOK",
+            dev_index="IDX-HOOK",
+            status="online",
+        )
+
+    @patch("hik_gateway.management.commands.hik_register_webhooks.HikGatewayClient.set_http_host")
+    def test_register_webhooks_uses_http_host_notification_list_payload(self, mock_set_http_host):
+        call_command(
+            "hik_register_webhooks",
+            "--ip-address",
+            "213.156.133.202",
+            "--port",
+            "80",
+            "--url",
+            "/api/hik/events",
+        )
+
+        mock_set_http_host.assert_called_once()
+        call_args = mock_set_http_host.call_args.args
+        self.assertEqual(call_args[0], "IDX-HOOK")
+        self.assertEqual(call_args[1]["HttpHostNotificationList"][0]["HttpHostNotification"]["url"], "/api/hik/events")
+        self.assertEqual(call_args[1]["HttpHostNotificationList"][0]["HttpHostNotification"]["ipAddress"], "213.156.133.202")
+        self.assertEqual(call_args[1]["HttpHostNotificationList"][0]["HttpHostNotification"]["portNo"], 80)
+

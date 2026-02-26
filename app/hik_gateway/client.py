@@ -19,6 +19,12 @@ class HikGatewayClient:
         response.raise_for_status()
         return response.json() if response.content else {}
 
+    def _put(self, path: str, payload: dict[str, Any], params: dict[str, Any] | None = None) -> dict[str, Any]:
+        url = urljoin(self.base_url, path.lstrip("/"))
+        response = requests.put(url, json=payload, params=params or {}, auth=self.auth, timeout=self.timeout)
+        response.raise_for_status()
+        return response.json() if response.content else {}
+
     def device_list(self) -> dict[str, Any]:
         return self._post(
             "/ISAPI/ContentMgmt/DeviceMgmt/deviceList",
@@ -27,7 +33,7 @@ class HikGatewayClient:
         )
 
     def set_http_host(self, dev_index: str, payload: dict[str, Any]) -> dict[str, Any]:
-        return self._post(
+        return self._put(
             "/ISAPI/Event/notification/httpHosts",
             payload=payload,
             params={"format": "json", "devIndex": dev_index},

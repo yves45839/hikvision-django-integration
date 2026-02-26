@@ -11,7 +11,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--ip-address", default=getattr(settings, "HIK_WEBHOOK_IP", ""))
         parser.add_argument("--port", type=int, default=getattr(settings, "HIK_WEBHOOK_PORT", 443))
-        parser.add_argument("--url", default=getattr(settings, "HIK_WEBHOOK_URL", "/api/hikvision/events"))
+        parser.add_argument("--url", default=getattr(settings, "HIK_WEBHOOK_URL", "/api/hik/events"))
 
     def handle(self, *args, **options):
         ip_address = options["ip_address"]
@@ -29,12 +29,22 @@ class Command(BaseCommand):
                 device.gateway.password,
             )
             payload = {
-                "HttpHostNotification": {
-                    "enable": True,
-                    "url": url,
-                    "ipAddress": ip_address,
-                    "portNo": port,
-                }
+                "HttpHostNotificationList": [
+                    {
+                        "HttpHostNotification": {
+                            "id": "1",
+                            "url": url,
+                            "protocolType": "HTTP",
+                            "addressingFormatType": "ipaddress",
+                            "ipAddress": ip_address,
+                            "portNo": port,
+                            "SubscribeEvent": {
+                                "heartbeat": 30,
+                                "eventMode": "all",
+                            },
+                        }
+                    }
+                ]
             }
             client.set_http_host(device.dev_index, payload)
             registered += 1

@@ -62,6 +62,42 @@
     {
       "key": "maxResult",
       "value": "100"
+    },
+    {
+      "key": "webhookDevIndex",
+      "value": "DEV-0001"
+    },
+    {
+      "key": "webhookEmployeeNoString",
+      "value": "E1001"
+    },
+    {
+      "key": "webhookEmployeeNo",
+      "value": "1001"
+    },
+    {
+      "key": "webhookCardNo",
+      "value": "1234567890"
+    },
+    {
+      "key": "webhookSerialNo",
+      "value": "31"
+    },
+    {
+      "key": "webhookNowIso",
+      "value": "2026-01-15T08:35:00+00:00"
+    },
+    {
+      "key": "lastWebhookStatus",
+      "value": ""
+    },
+    {
+      "key": "lastRawEventId",
+      "value": ""
+    },
+    {
+      "key": "lastAttendanceLogId",
+      "value": ""
     }
   ],
   "item": [
@@ -664,7 +700,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"EventNotificationAlert\": {\n    \"ipAddress\": \"10.0.0.10\",\n    \"portNo\": 80,\n    \"protocol\": \"HTTP\",\n    \"macAddress\": \"00:11:22:33:44:55\",\n    \"channelID\": 1,\n    \"dateTime\": \"2026-01-15T08:35:00+00:00\",\n    \"activePostCount\": 1,\n    \"eventType\": \"AccessControllerEvent\",\n    \"eventState\": \"active\",\n    \"eventDescription\": \"Access Controller Event\",\n    \"devIndex\": \"DEV-0001\",\n    \"AccessControllerEvent\": {\n      \"serialNo\": 31,\n      \"frontSerialNo\": 31,\n      \"majorEventType\": 5,\n      \"subEventType\": 1,\n      \"name\": \"door access\",\n      \"cardReaderKind\": 1,\n      \"cardReaderNo\": 1,\n      \"verifyNo\": 1,\n      \"employeeNoString\": \"E1001\",\n      \"reportChannel\": 1,\n      \"byEmployeeNo\": 0,\n      \"employeeNo\": 1001,\n      \"deviceNo\": 1,\n      \"userType\": \"normal\",\n      \"currentVerifyMode\": \"card\",\n      \"frontEventType\": 0,\n      \"attendanceStatus\": \"checkin\",\n      \"label\": \"main gate\",\n      \"statusValue\": 0,\n      \"mask\": \"unknown\",\n      \"picturesNumber\": 0,\n      \"picEnable\": false,\n      \"cardNo\": \"1234567890\",\n      \"doorNo\": 1,\n      \"verifyType\": 1,\n      \"time\": \"2026-01-15T08:35:00+00:00\"\n    }\n  }\n}"
+              "raw": "{\n  \"EventNotificationAlert\": {\n    \"ipAddress\": \"10.0.0.10\",\n    \"portNo\": 80,\n    \"protocol\": \"HTTP\",\n    \"macAddress\": \"00:11:22:33:44:55\",\n    \"channelID\": 1,\n    \"dateTime\": \"{{webhookNowIso}}\",\n    \"activePostCount\": 1,\n    \"eventType\": \"AccessControllerEvent\",\n    \"eventState\": \"active\",\n    \"eventDescription\": \"Access Controller Event\",\n    \"devIndex\": \"{{webhookDevIndex}}\",\n    \"AccessControllerEvent\": {\n      \"serialNo\": {{webhookSerialNo}},\n      \"frontSerialNo\": {{webhookSerialNo}},\n      \"majorEventType\": 5,\n      \"subEventType\": 1,\n      \"name\": \"door access\",\n      \"cardReaderKind\": 1,\n      \"cardReaderNo\": 1,\n      \"verifyNo\": 1,\n      \"employeeNoString\": \"{{webhookEmployeeNoString}}\",\n      \"reportChannel\": 1,\n      \"byEmployeeNo\": 0,\n      \"employeeNo\": {{webhookEmployeeNo}},\n      \"deviceNo\": 1,\n      \"userType\": \"normal\",\n      \"currentVerifyMode\": \"card\",\n      \"frontEventType\": 0,\n      \"attendanceStatus\": \"checkin\",\n      \"label\": \"postman test\",\n      \"statusValue\": 0,\n      \"mask\": \"unknown\",\n      \"picturesNumber\": 0,\n      \"picEnable\": false,\n      \"cardNo\": \"{{webhookCardNo}}\",\n      \"doorNo\": 1,\n      \"verifyType\": 1,\n      \"time\": \"{{webhookNowIso}}\"\n    }\n  }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/hik/events",
@@ -677,8 +713,29 @@
                 "events"
               ]
             },
-            "description": "Endpoint webhook court recommandé. Non protégé par JWT; peut être protégé via allowlist IP + X-HIK-TOKEN. Le header X-TENANT-CODE force le routage tenant."
-          }
+            "description": "Endpoint webhook court recommandé. Non protégé par JWT; peut être protégé via allowlist IP + X-HIK-TOKEN. Le header X-TENANT-CODE force le routage tenant.\n\n✅ **Astuce test**: les variables `webhookNowIso` et `webhookSerialNo` sont régénérées avant chaque requête pour éviter les doublons (dedupe_key)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status webhook attendu', function () {",
+                  "    pm.expect([201, 202]).to.include(pm.response.code);",
+                  "});",
+                  "let jsonData = {};",
+                  "try { jsonData = pm.response.json(); } catch (e) {}",
+                  "if (jsonData.status) pm.collectionVariables.set('lastWebhookStatus', jsonData.status);",
+                  "if (jsonData.raw_event_id !== undefined && jsonData.raw_event_id !== null) pm.collectionVariables.set('lastRawEventId', String(jsonData.raw_event_id));",
+                  "if (jsonData.attendance_log_id !== undefined && jsonData.attendance_log_id !== null) pm.collectionVariables.set('lastAttendanceLogId', String(jsonData.attendance_log_id));",
+                  "pm.test('Réponse JSON contient un statut', function () {",
+                  "    pm.expect(jsonData).to.have.property('status');",
+                  "});"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Webhook access event (POST) - /api/hikvision/events",
@@ -702,7 +759,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"EventNotificationAlert\": {\n    \"ipAddress\": \"10.0.0.10\",\n    \"portNo\": 80,\n    \"protocol\": \"HTTP\",\n    \"macAddress\": \"00:11:22:33:44:55\",\n    \"channelID\": 1,\n    \"dateTime\": \"2026-01-15T08:35:00+00:00\",\n    \"activePostCount\": 1,\n    \"eventType\": \"AccessControllerEvent\",\n    \"eventState\": \"active\",\n    \"eventDescription\": \"Access Controller Event\",\n    \"devIndex\": \"DEV-0001\",\n    \"AccessControllerEvent\": {\n      \"serialNo\": 31,\n      \"frontSerialNo\": 31,\n      \"majorEventType\": 5,\n      \"subEventType\": 1,\n      \"name\": \"door access\",\n      \"cardReaderKind\": 1,\n      \"cardReaderNo\": 1,\n      \"verifyNo\": 1,\n      \"employeeNoString\": \"E1001\",\n      \"reportChannel\": 1,\n      \"byEmployeeNo\": 0,\n      \"employeeNo\": 1001,\n      \"deviceNo\": 1,\n      \"userType\": \"normal\",\n      \"currentVerifyMode\": \"card\",\n      \"frontEventType\": 0,\n      \"attendanceStatus\": \"checkin\",\n      \"label\": \"main gate\",\n      \"statusValue\": 0,\n      \"mask\": \"unknown\",\n      \"picturesNumber\": 0,\n      \"picEnable\": false,\n      \"cardNo\": \"1234567890\",\n      \"doorNo\": 1,\n      \"verifyType\": 1,\n      \"time\": \"2026-01-15T08:35:00+00:00\"\n    }\n  }\n}"
+              "raw": "{\n  \"EventNotificationAlert\": {\n    \"ipAddress\": \"10.0.0.10\",\n    \"portNo\": 80,\n    \"protocol\": \"HTTP\",\n    \"macAddress\": \"00:11:22:33:44:55\",\n    \"channelID\": 1,\n    \"dateTime\": \"{{webhookNowIso}}\",\n    \"activePostCount\": 1,\n    \"eventType\": \"AccessControllerEvent\",\n    \"eventState\": \"active\",\n    \"eventDescription\": \"Access Controller Event\",\n    \"devIndex\": \"{{webhookDevIndex}}\",\n    \"AccessControllerEvent\": {\n      \"serialNo\": {{webhookSerialNo}},\n      \"frontSerialNo\": {{webhookSerialNo}},\n      \"majorEventType\": 5,\n      \"subEventType\": 1,\n      \"name\": \"door access\",\n      \"cardReaderKind\": 1,\n      \"cardReaderNo\": 1,\n      \"verifyNo\": 1,\n      \"employeeNoString\": \"{{webhookEmployeeNoString}}\",\n      \"reportChannel\": 1,\n      \"byEmployeeNo\": 0,\n      \"employeeNo\": {{webhookEmployeeNo}},\n      \"deviceNo\": 1,\n      \"userType\": \"normal\",\n      \"currentVerifyMode\": \"card\",\n      \"frontEventType\": 0,\n      \"attendanceStatus\": \"checkin\",\n      \"label\": \"postman test\",\n      \"statusValue\": 0,\n      \"mask\": \"unknown\",\n      \"picturesNumber\": 0,\n      \"picEnable\": false,\n      \"cardNo\": \"{{webhookCardNo}}\",\n      \"doorNo\": 1,\n      \"verifyType\": 1,\n      \"time\": \"{{webhookNowIso}}\"\n    }\n  }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/hikvision/events",
@@ -715,8 +772,29 @@
                 "events"
               ]
             },
-            "description": "Endpoint webhook non protégé par JWT; peut être protégé via allowlist IP + X-HIK-TOKEN selon settings."
-          }
+            "description": "Endpoint webhook non protégé par JWT; peut être protégé via allowlist IP + X-HIK-TOKEN selon settings.\n\n✅ **Astuce test**: les variables `webhookNowIso` et `webhookSerialNo` sont régénérées avant chaque requête pour éviter les doublons (dedupe_key)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status webhook attendu', function () {",
+                  "    pm.expect([201, 202]).to.include(pm.response.code);",
+                  "});",
+                  "let jsonData = {};",
+                  "try { jsonData = pm.response.json(); } catch (e) {}",
+                  "if (jsonData.status) pm.collectionVariables.set('lastWebhookStatus', jsonData.status);",
+                  "if (jsonData.raw_event_id !== undefined && jsonData.raw_event_id !== null) pm.collectionVariables.set('lastRawEventId', String(jsonData.raw_event_id));",
+                  "if (jsonData.attendance_log_id !== undefined && jsonData.attendance_log_id !== null) pm.collectionVariables.set('lastAttendanceLogId', String(jsonData.attendance_log_id));",
+                  "pm.test('Réponse JSON contient un statut', function () {",
+                  "    pm.expect(jsonData).to.have.property('status');",
+                  "});"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Page devices gateway (GET)",
@@ -772,8 +850,25 @@
                 "events"
               ]
             },
-            "description": "Exemple de requête pour déclencher la réponse 400 Invalid JSON."
-          }
+            "description": "Exemple de requête pour déclencher la réponse 400 Invalid JSON.\n\nUtiliser cette requête pour valider rapidement la gestion d'erreur côté API (JSON mal formé)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 attendu', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "const jsonData = pm.response.json();",
+                  "pm.test('Message d'erreur explicite', function () {",
+                  "    pm.expect(jsonData.detail).to.eql('Invalid JSON');",
+                  "});"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Lister devices gateway (API normalisée)",
@@ -810,7 +905,25 @@
               ]
             },
             "description": "Endpoint API JSON normalisé des devices remontés par les gateways (filtrable par tenant/protocol/status)."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status API devices OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const jsonData = pm.response.json();",
+                  "pm.test('Payload exploitable', function () {",
+                  "    pm.expect(jsonData).to.have.property('count');",
+                  "    pm.expect(jsonData).to.have.property('results');",
+                  "});"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Lister devices gateway (API brute)",
@@ -851,6 +964,43 @@
               ]
             },
             "description": "Retourne les SearchResult bruts par gateway (normalized=0), utile pour le debug des payloads HikCentral."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status API devices OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const jsonData = pm.response.json();",
+                  "pm.test('Payload exploitable', function () {",
+                  "    pm.expect(jsonData).to.have.property('count');",
+                  "    pm.expect(jsonData).to.have.property('results');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "### Webhook Hikvision - mode test rapide\nCe dossier est optimisé pour valider rapidement le pipeline webhook en local ou en environnement distant.\n\n**Pré-requis**\n1. Vérifier `{{baseUrl}}` et `{{tenantCode}}`.\n2. Si la sécurité token est active côté Django, renseigner `{{hikToken}}`.\n3. Adapter `{{webhookDevIndex}}` à un device existant/synchronisé pour éviter un `202 ignored`.\n\n**Ordre recommandé**\n1. `Webhook access event (POST) - /api/hik/events`\n2. `Webhook access event (POST) - /api/hikvision/events`\n3. `Webhook - payload invalide (test 400)`\n4. `Lister devices gateway (...)` pour diagnostiquer les devices visibles.\n\nLes scripts enregistrent automatiquement `lastWebhookStatus`, `lastRawEventId`, `lastAttendanceLogId`.\n",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const nowIso = new Date().toISOString();",
+              "const serial = Math.floor(Date.now() / 1000).toString();",
+              "pm.collectionVariables.set('webhookNowIso', nowIso);",
+              "pm.collectionVariables.set('webhookSerialNo', serial);",
+              "if (!pm.collectionVariables.get('webhookEmployeeNoString')) pm.collectionVariables.set('webhookEmployeeNoString', 'E1001');",
+              "if (!pm.collectionVariables.get('webhookEmployeeNo')) pm.collectionVariables.set('webhookEmployeeNo', '1001');",
+              "if (!pm.collectionVariables.get('webhookCardNo')) pm.collectionVariables.set('webhookCardNo', '1234567890');",
+              "if (!pm.collectionVariables.get('webhookDevIndex')) pm.collectionVariables.set('webhookDevIndex', 'DEV-0001');"
+            ]
           }
         }
       ]

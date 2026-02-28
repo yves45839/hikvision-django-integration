@@ -13,9 +13,21 @@ class HikGatewayClient:
         self.auth = HTTPDigestAuth(username, password)
         self.timeout = timeout
 
-    def _post(self, path: str, payload: dict[str, Any], params: dict[str, Any] | None = None) -> dict[str, Any]:
+    def _post(
+        self,
+        path: str,
+        payload: dict[str, Any],
+        params: dict[str, Any] | None = None,
+        timeout: int | None = None,
+    ) -> dict[str, Any]:
         url = urljoin(self.base_url, path.lstrip("/"))
-        response = requests.post(url, json=payload, params=params or {}, auth=self.auth, timeout=self.timeout)
+        response = requests.post(
+            url,
+            json=payload,
+            params=params or {},
+            auth=self.auth,
+            timeout=timeout or self.timeout,
+        )
         response.raise_for_status()
         return response.json() if response.content else {}
 
@@ -25,11 +37,25 @@ class HikGatewayClient:
         response.raise_for_status()
         return response.json() if response.content else {}
 
-    def device_list(self) -> dict[str, Any]:
+    def device_list(self, payload: dict[str, Any] | None = None, timeout: int | None = None) -> dict[str, Any]:
+        request_payload = payload or {
+            "SearchDescription": {
+                "position": 0,
+                "maxResult": 100,
+                "Filter": {
+                    "key": "",
+                    "devType": "",
+                    "protocolType": ["ehomeV5"],
+                    "devStatus": ["online", "offline"],
+                },
+            }
+        }
+
         return self._post(
             "/ISAPI/ContentMgmt/DeviceMgmt/deviceList",
-            payload={},
+            payload=request_payload,
             params={"format": "json"},
+            timeout=timeout,
         )
 
     def set_http_host(self, dev_index: str, payload: dict[str, Any]) -> dict[str, Any]:

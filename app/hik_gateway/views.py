@@ -20,6 +20,20 @@ from tenants.models import Tenant
 logger = logging.getLogger(__name__)
 
 
+DEFAULT_DEVICE_LIST_PAYLOAD = {
+    "SearchDescription": {
+        "position": 0,
+        "maxResult": 100,
+        "Filter": {
+            "key": "",
+            "devType": "",
+            "protocolType": ["ehomeV5"],
+            "devStatus": ["online", "offline"],
+        },
+    }
+}
+
+
 def _client_ip(request: HttpRequest) -> str:
     forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
     if forwarded:
@@ -96,7 +110,22 @@ def _is_admin_request(request: HttpRequest) -> bool:
 def hik_devices_page(request: HttpRequest):
     tenant_code = (request.GET.get("tenant") or "").strip()
     is_admin = _is_admin_request(request)
-    context = {"devices": [], "tenant_code": tenant_code, "error": "", "is_admin": is_admin}
+
+    request_parameters = request.GET.get("request", "").strip() or json.dumps(
+        DEFAULT_DEVICE_LIST_PAYLOAD,
+        ensure_ascii=False,
+        indent=2,
+    )
+    context = {
+        "devices": [],
+        "tenant_code": tenant_code,
+        "error": "",
+        "is_admin": is_admin,
+        "request_parameters": request_parameters,
+        "response_parameters": "",
+        "status_code": "-",
+        "gateway_url": "",
+    }
 
     if tenant_code:
         gateways = Gateway.objects.select_related("tenant").filter(tenant__code__iexact=tenant_code).order_by("id")
@@ -115,11 +144,21 @@ def hik_devices_page(request: HttpRequest):
 
     devices = []
     errors = []
+    response_payload: dict | None = None
+
+    try:
+        payload_to_send = json.loads(request_parameters)
+    except json.JSONDecodeError:
+        context["error"] = "Request Parameters doit être un JSON valide."
+        return render(request, "hik_gateway/device_list.html", context, status=400)
 
     for gateway in gateways:
         client = HikGatewayClient(gateway.base_url, gateway.username, gateway.password)
+        context["gateway_url"] = gateway.base_url
         try:
-            payload = client.device_list()
+            payload = client.device_list(payload=payload_to_send)
+            response_payload = payload
+            context["status_code"] = 200
         except Exception as exc:  # noqa: BLE001
             errors.append(f"{gateway.tenant.code}: {exc}")
             continue
@@ -129,6 +168,9 @@ def hik_devices_page(request: HttpRequest):
             normalized["tenant_code"] = gateway.tenant.code
             normalized["gateway_base_url"] = gateway.base_url
             devices.append(normalized)
+
+    if response_payload is not None:
+        context["response_parameters"] = json.dumps(response_payload, ensure_ascii=False, indent=2)
 
     if errors and not devices:
         context["error"] = "Impossible de récupérer les devices: " + " | ".join(errors)

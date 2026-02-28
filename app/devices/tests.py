@@ -13,12 +13,22 @@ class DeviceOwnershipTests(APITestCase):
         self.user1 = User.objects.create_user(username='alice', password='pwd12345')
         self.user2 = User.objects.create_user(username='bob', password='pwd12345')
 
-    def test_user_only_sees_own_devices(self):
+    def test_list_devices_returns_all_by_default(self):
         Device.objects.create(owner=self.user1, dev_index='dev-alice', serial_number='SN1234567')
         Device.objects.create(owner=self.user2, dev_index='dev-bob', serial_number='SN7654321')
 
         self.client.force_authenticate(self.user1)
         response = self.client.get('/api/devices/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+
+    def test_owner_only_filters_devices(self):
+        Device.objects.create(owner=self.user1, dev_index='dev-alice', serial_number='SN1234567')
+        Device.objects.create(owner=self.user2, dev_index='dev-bob', serial_number='SN7654321')
+
+        self.client.force_authenticate(self.user1)
+        response = self.client.get('/api/devices/?owner_only=true')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)

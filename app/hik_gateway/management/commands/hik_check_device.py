@@ -4,22 +4,7 @@ from django.core.management.base import BaseCommand, CommandError
 
 from hik_gateway.client import HikGatewayClient
 from hik_gateway.models import Gateway
-
-
-def _extract_devices(payload: dict) -> list[dict]:
-    if not isinstance(payload, dict):
-        return []
-
-    candidates = [
-        payload.get("DeviceList", {}).get("Device", []),
-        payload.get("DeviceList", {}).get("devices", []),
-        payload.get("Device", []),
-    ]
-    for candidate in candidates:
-        if isinstance(candidate, list):
-            return candidate
-
-    return []
+from hik_gateway.services.device_payload import extract_devices, normalize_device
 
 
 class Command(BaseCommand):
@@ -49,12 +34,13 @@ class Command(BaseCommand):
 
         client = HikGatewayClient(gateway.base_url, gateway.username, gateway.password)
         payload = client.device_list()
-        devices = _extract_devices(payload)
+        devices = extract_devices(payload)
 
         match = None
         for item in devices:
-            item_serial = str(item.get("serialNumber") or item.get("deviceSerialNo") or "").strip()
-            item_dev_index = str(item.get("devIndex") or item.get("devIndexCode") or "").strip()
+            normalized = normalize_device(item)
+            item_serial = str(normalized["serial_number"] or "").strip()
+            item_dev_index = str(normalized["dev_index"] or "").strip()
 
             serial_ok = not serial or item_serial == serial
             dev_index_ok = not dev_index or item_dev_index == dev_index
@@ -68,9 +54,10 @@ class Command(BaseCommand):
                 f"Device introuvable sur la gateway du tenant '{tenant_code}' ({lookup})"
             )
 
-        resolved_serial = match.get("serialNumber") or match.get("deviceSerialNo") or ""
-        resolved_dev_index = match.get("devIndex") or match.get("devIndexCode") or ""
-        status = match.get("status", "unknown")
+        resolved = normalize_device(match)
+        resolved_serial = resolved["serial_number"]
+        resolved_dev_index = resolved["dev_index"]
+        status = resolved["status"] or "unknown"
 
         self.stdout.write(
             self.style.SUCCESS(

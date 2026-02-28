@@ -9,6 +9,9 @@ from django.shortcuts import render
 from django.views.decorators.http import require_GET
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
 
 from hik_gateway.client import HikGatewayClient
 from hik_gateway.models import AttendanceLog, Gateway
@@ -101,9 +104,93 @@ def hik_event_webhook(request: HttpRequest) -> JsonResponse:
     )
 
 
+def _parse_csv_query_list(value: str) -> list[str]:
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def _to_bool(value: str | None) -> bool:
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _is_admin_request(request: HttpRequest) -> bool:
     user = getattr(request, "user", None)
     return bool(user and user.is_authenticated and (user.is_staff or user.is_superuser))
+
+
+@api_view(["GET"])
+def hik_devices_api(request: HttpRequest) -> Response:
+    tenant_code = (request.GET.get("tenant") or "").strip()
+    protocol_query = (request.GET.get("protocol") or "").strip()
+    status_query = (request.GET.get("status") or "").strip()
+    dev_type = (request.GET.get("dev_type") or "").strip()
+    key = (request.GET.get("key") or "").strip()
+    normalized = _to_bool(request.GET.get("normalized", "1"))
+
+    try:
+        max_result = int(request.GET.get("max_result", 100))
+    except ValueError:
+        return Response({"detail": "max_result must be an integer"}, status=status.HTTP_400_BAD_REQUEST)
+
+    protocol_types = _parse_csv_query_list(protocol_query)
+    statuses = _parse_csv_query_list(status_query)
+
+    if tenant_code:
+        gateways = Gateway.objects.select_related("tenant").filter(tenant__code__iexact=tenant_code).order_by("id")
+    elif _is_admin_request(request):
+        gateways = Gateway.objects.select_related("tenant").all().order_by("tenant__code", "id")
+    else:
+        return Response(
+            {"detail": "Ajoute ?tenant=<code_tenant> (ou connecte-toi en administrateur pour voir tous les appareils)."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    if not gateways.exists():
+        return Response({"count": 0, "results": [], "errors": ["Aucune gateway configurée pour ce filtre."]})
+
+    devices = []
+    errors = []
+    gateway_payloads = []
+
+    for gateway in gateways:
+        client = HikGatewayClient(gateway.base_url, gateway.username, gateway.password)
+        try:
+            payload = client.device_list_all(
+                max_result=max_result,
+                protocol_types=protocol_types or None,
+                statuses=statuses or None,
+                dev_type=dev_type,
+                key=key,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Unable to list devices for gateway", extra={"tenant": gateway.tenant.code, "gateway": gateway.base_url})
+            errors.append(f"{gateway.tenant.code}: {exc}")
+            continue
+
+        gateway_payloads.append(
+            {
+                "tenant_code": gateway.tenant.code,
+                "gateway_base_url": gateway.base_url,
+                "search_result": payload.get("SearchResult", {}),
+            }
+        )
+
+        for item in extract_devices(payload):
+            normalized_item = normalize_device(item)
+            normalized_item["sn"] = (item.get("EhomeParams", {}) or {}).get("EhomeID", "")
+            normalized_item["devIndex"] = item.get("devIndex", "")
+            normalized_item["name"] = item.get("devName") or item.get("deviceName") or ""
+            normalized_item["model"] = item.get("devType") or item.get("deviceType") or ""
+            normalized_item["version"] = item.get("devVersion") or ""
+            normalized_item["dev_serial"] = item.get("devSerial") or item.get("serialNumber") or ""
+            normalized_item["offline_hint"] = item.get("offlineHint") or item.get("offlineReason") or ""
+            normalized_item["tenant_code"] = gateway.tenant.code
+            normalized_item["gateway_base_url"] = gateway.base_url
+            devices.append(normalized_item)
+
+    if not normalized:
+        return Response({"count": len(gateway_payloads), "results": gateway_payloads, "errors": errors})
+
+    return Response({"count": len(devices), "results": devices, "errors": errors})
 
 
 @require_GET

@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "f0b16d89-5c38-4fab-b708-8e4be17d9f6b",
     "name": "Hikvision Django Integration API",
-    "description": "Collection exhaustive des endpoints exposés par l'application Django (JWT, tenants, devices, events, webhook Hikvision).",
+    "description": "Collection exhaustive des endpoints exposés par l'application Django (JWT, tenants, devices, events, webhook Hikvision), API devices gateway Hikcentral.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "event": [
@@ -19,14 +19,50 @@
     }
   ],
   "variable": [
-    { "key": "baseUrl", "value": "http://213.156.133.202" },
-    { "key": "accessToken", "value": "" },
-    { "key": "refreshToken", "value": "" },
-    { "key": "tenantCode", "value": "HQ-CASA" },
-    { "key": "hikToken", "value": "optional-shared-secret" },
-    { "key": "tenantId", "value": "1" },
-    { "key": "deviceId", "value": "1" },
-    { "key": "eventId", "value": "1" }
+    {
+      "key": "baseUrl",
+      "value": "http://213.156.133.202"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "tenantCode",
+      "value": "HQ-CASA"
+    },
+    {
+      "key": "hikToken",
+      "value": "optional-shared-secret"
+    },
+    {
+      "key": "tenantId",
+      "value": "1"
+    },
+    {
+      "key": "deviceId",
+      "value": "1"
+    },
+    {
+      "key": "eventId",
+      "value": "1"
+    },
+    {
+      "key": "gatewayProtocol",
+      "value": "ehomeV5"
+    },
+    {
+      "key": "gatewayStatus",
+      "value": "online,offline"
+    },
+    {
+      "key": "maxResult",
+      "value": "100"
+    }
   ],
   "item": [
     {
@@ -37,7 +73,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -45,8 +84,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/auth/token/",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "auth", "token", ""]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "token",
+                ""
+              ]
             },
             "description": "Retourne access/refresh token (Simple JWT)."
           },
@@ -72,7 +118,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -80,8 +129,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/auth/refresh/",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "auth", "refresh", ""]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "refresh",
+                ""
+              ]
             }
           }
         }
@@ -92,7 +148,11 @@
       "auth": {
         "type": "bearer",
         "bearer": [
-          { "key": "token", "value": "{{accessToken}}", "type": "string" }
+          {
+            "key": "token",
+            "value": "{{accessToken}}",
+            "type": "string"
+          }
         ]
       },
       "item": [
@@ -102,8 +162,14 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/api/tenants/",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "tenants", ""]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tenants",
+                ""
+              ]
             }
           }
         },
@@ -112,7 +178,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -120,8 +189,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/tenants/",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "tenants", ""]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tenants",
+                ""
+              ]
             }
           },
           "event": [
@@ -145,8 +220,15 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/api/tenants/{{tenantId}}/",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "tenants", "{{tenantId}}", ""]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tenants",
+                "{{tenantId}}",
+                ""
+              ]
             }
           }
         },
@@ -155,7 +237,10 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -163,8 +248,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/tenants/{{tenantId}}/",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "tenants", "{{tenantId}}", ""]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tenants",
+                "{{tenantId}}",
+                ""
+              ]
             }
           }
         },
@@ -173,7 +265,10 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -181,8 +276,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/tenants/{{tenantId}}/",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "tenants", "{{tenantId}}", ""]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tenants",
+                "{{tenantId}}",
+                ""
+              ]
             }
           }
         },
@@ -192,8 +294,15 @@
             "method": "DELETE",
             "url": {
               "raw": "{{baseUrl}}/api/tenants/{{tenantId}}/",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "tenants", "{{tenantId}}", ""]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tenants",
+                "{{tenantId}}",
+                ""
+              ]
             }
           }
         }
@@ -204,7 +313,11 @@
       "auth": {
         "type": "bearer",
         "bearer": [
-          { "key": "token", "value": "{{accessToken}}", "type": "string" }
+          {
+            "key": "token",
+            "value": "{{accessToken}}",
+            "type": "string"
+          }
         ]
       },
       "item": [
@@ -214,8 +327,14 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/api/devices/",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "devices", ""]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "devices",
+                ""
+              ]
             }
           }
         },
@@ -224,7 +343,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -232,8 +354,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/devices/",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "devices", ""]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "devices",
+                ""
+              ]
             },
             "description": "owner est implicite (CurrentUserDefault). protocol est forcé à ISUP côté API."
           },
@@ -258,8 +386,15 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/api/devices/{{deviceId}}/",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "devices", "{{deviceId}}", ""]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "devices",
+                "{{deviceId}}",
+                ""
+              ]
             }
           }
         },
@@ -268,7 +403,10 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -276,8 +414,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/devices/{{deviceId}}/",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "devices", "{{deviceId}}", ""]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "devices",
+                "{{deviceId}}",
+                ""
+              ]
             }
           }
         },
@@ -286,7 +431,10 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -294,8 +442,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/devices/{{deviceId}}/",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "devices", "{{deviceId}}", ""]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "devices",
+                "{{deviceId}}",
+                ""
+              ]
             }
           }
         },
@@ -305,8 +460,15 @@
             "method": "DELETE",
             "url": {
               "raw": "{{baseUrl}}/api/devices/{{deviceId}}/",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "devices", "{{deviceId}}", ""]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "devices",
+                "{{deviceId}}",
+                ""
+              ]
             }
           }
         }
@@ -317,7 +479,11 @@
       "auth": {
         "type": "bearer",
         "bearer": [
-          { "key": "token", "value": "{{accessToken}}", "type": "string" }
+          {
+            "key": "token",
+            "value": "{{accessToken}}",
+            "type": "string"
+          }
         ]
       },
       "item": [
@@ -327,8 +493,14 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/api/events/",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "events", ""]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                ""
+              ]
             }
           }
         },
@@ -337,7 +509,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -345,8 +520,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/events/",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "events", ""]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                ""
+              ]
             }
           },
           "event": [
@@ -370,8 +551,15 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/api/events/{{eventId}}/",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "events", "{{eventId}}", ""]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                ""
+              ]
             }
           }
         },
@@ -380,7 +568,10 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -388,8 +579,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/events/{{eventId}}/",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "events", "{{eventId}}", ""]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                ""
+              ]
             }
           }
         },
@@ -398,7 +596,10 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -406,8 +607,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/events/{{eventId}}/",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "events", "{{eventId}}", ""]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                ""
+              ]
             }
           }
         },
@@ -417,8 +625,15 @@
             "method": "DELETE",
             "url": {
               "raw": "{{baseUrl}}/api/events/{{eventId}}/",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "events", "{{eventId}}", ""]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                ""
+              ]
             }
           }
         }
@@ -432,9 +647,20 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "X-HIK-TOKEN", "value": "{{hikToken}}", "type": "text" },
-              { "key": "X-TENANT-CODE", "value": "{{tenantCode}}", "type": "text" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-HIK-TOKEN",
+                "value": "{{hikToken}}",
+                "type": "text"
+              },
+              {
+                "key": "X-TENANT-CODE",
+                "value": "{{tenantCode}}",
+                "type": "text"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -442,8 +668,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/hik/events",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "hik", "events"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hik",
+                "events"
+              ]
             },
             "description": "Endpoint webhook court recommandé. Non protégé par JWT; peut être protégé via allowlist IP + X-HIK-TOKEN. Le header X-TENANT-CODE force le routage tenant."
           }
@@ -453,9 +685,20 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "X-HIK-TOKEN", "value": "{{hikToken}}", "type": "text" },
-              { "key": "X-TENANT-CODE", "value": "{{tenantCode}}", "type": "text" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-HIK-TOKEN",
+                "value": "{{hikToken}}",
+                "type": "text"
+              },
+              {
+                "key": "X-TENANT-CODE",
+                "value": "{{tenantCode}}",
+                "type": "text"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -463,8 +706,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/hikvision/events",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "hikvision", "events"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hikvision",
+                "events"
+              ]
             },
             "description": "Endpoint webhook non protégé par JWT; peut être protégé via allowlist IP + X-HIK-TOKEN selon settings."
           }
@@ -475,10 +724,19 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/api/hik/devices?tenant={{tenantCode}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "hik", "devices"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hik",
+                "devices"
+              ],
               "query": [
-                { "key": "tenant", "value": "{{tenantCode}}" }
+                {
+                  "key": "tenant",
+                  "value": "{{tenantCode}}"
+                }
               ]
             },
             "description": "Récupère la page HTML listant les devices vus via les gateways du tenant passé en query param."
@@ -489,8 +747,15 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "X-TENANT-CODE", "value": "{{tenantCode}}", "type": "text" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-TENANT-CODE",
+                "value": "{{tenantCode}}",
+                "type": "text"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -498,10 +763,94 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/hikvision/events",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "hikvision", "events"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hikvision",
+                "events"
+              ]
             },
             "description": "Exemple de requête pour déclencher la réponse 400 Invalid JSON."
+          }
+        },
+        {
+          "name": "Lister devices gateway (API normalisée)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/hikgateway/devices/?tenant={{tenantCode}}&protocol={{gatewayProtocol}}&status={{gatewayStatus}}&max_result={{maxResult}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hikgateway",
+                "devices",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "tenant",
+                  "value": "{{tenantCode}}"
+                },
+                {
+                  "key": "protocol",
+                  "value": "{{gatewayProtocol}}"
+                },
+                {
+                  "key": "status",
+                  "value": "{{gatewayStatus}}"
+                },
+                {
+                  "key": "max_result",
+                  "value": "{{maxResult}}"
+                }
+              ]
+            },
+            "description": "Endpoint API JSON normalisé des devices remontés par les gateways (filtrable par tenant/protocol/status)."
+          }
+        },
+        {
+          "name": "Lister devices gateway (API brute)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/hikgateway/devices/?tenant={{tenantCode}}&normalized=0&protocol={{gatewayProtocol}}&status={{gatewayStatus}}&max_result={{maxResult}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hikgateway",
+                "devices",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "tenant",
+                  "value": "{{tenantCode}}"
+                },
+                {
+                  "key": "normalized",
+                  "value": "0"
+                },
+                {
+                  "key": "protocol",
+                  "value": "{{gatewayProtocol}}"
+                },
+                {
+                  "key": "status",
+                  "value": "{{gatewayStatus}}"
+                },
+                {
+                  "key": "max_result",
+                  "value": "{{maxResult}}"
+                }
+              ]
+            },
+            "description": "Retourne les SearchResult bruts par gateway (normalized=0), utile pour le debug des payloads HikCentral."
           }
         }
       ]

@@ -12,14 +12,14 @@
         "type": "text/javascript",
         "exec": [
           "if (!pm.collectionVariables.get('baseUrl')) {",
-          "    pm.collectionVariables.set('baseUrl', 'http://localhost:8000');",
+          "    pm.collectionVariables.set('baseUrl', 'http://213.156.133.202');",
           "}"
         ]
       }
     }
   ],
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:8000" },
+    { "key": "baseUrl", "value": "http://213.156.133.202" },
     { "key": "accessToken", "value": "" },
     { "key": "refreshToken", "value": "" },
     { "key": "tenantCode", "value": "HQ-CASA" },

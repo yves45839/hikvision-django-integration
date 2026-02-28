@@ -99,7 +99,7 @@ def hik_devices_page(request: HttpRequest):
     context = {"devices": [], "tenant_code": tenant_code, "error": "", "is_admin": is_admin}
 
     if tenant_code:
-        gateways = Gateway.objects.select_related("tenant").filter(tenant__code=tenant_code).order_by("id")
+        gateways = Gateway.objects.select_related("tenant").filter(tenant__code__iexact=tenant_code).order_by("id")
     elif is_admin:
         gateways = Gateway.objects.select_related("tenant").all().order_by("tenant__code", "id")
     else:

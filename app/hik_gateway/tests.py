@@ -299,3 +299,26 @@ class HikDevicesPageTests(APITestCase):
         self.assertContains(response, "tenant-ui")
         self.assertContains(response, "tenant-ui-2")
         self.assertEqual(mock_device_list.call_count, 2)
+
+    @patch("hik_gateway.views.HikGatewayClient.device_list")
+    def test_page_finds_tenant_case_insensitively(self, mock_device_list):
+        mock_device_list.return_value = {
+            "SearchResult": {
+                "MatchList": [
+                    {
+                        "Device": {
+                            "EhomeParams": {"EhomeID": "FN2090414"},
+                            "devIndex": "IDX-UI-1",
+                            "devName": "Access Controller",
+                            "devStatus": "online",
+                        }
+                    }
+                ]
+            }
+        }
+
+        response = self.client.get("/api/hik/devices?tenant=TENANT-UI")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertContains(response, "Access Controller")
+        self.assertContains(response, "FN2090414")

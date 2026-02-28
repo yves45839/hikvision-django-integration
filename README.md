@@ -176,6 +176,17 @@ Fonction :
 * Récupère `serial`, `devIndex`, `status`
 * Met à jour les devices Django
 
+### API liste des appareils (proxy Gateway)
+
+```
+GET /api/hikgateway/devices/?tenant=<tenant_code>&protocol=ehomeV5&status=online,offline
+```
+
+* Appelle `POST /ISAPI/ContentMgmt/DeviceMgmt/deviceList?format=json` avec Auth Digest.
+* Gère la pagination automatiquement jusqu'à `totalMatches`.
+* Mapping exposé : `sn = EhomeParams.EhomeID`, `devIndex = devIndex`.
+* Option `normalized=0` pour renvoyer le `SearchResult` brut par gateway.
+
 ---
 
 # 🗂️ Structure Projet

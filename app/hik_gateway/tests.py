@@ -322,3 +322,122 @@ class HikDevicesPageTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertContains(response, "Access Controller")
         self.assertContains(response, "FN2090414")
+
+
+class HikDevicesApiTests(APITestCase):
+    def setUp(self):
+        self.tenant = Tenant.objects.create(name="Tenant API", code="tenant-api")
+        self.gateway = Gateway.objects.create(
+            tenant=self.tenant,
+            base_url="https://gw-api.local",
+            username="admin",
+            password="pass",
+        )
+        user_model = get_user_model()
+        user = user_model.objects.create_user(username="api-user", password="pass", is_staff=True)
+        self.client.force_authenticate(user=user)
+
+    @patch("hik_gateway.views.HikGatewayClient.device_list_all")
+    def test_devices_api_returns_normalized_mapping(self, mock_device_list_all):
+        mock_device_list_all.return_value = {
+            "SearchResult": {
+                "numOfMatches": 1,
+                "totalMatches": 1,
+                "MatchList": [
+                    {
+                        "Device": {
+                            "EhomeParams": {"EhomeID": "SN-ISUP5"},
+                            "devIndex": "IDX-100",
+                            "devName": "Main Controller",
+                            "devStatus": "online",
+                            "protocolType": "ehomeV5",
+                            "devType": "AccessControl",
+                            "devVersion": "V1.2",
+                            "devSerial": "ABC123",
+                        }
+                    }
+                ],
+            }
+        }
+
+        response = self.client.get(
+            "/api/hikgateway/devices/?tenant=tenant-api&protocol=ehomeV5&status=online"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload["count"], 1)
+        self.assertEqual(payload["results"][0]["sn"], "SN-ISUP5")
+        self.assertEqual(payload["results"][0]["devIndex"], "IDX-100")
+        self.assertEqual(payload["results"][0]["status"], "online")
+        mock_device_list_all.assert_called_once_with(
+            max_result=100,
+            protocol_types=["ehomeV5"],
+            statuses=["online"],
+            dev_type="",
+            key="",
+        )
+
+    @patch("hik_gateway.views.HikGatewayClient.device_list_all")
+    def test_devices_api_can_return_raw_search_result_per_gateway(self, mock_device_list_all):
+        mock_device_list_all.return_value = {
+            "SearchResult": {
+                "numOfMatches": 0,
+                "totalMatches": 0,
+                "MatchList": [],
+            }
+        }
+
+        response = self.client.get("/api/hikgateway/devices/?tenant=tenant-api&normalized=0")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload["count"], 1)
+        self.assertIn("search_result", payload["results"][0])
+        self.assertEqual(payload["results"][0]["tenant_code"], "tenant-api")
+
+
+class _DummyResponse:
+    def __init__(self, payload):
+        self._payload = payload
+        self.content = b"{}"
+
+    def raise_for_status(self):
+        return None
+
+    def json(self):
+        return self._payload
+
+
+class HikGatewayClientPaginationTests(APITestCase):
+    @patch("hik_gateway.client.requests.post")
+    def test_device_list_all_fetches_all_pages(self, mock_post):
+        from hik_gateway.client import HikGatewayClient
+
+        mock_post.side_effect = [
+            _DummyResponse(
+                {
+                    "SearchResult": {
+                        "numOfMatches": 1,
+                        "totalMatches": 2,
+                        "MatchList": [{"Device": {"devIndex": "IDX-1"}}],
+                    }
+                }
+            ),
+            _DummyResponse(
+                {
+                    "SearchResult": {
+                        "numOfMatches": 1,
+                        "totalMatches": 2,
+                        "MatchList": [{"Device": {"devIndex": "IDX-2"}}],
+                    }
+                }
+            ),
+        ]
+
+        client = HikGatewayClient("https://gw.local", "admin", "pass")
+        payload = client.device_list_all(max_result=1)
+
+        self.assertEqual(payload["SearchResult"]["numOfMatches"], 2)
+        self.assertEqual(len(payload["SearchResult"]["MatchList"]), 2)
+        self.assertEqual(mock_post.call_count, 2)

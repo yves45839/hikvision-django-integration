@@ -1,6 +1,7 @@
 from io import StringIO
 from unittest.mock import patch
 
+from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from rest_framework import status
@@ -227,3 +228,74 @@ class HikRegisterWebhooksCommandTests(APITestCase):
         self.assertEqual(call_args[1]["HttpHostNotificationList"][0]["HttpHostNotification"]["ipAddress"], "213.156.133.202")
         self.assertEqual(call_args[1]["HttpHostNotificationList"][0]["HttpHostNotification"]["portNo"], 80)
 
+
+
+class HikDevicesPageTests(APITestCase):
+    def setUp(self):
+        self.tenant = Tenant.objects.create(name="Tenant UI", code="tenant-ui")
+        self.gateway = Gateway.objects.create(
+            tenant=self.tenant,
+            base_url="https://gw-ui.local",
+            username="admin",
+            password="pass",
+        )
+
+    @patch("hik_gateway.views.HikGatewayClient.device_list")
+    def test_page_displays_devices_from_search_result_payload(self, mock_device_list):
+        mock_device_list.return_value = {
+            "SearchResult": {
+                "MatchList": [
+                    {
+                        "Device": {
+                            "EhomeParams": {"EhomeID": "FN2090414"},
+                            "devIndex": "IDX-UI-1",
+                            "devName": "Access Controller",
+                            "devStatus": "online",
+                            "protocolType": "ehomeV5",
+                            "devType": "AccessControl",
+                        }
+                    }
+                ]
+            }
+        }
+
+        response = self.client.get("/api/hik/devices?tenant=tenant-ui")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertContains(response, "Access Controller")
+        self.assertContains(response, "FN2090414")
+        self.assertContains(response, "IDX-UI-1")
+
+    def test_page_requires_tenant_for_non_admin(self):
+        response = self.client.get("/api/hik/devices")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertContains(response, "Ajoute ?tenant=&lt;code_tenant&gt;", status_code=status.HTTP_403_FORBIDDEN)
+
+    @patch("hik_gateway.views.HikGatewayClient.device_list")
+    def test_admin_can_list_devices_for_all_tenants_without_filter(self, mock_device_list):
+        tenant_2 = Tenant.objects.create(name="Tenant UI 2", code="tenant-ui-2")
+        Gateway.objects.create(
+            tenant=tenant_2,
+            base_url="https://gw-ui-2.local",
+            username="admin",
+            password="pass",
+        )
+
+        mock_device_list.side_effect = [
+            {"SearchResult": {"MatchList": [{"Device": {"EhomeParams": {"EhomeID": "FN-1"}, "devIndex": "IDX-1", "devName": "Reader A", "devStatus": "online"}}]}},
+            {"SearchResult": {"MatchList": [{"Device": {"EhomeParams": {"EhomeID": "FN-2"}, "devIndex": "IDX-2", "devName": "Reader B", "devStatus": "offline"}}]}},
+        ]
+
+        user_model = get_user_model()
+        admin_user = user_model.objects.create_user(username="admin-ui", password="pass", is_staff=True)
+        self.client.force_login(admin_user)
+
+        response = self.client.get("/api/hik/devices")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertContains(response, "Reader A")
+        self.assertContains(response, "Reader B")
+        self.assertContains(response, "tenant-ui")
+        self.assertContains(response, "tenant-ui-2")
+        self.assertEqual(mock_device_list.call_count, 2)

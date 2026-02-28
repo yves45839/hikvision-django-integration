@@ -5,10 +5,14 @@ import logging
 
 from django.conf import settings
 from django.http import HttpRequest, JsonResponse
+from django.shortcuts import render
+from django.views.decorators.http import require_GET
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from hik_gateway.models import AttendanceLog
+from hik_gateway.client import HikGatewayClient
+from hik_gateway.models import AttendanceLog, Gateway
+from hik_gateway.services.device_payload import extract_devices, normalize_device
 from hik_gateway.services.webhook_ingest import ingest_event
 from tenants.models import Tenant
 
@@ -81,3 +85,55 @@ def hik_event_webhook(request: HttpRequest) -> JsonResponse:
         },
         status=201,
     )
+
+
+def _is_admin_request(request: HttpRequest) -> bool:
+    user = getattr(request, "user", None)
+    return bool(user and user.is_authenticated and (user.is_staff or user.is_superuser))
+
+
+@require_GET
+def hik_devices_page(request: HttpRequest):
+    tenant_code = (request.GET.get("tenant") or "").strip()
+    is_admin = _is_admin_request(request)
+    context = {"devices": [], "tenant_code": tenant_code, "error": "", "is_admin": is_admin}
+
+    if tenant_code:
+        gateways = Gateway.objects.select_related("tenant").filter(tenant__code=tenant_code).order_by("id")
+    elif is_admin:
+        gateways = Gateway.objects.select_related("tenant").all().order_by("tenant__code", "id")
+    else:
+        context["error"] = "Ajoute ?tenant=<code_tenant> (ou connecte-toi en administrateur pour voir tous les appareils)."
+        return render(request, "hik_gateway/device_list.html", context, status=403)
+
+    if not gateways.exists():
+        if tenant_code:
+            context["error"] = f"Aucune gateway trouvée pour le tenant '{tenant_code}'."
+        else:
+            context["error"] = "Aucune gateway configurée."
+        return render(request, "hik_gateway/device_list.html", context)
+
+    devices = []
+    errors = []
+
+    for gateway in gateways:
+        client = HikGatewayClient(gateway.base_url, gateway.username, gateway.password)
+        try:
+            payload = client.device_list()
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"{gateway.tenant.code}: {exc}")
+            continue
+
+        for item in extract_devices(payload):
+            normalized = normalize_device(item)
+            normalized["tenant_code"] = gateway.tenant.code
+            normalized["gateway_base_url"] = gateway.base_url
+            devices.append(normalized)
+
+    if errors and not devices:
+        context["error"] = "Impossible de récupérer les devices: " + " | ".join(errors)
+    elif errors:
+        context["error"] = "Certaines gateways ont échoué: " + " | ".join(errors)
+
+    context["devices"] = devices
+    return render(request, "hik_gateway/device_list.html", context)

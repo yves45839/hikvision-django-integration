@@ -22,6 +22,8 @@
     { "key": "baseUrl", "value": "http://localhost:8000" },
     { "key": "accessToken", "value": "" },
     { "key": "refreshToken", "value": "" },
+    { "key": "tenantCode", "value": "HQ-CASA" },
+    { "key": "hikToken", "value": "optional-shared-secret" },
     { "key": "tenantId", "value": "1" },
     { "key": "deviceId", "value": "1" },
     { "key": "eventId", "value": "1" }
@@ -426,12 +428,34 @@
       "name": "Hikvision Webhook",
       "item": [
         {
-          "name": "Webhook access event (POST)",
+          "name": "Webhook access event (POST) - /api/hik/events",
           "request": {
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
-              { "key": "X-HIK-TOKEN", "value": "optional-shared-secret", "type": "text" }
+              { "key": "X-HIK-TOKEN", "value": "{{hikToken}}", "type": "text" },
+              { "key": "X-TENANT-CODE", "value": "{{tenantCode}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"EventNotificationAlert\": {\n    \"ipAddress\": \"10.0.0.10\",\n    \"portNo\": 80,\n    \"protocol\": \"HTTP\",\n    \"macAddress\": \"00:11:22:33:44:55\",\n    \"channelID\": 1,\n    \"dateTime\": \"2026-01-15T08:35:00+00:00\",\n    \"activePostCount\": 1,\n    \"eventType\": \"AccessControllerEvent\",\n    \"eventState\": \"active\",\n    \"eventDescription\": \"Access Controller Event\",\n    \"devIndex\": \"DEV-0001\",\n    \"AccessControllerEvent\": {\n      \"serialNo\": 31,\n      \"frontSerialNo\": 31,\n      \"majorEventType\": 5,\n      \"subEventType\": 1,\n      \"name\": \"door access\",\n      \"cardReaderKind\": 1,\n      \"cardReaderNo\": 1,\n      \"verifyNo\": 1,\n      \"employeeNoString\": \"E1001\",\n      \"reportChannel\": 1,\n      \"byEmployeeNo\": 0,\n      \"employeeNo\": 1001,\n      \"deviceNo\": 1,\n      \"userType\": \"normal\",\n      \"currentVerifyMode\": \"card\",\n      \"frontEventType\": 0,\n      \"attendanceStatus\": \"checkin\",\n      \"label\": \"main gate\",\n      \"statusValue\": 0,\n      \"mask\": \"unknown\",\n      \"picturesNumber\": 0,\n      \"picEnable\": false,\n      \"cardNo\": \"1234567890\",\n      \"doorNo\": 1,\n      \"verifyType\": 1,\n      \"time\": \"2026-01-15T08:35:00+00:00\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/hik/events",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "hik", "events"]
+            },
+            "description": "Endpoint webhook court recommandé. Non protégé par JWT; peut être protégé via allowlist IP + X-HIK-TOKEN. Le header X-TENANT-CODE force le routage tenant."
+          }
+        },
+        {
+          "name": "Webhook access event (POST) - /api/hikvision/events",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-HIK-TOKEN", "value": "{{hikToken}}", "type": "text" },
+              { "key": "X-TENANT-CODE", "value": "{{tenantCode}}", "type": "text" }
             ],
             "body": {
               "mode": "raw",
@@ -446,11 +470,27 @@
           }
         },
         {
+          "name": "Page devices gateway (GET)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/hik/devices?tenant={{tenantCode}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "hik", "devices"],
+              "query": [
+                { "key": "tenant", "value": "{{tenantCode}}" }
+              ]
+            },
+            "description": "Récupère la page HTML listant les devices vus via les gateways du tenant passé en query param."
+          }
+        },
+        {
           "name": "Webhook - payload invalide (test 400)",
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-TENANT-CODE", "value": "{{tenantCode}}", "type": "text" }
             ],
             "body": {
               "mode": "raw",

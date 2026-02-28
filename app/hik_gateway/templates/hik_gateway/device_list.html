@@ -2,59 +2,107 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <title>Devices Hikvision</title>
+  <title>Device Gateway - API Testing</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 24px; }
-    table { border-collapse: collapse; width: 100%; margin-top: 16px; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-    th { background: #f5f5f5; }
-    .error { color: #b00020; margin-top: 12px; }
-    .meta { color: #555; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, sans-serif; background: #f2f2f2; color: #1f1f1f; }
+    .topbar { height: 44px; background: #1f1f1f; color: #fff; display: flex; align-items: center; }
+    .topbar .brand { padding: 0 16px; font-size: 30px; color: #f63d3d; line-height: 0; }
+    .topbar .title { font-weight: 700; margin-right: 24px; }
+    .topbar .menu a { color: #bbb; text-decoration: none; padding: 14px 14px; display: inline-block; }
+    .topbar .menu a.active { background: #ff3636; color: #fff; }
+    .container { display: flex; min-height: calc(100vh - 44px); }
+    .sidebar { width: 300px; background: #f6f6f6; border-right: 1px solid #d0d0d0; padding: 14px 8px; }
+    .nav-title { padding: 8px 10px; font-size: 28px; }
+    .nav-item { padding: 10px 14px; margin: 2px 8px; }
+    .nav-item.active { background: #f02929; color: #fff; }
+    .main { flex: 1; padding: 20px; }
+    .toolbar { display: grid; grid-template-columns: 90px 100px 1fr 140px; gap: 10px; align-items: center; margin-bottom: 16px; }
+    input, select, textarea { width: 100%; border: 1px solid #bdbdbd; padding: 8px; font-family: Consolas, monospace; font-size: 14px; }
+    textarea { min-height: 440px; resize: vertical; background: #fff; }
+    .btn { border: none; background: #ff3636; color: #fff; padding: 9px 12px; cursor: pointer; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .field label { display: block; margin-bottom: 8px; color: #333; }
+    .status { margin: 6px 0 10px; }
+    .meta { margin-bottom: 10px; color: #555; }
+    .error { color: #b00020; margin: 12px 0; }
+    table { border-collapse: collapse; width: 100%; margin-top: 18px; background: #fff; }
+    th, td { border: 1px solid #ddd; padding: 6px; text-align: left; font-size: 13px; }
+    th { background: #f8f8f8; }
   </style>
 </head>
 <body>
-  <h1>Liste des devices connectés</h1>
-  {% if tenant_code %}
-  <p class="meta">Tenant: <strong>{{ tenant_code }}</strong></p>
-{% elif is_admin %}
-  <p class="meta">Mode administrateur: <strong>tous les tenants</strong></p>
-{% else %}
-  <p class="meta">Tenant: <strong>-</strong></p>
-{% endif %}
+<div class="topbar">
+  <div class="brand">⬢</div>
+  <div class="title">Device Gateway</div>
+  <div class="menu">
+    <a href="#">Device Management</a>
+    <a href="#">Configuration</a>
+    <a class="active" href="#">API Testing</a>
+    <a href="#">Other Protocol</a>
+  </div>
+</div>
+<div class="container">
+  <aside class="sidebar">
+    <div class="nav-title">General Protocol</div>
+    <div class="nav-item">Device Management</div>
+    <div class="nav-item">Add Device</div>
+    <div class="nav-item">Delete Device</div>
+    <div class="nav-item">Edit Device</div>
+    <div class="nav-item active">Search for Device</div>
+  </aside>
+  <main class="main">
+    <form method="get">
+      <div class="toolbar">
+        <label for="url">*URL</label>
+        <select id="method" disabled>
+          <option selected>POST</option>
+        </select>
+        <input id="url" value="{{ gateway_url|default:'http://<gateway>/ISAPI/ContentMgmt/DeviceMgmt/deviceList?format=json' }}" readonly>
+        <button class="btn" type="submit">Send Request</button>
+      </div>
+      <div class="meta">
+        Tenant: <strong>{{ tenant_code|default:'-' }}</strong> | Status: <strong>{{ status_code }}</strong>
+      </div>
+      <input type="hidden" name="tenant" value="{{ tenant_code }}">
+      {% if error %}
+      <p class="error">{{ error }}</p>
+      {% endif %}
+      <div class="grid">
+        <div class="field">
+          <label for="request">Request Parameters</label>
+          <textarea id="request" name="request">{{ request_parameters }}</textarea>
+        </div>
+        <div class="field">
+          <label for="response">Response Parameters</label>
+          <textarea id="response" readonly>{{ response_parameters }}</textarea>
+        </div>
+      </div>
+    </form>
 
-  {% if error %}
-    <p class="error">{{ error }}</p>
-  {% endif %}
-
-  {% if devices %}
+    {% if devices %}
     <table>
       <thead>
-        <tr>
-          <th>Tenant</th>
-          <th>Nom</th>
-          <th>Serial Number</th>
-          <th>Dev Index</th>
-          <th>Status</th>
-          <th>Protocol</th>
-          <th>Type</th>
-        </tr>
+      <tr>
+        <th>Tenant</th><th>Nom</th><th>Serial</th><th>Dev Index</th><th>Status</th><th>Protocol</th><th>Type</th>
+      </tr>
       </thead>
       <tbody>
-        {% for device in devices %}
-          <tr>
-            <td>{{ device.tenant_code|default:"-" }}</td>
-            <td>{{ device.device_name|default:"-" }}</td>
-            <td>{{ device.serial_number|default:"-" }}</td>
-            <td>{{ device.dev_index|default:"-" }}</td>
-            <td>{{ device.status|default:"-" }}</td>
-            <td>{{ device.protocol_type|default:"-" }}</td>
-            <td>{{ device.device_type|default:"-" }}</td>
-          </tr>
-        {% endfor %}
+      {% for device in devices %}
+      <tr>
+        <td>{{ device.tenant_code|default:'-' }}</td>
+        <td>{{ device.device_name|default:'-' }}</td>
+        <td>{{ device.serial_number|default:'-' }}</td>
+        <td>{{ device.dev_index|default:'-' }}</td>
+        <td>{{ device.status|default:'-' }}</td>
+        <td>{{ device.protocol_type|default:'-' }}</td>
+        <td>{{ device.device_type|default:'-' }}</td>
+      </tr>
+      {% endfor %}
       </tbody>
     </table>
-  {% elif not error %}
-    <p>Aucun device trouvé.</p>
-  {% endif %}
+    {% endif %}
+  </main>
+</div>
 </body>
 </html>

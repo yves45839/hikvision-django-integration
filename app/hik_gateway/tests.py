@@ -512,3 +512,53 @@ class HikSyncDevicesCommandTests(APITestCase):
             call_command("hik_sync_devices", "--loop")
 
         self.assertIn("--loop nécessite --interval > 0", str(exc.exception))
+
+
+class HikDeviceDevicesSpaceTests(APITestCase):
+    def setUp(self):
+        self.tenant = Tenant.objects.create(name="Tenant Space", code="tenant-space")
+        self.gateway = Gateway.objects.create(
+            tenant=self.tenant,
+            base_url="https://gw-space.local",
+            username="admin",
+            password="pass",
+        )
+
+    @patch("hik_gateway.services.gateway_connection.HikGatewayClient.device_list_all")
+    def test_space_displays_gateway_devices(self, mock_device_list_all):
+        Device.objects.create(
+            gateway=self.gateway,
+            tenant=self.tenant,
+            serial_number="SN-SPACE",
+            dev_index="IDX-SPACE",
+            status="online",
+        )
+        mock_device_list_all.return_value = {
+            "SearchResult": {
+                "MatchList": [
+                    {
+                        "Device": {
+                            "EhomeParams": {"EhomeID": "SN-SPACE"},
+                            "devIndex": "IDX-SPACE",
+                            "devName": "Porte principale",
+                            "devStatus": "online",
+                            "protocolType": "ehomeV5",
+                            "devType": "AccessControl",
+                        }
+                    }
+                ]
+            }
+        }
+
+        response = self.client.get("/api/hikdevice/devices?tenant=tenant-space")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertContains(response, "Espace HikDevice")
+        self.assertContains(response, "Porte principale")
+        self.assertContains(response, "SN-SPACE")
+
+    def test_space_requires_tenant_for_non_admin(self):
+        response = self.client.get("/api/hikdevice/devices")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertContains(response, "Ajoute ?tenant=&lt;code_tenant&gt;", status_code=status.HTTP_403_FORBIDDEN)

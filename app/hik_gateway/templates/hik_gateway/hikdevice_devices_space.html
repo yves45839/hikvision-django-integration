@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Espace HikDevice - Appareils disponibles</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f7fb; margin: 0; color: #1f2937; }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    h1 { margin: 0 0 6px; }
+    .subtitle { color: #4b5563; margin-bottom: 18px; }
+    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+    .filters { display: grid; grid-template-columns: repeat(5, minmax(120px, 1fr)); gap: 10px; align-items: end; }
+    label { display: block; margin-bottom: 5px; font-size: 13px; color: #374151; }
+    input { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 8px; }
+    button { border: 0; background: #2563eb; color: #fff; padding: 9px 14px; border-radius: 8px; cursor: pointer; }
+    .muted { color: #6b7280; font-size: 14px; margin-top: 10px; }
+    .error { color: #b91c1c; margin: 10px 0; }
+    table { width: 100%; border-collapse: collapse; background: #fff; }
+    th, td { border: 1px solid #e5e7eb; padding: 8px; font-size: 14px; text-align: left; }
+    th { background: #f9fafb; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Espace HikDevice</h1>
+  <div class="subtitle">Liste des appareils disponibles sur Hik Device Gateway.</div>
+
+  <div class="card">
+    <form method="get" class="filters">
+      <div>
+        <label for="tenant">Tenant</label>
+        <input id="tenant" name="tenant" value="{{ tenant_code }}" placeholder="code tenant">
+      </div>
+      <div>
+        <label for="protocol">Protocoles (csv)</label>
+        <input id="protocol" name="protocol" value="{{ protocol }}" placeholder="ehomeV5">
+      </div>
+      <div>
+        <label for="status">Statuts (csv)</label>
+        <input id="status" name="status" value="{{ status_filter }}" placeholder="online,offline">
+      </div>
+      <div>
+        <label for="dev_type">Type</label>
+        <input id="dev_type" name="dev_type" value="{{ dev_type }}" placeholder="AccessControl">
+      </div>
+      <div>
+        <label for="key">Recherche</label>
+        <input id="key" name="key" value="{{ key }}" placeholder="nom, serial...">
+      </div>
+      <div>
+        <button type="submit">Afficher</button>
+      </div>
+    </form>
+    <div class="muted">Résultats: <strong>{{ devices|length }}</strong></div>
+    {% if error %}
+      <div class="error">{{ error }}</div>
+    {% endif %}
+  </div>
+
+  {% if devices %}
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>Tenant</th>
+          <th>Nom</th>
+          <th>SN</th>
+          <th>Dev Index</th>
+          <th>Status</th>
+          <th>Protocole</th>
+          <th>Type</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for device in devices %}
+        <tr>
+          <td>{{ device.tenant_code|default:'-' }}</td>
+          <td>{{ device.device_name|default:'-' }}</td>
+          <td>{{ device.sn|default:device.serial_number|default:'-' }}</td>
+          <td>{{ device.dev_index|default:'-' }}</td>
+          <td>{{ device.status|default:'-' }}</td>
+          <td>{{ device.protocol_type|default:'-' }}</td>
+          <td>{{ device.device_type|default:'-' }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+</body>
+</html>

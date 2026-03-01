@@ -273,6 +273,39 @@ class HikDevicesPageTests(APITestCase):
         self.assertContains(response, "Ajoute ?tenant=&lt;code_tenant&gt;", status_code=status.HTTP_403_FORBIDDEN)
 
     @patch("hik_gateway.services.gateway_connection.HikGatewayClient.device_list")
+    def test_page_can_return_json_when_requested(self, mock_device_list):
+        mock_device_list.return_value = {
+            "SearchResult": {
+                "MatchList": [
+                    {
+                        "Device": {
+                            "EhomeParams": {"EhomeID": "FN2090414"},
+                            "devIndex": "IDX-UI-1",
+                            "devName": "Access Controller",
+                            "devStatus": "online",
+                            "protocolType": "ehomeV5",
+                            "devType": "AccessControl",
+                        }
+                    }
+                ]
+            }
+        }
+
+        response = self.client.get("/api/hik/devices?tenant=tenant-ui&format=json")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload["count"], 1)
+        self.assertEqual(payload["results"][0]["dev_index"], "IDX-UI-1")
+
+    def test_page_returns_json_error_when_tenant_missing(self):
+        response = self.client.get("/api/hik/devices?format=json")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        payload = response.json()
+        self.assertIn("Ajoute ?tenant=<code_tenant>", payload["detail"])
+
+    @patch("hik_gateway.services.gateway_connection.HikGatewayClient.device_list")
     def test_admin_can_list_devices_for_all_tenants_without_filter(self, mock_device_list):
         tenant_2 = Tenant.objects.create(name="Tenant UI 2", code="tenant-ui-2")
         gateway_2 = Gateway.objects.create(

@@ -207,6 +207,9 @@ def hik_devices_page(request: HttpRequest):
         ensure_ascii=False,
         indent=2,
     )
+    response_format = (request.GET.get("format") or "").strip().lower()
+    wants_json = response_format == "json" or "application/json" in request.headers.get("Accept", "")
+
     context = {
         "devices": [],
         "tenant_code": tenant_code,
@@ -219,7 +222,10 @@ def hik_devices_page(request: HttpRequest):
     }
 
     if not tenant_code and not is_admin:
-        context["error"] = "Ajoute ?tenant=<code_tenant> (ou connecte-toi en administrateur pour voir tous les appareils)."
+        error_message = "Ajoute ?tenant=<code_tenant> (ou connecte-toi en administrateur pour voir tous les appareils)."
+        if wants_json:
+            return JsonResponse({"detail": error_message}, status=403)
+        context["error"] = error_message
         return render(request, "hik_gateway/device_list.html", context, status=403)
 
     devices = []
@@ -229,7 +235,10 @@ def hik_devices_page(request: HttpRequest):
     try:
         payload_to_send = json.loads(request_parameters)
     except json.JSONDecodeError:
-        context["error"] = "Request Parameters doit être un JSON valide."
+        error_message = "Request Parameters doit être un JSON valide."
+        if wants_json:
+            return JsonResponse({"detail": error_message}, status=400)
+        context["error"] = error_message
         return render(request, "hik_gateway/device_list.html", context, status=400)
 
     tenant_by_dev_index = {
@@ -274,6 +283,18 @@ def hik_devices_page(request: HttpRequest):
         context["error"] = "La connexion gateway a échoué: " + " | ".join(errors)
 
     context["devices"] = devices
+    if wants_json:
+        return JsonResponse(
+            {
+                "count": len(devices),
+                "results": devices,
+                "errors": errors,
+                "tenant": tenant_code or None,
+                "status_code": context["status_code"],
+                "response_parameters": response_payload,
+            }
+        )
+
     return render(request, "hik_gateway/device_list.html", context)
 
 

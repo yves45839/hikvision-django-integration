@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from django.core.management.base import BaseCommand, CommandError
 
-from hik_gateway.client import HikGatewayClient
-from hik_gateway.models import Gateway
+from hik_gateway.client import HikGatewayClient  # backward-compatible import for tests
 from hik_gateway.services.device_payload import extract_devices, normalize_device
+from hik_gateway.services.gateway_connection import get_shared_gateway_client
 
 
 class Command(BaseCommand):
@@ -23,16 +23,10 @@ class Command(BaseCommand):
         if not serial and not dev_index:
             raise CommandError("Tu dois fournir --serial ou --dev-index")
 
-        gateway = (
-            Gateway.objects.select_related("tenant")
-            .filter(tenant__code=tenant_code)
-            .order_by("id")
-            .first()
-        )
-        if gateway is None:
-            raise CommandError(f"Aucune gateway trouvée pour le tenant '{tenant_code}'")
-
-        client = HikGatewayClient(gateway.base_url, gateway.username, gateway.password)
+        try:
+            client = get_shared_gateway_client(tenant_code=tenant_code)
+        except Exception as exc:  # noqa: BLE001
+            raise CommandError(str(exc)) from exc
         payload = client.device_list()
         devices = extract_devices(payload)
 

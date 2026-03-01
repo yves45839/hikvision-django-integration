@@ -4,8 +4,8 @@ from datetime import timedelta
 
 from django.utils import timezone
 
-from hik_gateway.client import HikGatewayClient
 from hik_gateway.models import AttendanceLog, Device, DeviceCursor
+from hik_gateway.services.gateway_connection import get_shared_gateway_client
 from hik_gateway.services.webhook_ingest import ingest_acs_event
 
 
@@ -29,7 +29,7 @@ def catchup_device(device: Device, max_results: int = 50) -> int:
     search_id = cursor.last_search_id or f"{device.tenant_id}-{device.dev_index}"
     position = cursor.last_search_result_position
 
-    client = HikGatewayClient(device.gateway.base_url, device.gateway.username, device.gateway.password)
+    client = get_shared_gateway_client(tenant_code=device.tenant.code)
 
     processed = 0
     max_processed_time = cursor.last_event_time
@@ -74,6 +74,6 @@ def catchup_device(device: Device, max_results: int = 50) -> int:
 
 def catchup_all_devices(max_results: int = 50) -> int:
     total = 0
-    for device in Device.objects.select_related("gateway", "tenant").all().iterator():
+    for device in Device.objects.select_related("tenant").all().iterator():
         total += catchup_device(device, max_results=max_results)
     return total

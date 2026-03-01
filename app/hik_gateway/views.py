@@ -275,3 +275,75 @@ def hik_devices_page(request: HttpRequest):
 
     context["devices"] = devices
     return render(request, "hik_gateway/device_list.html", context)
+
+
+@require_GET
+def hikdevice_devices_space(request: HttpRequest):
+    """Interface simple pour visualiser les appareils disponibles sur HikDevice."""
+    tenant_code = (request.GET.get("tenant") or "").strip()
+    protocol_query = (request.GET.get("protocol") or "").strip()
+    status_query = (request.GET.get("status") or "").strip()
+    dev_type = (request.GET.get("dev_type") or "").strip()
+    key = (request.GET.get("key") or "").strip()
+    is_admin = _is_admin_request(request)
+
+    protocol_types = _parse_csv_query_list(protocol_query)
+    statuses = _parse_csv_query_list(status_query)
+
+    context = {
+        "devices": [],
+        "tenant_code": tenant_code,
+        "protocol": protocol_query,
+        "status_filter": status_query,
+        "dev_type": dev_type,
+        "key": key,
+        "error": "",
+        "is_admin": is_admin,
+    }
+
+    if not tenant_code and not is_admin:
+        context["error"] = "Ajoute ?tenant=<code_tenant> (ou connecte-toi en administrateur pour voir tous les appareils)."
+        return render(request, "hik_gateway/hikdevice_devices_space.html", context, status=403)
+
+    tenant_by_dev_index = {
+        dev_index: tenant__code
+        for dev_index, tenant__code in Device.objects.select_related("tenant").values_list("dev_index", "tenant__code")
+    }
+
+    allowed_dev_indexes = None
+    if tenant_code:
+        allowed_dev_indexes = {
+            dev_index
+            for dev_index, mapped_tenant_code in tenant_by_dev_index.items()
+            if str(mapped_tenant_code).lower() == tenant_code.lower()
+        }
+        if not allowed_dev_indexes:
+            allowed_dev_indexes = None
+
+    try:
+        client = get_shared_gateway_client(tenant_code=tenant_code or None)
+        payload = client.device_list_all(
+            max_result=100,
+            protocol_types=protocol_types or None,
+            statuses=statuses or None,
+            dev_type=dev_type,
+            key=key,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Unable to list devices in hikdevice devices space")
+        context["error"] = f"Impossible de récupérer les appareils: {exc}"
+        return render(request, "hik_gateway/hikdevice_devices_space.html", context, status=502)
+
+    devices = []
+    for item in extract_devices(payload):
+        normalized_item = normalize_device(item)
+        dev_index_value = normalized_item.get("dev_index") or item.get("devIndex", "")
+        if allowed_dev_indexes is not None and dev_index_value not in allowed_dev_indexes:
+            continue
+
+        normalized_item["sn"] = (item.get("EhomeParams", {}) or {}).get("EhomeID", "")
+        normalized_item["tenant_code"] = tenant_by_dev_index.get(dev_index_value, "")
+        devices.append(normalized_item)
+
+    context["devices"] = devices
+    return render(request, "hik_gateway/hikdevice_devices_space.html", context)

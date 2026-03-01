@@ -48,6 +48,10 @@
       "value": "1"
     },
     {
+      "key": "ownerOnly",
+      "value": "true"
+    },
+    {
       "key": "eventId",
       "value": "1"
     },
@@ -370,7 +374,7 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/api/devices/",
+              "raw": "{{baseUrl}}/api/devices/?owner_only={{ownerOnly}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -378,8 +382,16 @@
                 "api",
                 "devices",
                 ""
+              ],
+              "query": [
+                {
+                  "key": "owner_only",
+                  "value": "{{ownerOnly}}",
+                  "description": "true/false, 1/0, yes/no"
+                }
               ]
-            }
+            },
+            "description": "Retourne les devices. Utilise `owner_only` pour limiter au propriétaire connecté."
           }
         },
         {

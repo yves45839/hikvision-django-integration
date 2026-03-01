@@ -143,7 +143,7 @@ class HikCheckDeviceCommandTests(APITestCase):
             password="pass",
         )
 
-    @patch("hik_gateway.management.commands.hik_check_device.HikGatewayClient.device_list")
+    @patch("hik_gateway.services.gateway_connection.HikGatewayClient.device_list")
     def test_command_returns_success_when_device_is_found(self, mock_device_list):
         mock_device_list.return_value = {
             "DeviceList": {
@@ -170,7 +170,7 @@ class HikCheckDeviceCommandTests(APITestCase):
         self.assertIn("Communication OK", stdout.getvalue())
         mock_device_list.assert_called_once()
 
-    @patch("hik_gateway.management.commands.hik_check_device.HikGatewayClient.device_list")
+    @patch("hik_gateway.services.gateway_connection.HikGatewayClient.device_list")
     def test_command_raises_error_when_device_is_missing(self, mock_device_list):
         mock_device_list.return_value = {"DeviceList": {"Device": []}}
 
@@ -209,7 +209,7 @@ class HikRegisterWebhooksCommandTests(APITestCase):
             status="online",
         )
 
-    @patch("hik_gateway.management.commands.hik_register_webhooks.HikGatewayClient.set_http_host")
+    @patch("hik_gateway.services.gateway_connection.HikGatewayClient.set_http_host")
     def test_register_webhooks_uses_http_host_notification_list_payload(self, mock_set_http_host):
         call_command(
             "hik_register_webhooks",
@@ -240,7 +240,7 @@ class HikDevicesPageTests(APITestCase):
             password="pass",
         )
 
-    @patch("hik_gateway.views.HikGatewayClient.device_list")
+    @patch("hik_gateway.services.gateway_connection.HikGatewayClient.device_list")
     def test_page_displays_devices_from_search_result_payload(self, mock_device_list):
         mock_device_list.return_value = {
             "SearchResult": {
@@ -272,20 +272,39 @@ class HikDevicesPageTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertContains(response, "Ajoute ?tenant=&lt;code_tenant&gt;", status_code=status.HTTP_403_FORBIDDEN)
 
-    @patch("hik_gateway.views.HikGatewayClient.device_list")
+    @patch("hik_gateway.services.gateway_connection.HikGatewayClient.device_list")
     def test_admin_can_list_devices_for_all_tenants_without_filter(self, mock_device_list):
         tenant_2 = Tenant.objects.create(name="Tenant UI 2", code="tenant-ui-2")
-        Gateway.objects.create(
+        gateway_2 = Gateway.objects.create(
             tenant=tenant_2,
             base_url="https://gw-ui-2.local",
             username="admin",
             password="pass",
         )
 
-        mock_device_list.side_effect = [
-            {"SearchResult": {"MatchList": [{"Device": {"EhomeParams": {"EhomeID": "FN-1"}, "devIndex": "IDX-1", "devName": "Reader A", "devStatus": "online"}}]}},
-            {"SearchResult": {"MatchList": [{"Device": {"EhomeParams": {"EhomeID": "FN-2"}, "devIndex": "IDX-2", "devName": "Reader B", "devStatus": "offline"}}]}},
-        ]
+        Device.objects.create(
+            gateway=self.gateway,
+            tenant=self.tenant,
+            serial_number="FN-1",
+            dev_index="IDX-1",
+            status="online",
+        )
+        Device.objects.create(
+            gateway=gateway_2,
+            tenant=tenant_2,
+            serial_number="FN-2",
+            dev_index="IDX-2",
+            status="offline",
+        )
+
+        mock_device_list.return_value = {
+            "SearchResult": {
+                "MatchList": [
+                    {"Device": {"EhomeParams": {"EhomeID": "FN-1"}, "devIndex": "IDX-1", "devName": "Reader A", "devStatus": "online"}},
+                    {"Device": {"EhomeParams": {"EhomeID": "FN-2"}, "devIndex": "IDX-2", "devName": "Reader B", "devStatus": "offline"}},
+                ]
+            }
+        }
 
         user_model = get_user_model()
         admin_user = user_model.objects.create_user(username="admin-ui", password="pass", is_staff=True)
@@ -298,9 +317,9 @@ class HikDevicesPageTests(APITestCase):
         self.assertContains(response, "Reader B")
         self.assertContains(response, "tenant-ui")
         self.assertContains(response, "tenant-ui-2")
-        self.assertEqual(mock_device_list.call_count, 2)
+        self.assertEqual(mock_device_list.call_count, 1)
 
-    @patch("hik_gateway.views.HikGatewayClient.device_list")
+    @patch("hik_gateway.services.gateway_connection.HikGatewayClient.device_list")
     def test_page_finds_tenant_case_insensitively(self, mock_device_list):
         mock_device_list.return_value = {
             "SearchResult": {
@@ -337,7 +356,7 @@ class HikDevicesApiTests(APITestCase):
         user = user_model.objects.create_user(username="api-user", password="pass", is_staff=True)
         self.client.force_authenticate(user=user)
 
-    @patch("hik_gateway.views.HikGatewayClient.device_list_all")
+    @patch("hik_gateway.services.gateway_connection.HikGatewayClient.device_list_all")
     def test_devices_api_returns_normalized_mapping(self, mock_device_list_all):
         mock_device_list_all.return_value = {
             "SearchResult": {
@@ -378,7 +397,7 @@ class HikDevicesApiTests(APITestCase):
             key="",
         )
 
-    @patch("hik_gateway.views.HikGatewayClient.device_list_all")
+    @patch("hik_gateway.services.gateway_connection.HikGatewayClient.device_list_all")
     def test_devices_api_can_return_raw_search_result_per_gateway(self, mock_device_list_all):
         mock_device_list_all.return_value = {
             "SearchResult": {

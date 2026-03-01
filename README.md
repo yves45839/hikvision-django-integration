@@ -146,6 +146,19 @@ Sur l’appareil :
 
 # 📡 Synchronisation Gateway
 
+## Connexion unique HikDeviceGateway
+
+Le projet utilise désormais **une seule connexion partagée** vers HikDeviceGateway (pas une gateway par tenant).
+Le routage multi-tenant est fait côté Django via le mapping `devIndex -> tenant`.
+
+Variables d'environnement :
+
+```env
+HIK_DEVICE_GATEWAY_BASE_URL=https://<gateway-host>
+HIK_DEVICE_GATEWAY_USERNAME=<username>
+HIK_DEVICE_GATEWAY_PASSWORD=<password>
+```
+
 ## Test simple de communication Django ↔ Gateway
 
 Tu peux vérifier rapidement qu'un device déjà ajouté est bien visible depuis Django via sa gateway :
@@ -318,5 +331,4 @@ Créer une plateforme SaaS sécurisée permettant :
 * Gestion centralisée multi-entreprises
 * Intégration temps réel
 * Modèle économique scalable
-
 

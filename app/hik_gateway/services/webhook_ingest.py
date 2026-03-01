@@ -105,28 +105,17 @@ def _get_or_resync_device(dev_index: str, tenant: Tenant | None = None) -> Devic
     if tenant is not None:
         queryset = queryset.filter(tenant=tenant)
 
-    device = queryset.filter(_connected_status_filter()).select_related("gateway").first()
+    device = queryset.filter(_connected_status_filter()).first()
     if device:
         return device
 
-    from hik_gateway.models import Gateway
-
-    gateways = Gateway.objects.all()
     if tenant is not None:
-        gateways = gateways.filter(tenant=tenant)
-
-    for gateway in gateways.iterator():
-        sync_gateway_devices(gateway)
-        device = (
-            Device.objects.filter(gateway=gateway, dev_index=dev_index)
-            .filter(_connected_status_filter())
-            .select_related("gateway")
-            .first()
-        )
+        sync_gateway_devices(tenant)
+        device = Device.objects.filter(tenant=tenant, dev_index=dev_index).filter(_connected_status_filter()).first()
         if device:
             return device
 
-    return queryset.select_related("gateway").first()
+    return queryset.first()
 
 
 def ingest_event(payload: dict, source: str, tenant: Tenant | None = None) -> tuple[RawEvent | None, AttendanceLog | None]:

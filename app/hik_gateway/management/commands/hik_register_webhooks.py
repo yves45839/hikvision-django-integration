@@ -1,8 +1,9 @@
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
-from hik_gateway.client import HikGatewayClient
+from hik_gateway.client import HikGatewayClient  # backward-compatible import for tests
 from hik_gateway.models import Device
+from hik_gateway.services.gateway_connection import get_shared_gateway_client
 
 
 class Command(BaseCommand):
@@ -22,12 +23,8 @@ class Command(BaseCommand):
             raise CommandError("ip-address is required (or set HIK_WEBHOOK_IP)")
 
         registered = 0
-        for device in Device.objects.select_related("gateway").all().iterator():
-            client = HikGatewayClient(
-                device.gateway.base_url,
-                device.gateway.username,
-                device.gateway.password,
-            )
+        client = get_shared_gateway_client()
+        for device in Device.objects.all().iterator():
             payload = {
                 "HttpHostNotificationList": [
                     {

@@ -13,9 +13,10 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 
-from hik_gateway.client import HikGatewayClient
-from hik_gateway.models import AttendanceLog, Gateway
+from hik_gateway.client import HikGatewayClient  # backward-compatible import for tests
+from hik_gateway.models import AttendanceLog, Device
 from hik_gateway.services.device_payload import extract_devices, normalize_device
+from hik_gateway.services.gateway_connection import get_shared_gateway_client
 from hik_gateway.services.webhook_ingest import ingest_event
 from tenants.models import Tenant
 
@@ -134,58 +135,61 @@ def hik_devices_api(request: HttpRequest) -> Response:
     protocol_types = _parse_csv_query_list(protocol_query)
     statuses = _parse_csv_query_list(status_query)
 
-    if tenant_code:
-        gateways = Gateway.objects.select_related("tenant").filter(tenant__code__iexact=tenant_code).order_by("id")
-    elif _is_admin_request(request):
-        gateways = Gateway.objects.select_related("tenant").all().order_by("tenant__code", "id")
-    else:
+    if not tenant_code and not _is_admin_request(request):
         return Response(
             {"detail": "Ajoute ?tenant=<code_tenant> (ou connecte-toi en administrateur pour voir tous les appareils)."},
             status=status.HTTP_403_FORBIDDEN,
         )
 
-    if not gateways.exists():
-        return Response({"count": 0, "results": [], "errors": ["Aucune gateway configurée pour ce filtre."]})
-
     devices = []
     errors = []
-    gateway_payloads = []
 
-    for gateway in gateways:
-        client = HikGatewayClient(gateway.base_url, gateway.username, gateway.password)
-        try:
-            payload = client.device_list_all(
-                max_result=max_result,
-                protocol_types=protocol_types or None,
-                statuses=statuses or None,
-                dev_type=dev_type,
-                key=key,
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.exception("Unable to list devices for gateway", extra={"tenant": gateway.tenant.code, "gateway": gateway.base_url})
-            errors.append(f"{gateway.tenant.code}: {exc}")
+    tenant_by_dev_index = {
+        dev_index: tenant__code
+        for dev_index, tenant__code in Device.objects.select_related("tenant").values_list("dev_index", "tenant__code")
+    }
+    allowed_dev_indexes = None
+    if tenant_code:
+        allowed_dev_indexes = {
+            dev_index
+            for dev_index, mapped_tenant_code in tenant_by_dev_index.items()
+            if str(mapped_tenant_code).lower() == tenant_code.lower()
+        }
+        if not allowed_dev_indexes:
+            allowed_dev_indexes = None
+
+    try:
+        client = get_shared_gateway_client(tenant_code=tenant_code or None)
+        payload = client.device_list_all(
+            max_result=max_result,
+            protocol_types=protocol_types or None,
+            statuses=statuses or None,
+            dev_type=dev_type,
+            key=key,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Unable to list devices from shared gateway")
+        errors.append(str(exc))
+        payload = {}
+
+    gateway_payloads = [{"tenant_code": tenant_code or "*", "search_result": payload.get("SearchResult", {})}]
+
+    for item in extract_devices(payload):
+        normalized_item = normalize_device(item)
+        dev_index_value = normalized_item.get("dev_index") or item.get("devIndex", "")
+        if allowed_dev_indexes is not None and dev_index_value not in allowed_dev_indexes:
             continue
 
-        gateway_payloads.append(
-            {
-                "tenant_code": gateway.tenant.code,
-                "gateway_base_url": gateway.base_url,
-                "search_result": payload.get("SearchResult", {}),
-            }
-        )
-
-        for item in extract_devices(payload):
-            normalized_item = normalize_device(item)
-            normalized_item["sn"] = (item.get("EhomeParams", {}) or {}).get("EhomeID", "")
-            normalized_item["devIndex"] = item.get("devIndex", "")
-            normalized_item["name"] = item.get("devName") or item.get("deviceName") or ""
-            normalized_item["model"] = item.get("devType") or item.get("deviceType") or ""
-            normalized_item["version"] = item.get("devVersion") or ""
-            normalized_item["dev_serial"] = item.get("devSerial") or item.get("serialNumber") or ""
-            normalized_item["offline_hint"] = item.get("offlineHint") or item.get("offlineReason") or ""
-            normalized_item["tenant_code"] = gateway.tenant.code
-            normalized_item["gateway_base_url"] = gateway.base_url
-            devices.append(normalized_item)
+        normalized_item["sn"] = (item.get("EhomeParams", {}) or {}).get("EhomeID", "")
+        normalized_item["devIndex"] = item.get("devIndex", "")
+        normalized_item["name"] = item.get("devName") or item.get("deviceName") or ""
+        normalized_item["model"] = item.get("devType") or item.get("deviceType") or ""
+        normalized_item["version"] = item.get("devVersion") or ""
+        normalized_item["dev_serial"] = item.get("devSerial") or item.get("serialNumber") or ""
+        normalized_item["offline_hint"] = item.get("offlineHint") or item.get("offlineReason") or ""
+        normalized_item["tenant_code"] = tenant_by_dev_index.get(dev_index_value, "")
+        normalized_item["gateway_base_url"] = "shared"
+        devices.append(normalized_item)
 
     if not normalized:
         return Response({"count": len(gateway_payloads), "results": gateway_payloads, "errors": errors})
@@ -214,20 +218,9 @@ def hik_devices_page(request: HttpRequest):
         "gateway_url": "",
     }
 
-    if tenant_code:
-        gateways = Gateway.objects.select_related("tenant").filter(tenant__code__iexact=tenant_code).order_by("id")
-    elif is_admin:
-        gateways = Gateway.objects.select_related("tenant").all().order_by("tenant__code", "id")
-    else:
+    if not tenant_code and not is_admin:
         context["error"] = "Ajoute ?tenant=<code_tenant> (ou connecte-toi en administrateur pour voir tous les appareils)."
         return render(request, "hik_gateway/device_list.html", context, status=403)
-
-    if not gateways.exists():
-        if tenant_code:
-            context["error"] = f"Aucune gateway trouvée pour le tenant '{tenant_code}'."
-        else:
-            context["error"] = "Aucune gateway configurée."
-        return render(request, "hik_gateway/device_list.html", context)
 
     devices = []
     errors = []
@@ -239,22 +232,38 @@ def hik_devices_page(request: HttpRequest):
         context["error"] = "Request Parameters doit être un JSON valide."
         return render(request, "hik_gateway/device_list.html", context, status=400)
 
-    for gateway in gateways:
-        client = HikGatewayClient(gateway.base_url, gateway.username, gateway.password)
-        context["gateway_url"] = gateway.base_url
-        try:
-            payload = client.device_list(payload=payload_to_send)
-            response_payload = payload
-            context["status_code"] = 200
-        except Exception as exc:  # noqa: BLE001
-            errors.append(f"{gateway.tenant.code}: {exc}")
-            continue
+    tenant_by_dev_index = {
+        dev_index: tenant__code
+        for dev_index, tenant__code in Device.objects.select_related("tenant").values_list("dev_index", "tenant__code")
+    }
+    allowed_dev_indexes = None
+    if tenant_code:
+        allowed_dev_indexes = {
+            dev_index
+            for dev_index, mapped_tenant_code in tenant_by_dev_index.items()
+            if str(mapped_tenant_code).lower() == tenant_code.lower()
+        }
+        if not allowed_dev_indexes:
+            allowed_dev_indexes = None
 
-        for item in extract_devices(payload):
-            normalized = normalize_device(item)
-            normalized["tenant_code"] = gateway.tenant.code
-            normalized["gateway_base_url"] = gateway.base_url
-            devices.append(normalized)
+    try:
+        client = get_shared_gateway_client(tenant_code=tenant_code or None)
+        context["gateway_url"] = "shared"
+        payload = client.device_list(payload=payload_to_send)
+        response_payload = payload
+        context["status_code"] = 200
+    except Exception as exc:  # noqa: BLE001
+        errors.append(str(exc))
+        payload = {}
+
+    for item in extract_devices(payload):
+        normalized = normalize_device(item)
+        dev_index_value = normalized.get("dev_index") or item.get("devIndex", "")
+        if allowed_dev_indexes is not None and dev_index_value not in allowed_dev_indexes:
+            continue
+        normalized["tenant_code"] = tenant_by_dev_index.get(dev_index_value, "")
+        normalized["gateway_base_url"] = "shared"
+        devices.append(normalized)
 
     if response_payload is not None:
         context["response_parameters"] = json.dumps(response_payload, ensure_ascii=False, indent=2)
@@ -262,7 +271,7 @@ def hik_devices_page(request: HttpRequest):
     if errors and not devices:
         context["error"] = "Impossible de récupérer les devices: " + " | ".join(errors)
     elif errors:
-        context["error"] = "Certaines gateways ont échoué: " + " | ".join(errors)
+        context["error"] = "La connexion gateway a échoué: " + " | ".join(errors)
 
     context["devices"] = devices
     return render(request, "hik_gateway/device_list.html", context)

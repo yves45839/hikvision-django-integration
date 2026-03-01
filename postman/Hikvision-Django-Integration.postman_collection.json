@@ -98,6 +98,14 @@
     {
       "key": "lastAttendanceLogId",
       "value": ""
+    },
+    {
+      "key": "gatewayDevType",
+      "value": ""
+    },
+    {
+      "key": "gatewaySearchKey",
+      "value": ""
     }
   ],
   "item": [
@@ -818,6 +826,46 @@
               ]
             },
             "description": "Récupère la page HTML listant les devices vus via les gateways du tenant passé en query param."
+          }
+        },
+        {
+          "name": "Page devices HikDevice (GET)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/hikdevice/devices?tenant={{tenantCode}}&protocol={{gatewayProtocol}}&status={{gatewayStatus}}&dev_type={{gatewayDevType}}&key={{gatewaySearchKey}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hikdevice",
+                "devices"
+              ],
+              "query": [
+                {
+                  "key": "tenant",
+                  "value": "{{tenantCode}}"
+                },
+                {
+                  "key": "protocol",
+                  "value": "{{gatewayProtocol}}"
+                },
+                {
+                  "key": "status",
+                  "value": "{{gatewayStatus}}"
+                },
+                {
+                  "key": "dev_type",
+                  "value": "{{gatewayDevType}}"
+                },
+                {
+                  "key": "key",
+                  "value": "{{gatewaySearchKey}}"
+                }
+              ]
+            },
+            "description": "Récupère la page HTML \"HikDevice Devices Space\" pour visualiser les appareils avec filtres protocol/status/dev_type/key."
           }
         },
         {

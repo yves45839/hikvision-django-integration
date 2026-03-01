@@ -20,7 +20,7 @@ def _as_aware(dt: datetime | None) -> datetime | None:
 
 def sync_gateway_devices(gateway: Gateway) -> int:
     client = HikGatewayClient(gateway.base_url, gateway.username, gateway.password)
-    response = client.device_list()
+    response = client.device_list_all()
     items = extract_devices(response)
 
     synced = 0

@@ -441,3 +441,55 @@ class HikGatewayClientPaginationTests(APITestCase):
         self.assertEqual(payload["SearchResult"]["numOfMatches"], 2)
         self.assertEqual(len(payload["SearchResult"]["MatchList"]), 2)
         self.assertEqual(mock_post.call_count, 2)
+
+
+class HikDeviceDispatchTests(APITestCase):
+    def setUp(self):
+        self.tenant = Tenant.objects.create(name="Tenant Dispatch", code="tenant-dispatch")
+        gateway = Gateway.objects.create(
+            tenant=self.tenant,
+            base_url="https://gw-dispatch.local",
+            username="admin",
+            password="pass",
+        )
+        Device.objects.create(
+            gateway=gateway,
+            tenant=self.tenant,
+            serial_number="SN-DISPATCH",
+            dev_index="IDX-DISPATCH",
+            device_id="DEVICE-1",
+            device_name="Dispatch Reader",
+            protocol_type="ehomeV5",
+            status="online",
+        )
+
+    def test_dispatch_service_syncs_into_core_devices_table(self):
+        from devices.models import Device as CoreDevice
+        from hik_gateway.services.device_dispatch import dispatch_hik_devices_to_core_devices
+
+        count = dispatch_hik_devices_to_core_devices()
+
+        self.assertEqual(count, 1)
+        core_device = CoreDevice.objects.get(dev_index="IDX-DISPATCH")
+        self.assertEqual(core_device.tenant, self.tenant)
+        self.assertEqual(core_device.serial_number, "SN-DISPATCH")
+        self.assertEqual(core_device.device_id, "DEVICE-1")
+        self.assertEqual(core_device.name, "Dispatch Reader")
+        self.assertEqual(core_device.protocol, "ehomeV5")
+
+
+class HikSyncDevicesCommandTests(APITestCase):
+    @patch("hik_gateway.management.commands.hik_sync_devices.sync_all_gateways")
+    def test_command_runs_sync_once_by_default(self, mock_sync_all_gateways):
+        mock_sync_all_gateways.return_value = 3
+
+        stdout = StringIO()
+        call_command("hik_sync_devices", stdout=stdout)
+
+        self.assertIn("Synced 3 devices", stdout.getvalue())
+
+    def test_command_rejects_loop_without_interval(self):
+        with self.assertRaises(CommandError) as exc:
+            call_command("hik_sync_devices", "--loop")
+
+        self.assertIn("--loop nécessite --interval > 0", str(exc.exception))

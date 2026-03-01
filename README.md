@@ -164,6 +164,18 @@ Si tout est correct, la commande retourne `Communication OK ✅` avec le statut 
 
 ---
 
+## Synchronisation automatique continue
+
+Pour une synchro permanente (polling) avec dispatch vers la table `devices` multi-tenant:
+
+```bash
+docker compose exec web python manage.py hik_sync_devices --loop --interval 30 --dispatch-core-devices
+```
+
+- `--interval`: fréquence de synchronisation en secondes.
+- `--loop`: boucle continue (arrêt manuel avec `CTRL+C`).
+- `--dispatch-core-devices`: copie les données synchronisées de `hik_gateway_device` vers l'app `devices` pour les APIs métier par tenant.
+
 ## Endpoint interne
 
 ```

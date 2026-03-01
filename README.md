@@ -212,6 +212,76 @@ GET /api/hikgateway/devices/?tenant=<tenant_code>&protocol=ehomeV5&status=online
 * Mapping exposé : `sn = EhomeParams.EhomeID`, `devIndex = devIndex`.
 * Option `normalized=0` pour renvoyer le `SearchResult` brut par gateway.
 
+## 🧪 Tester la liste des appareils DRF avec Postman
+
+Voici la méthode la plus simple pour tester l'endpoint DRF qui retourne la liste des appareils en JSON.
+
+### 1) Récupérer un token JWT
+
+**Requête**
+
+- Méthode: `POST`
+- URL: `http://localhost:8000/api/auth/token/`
+- Headers: `Content-Type: application/json`
+- Body (raw / JSON):
+
+```json
+{
+  "username": "<votre_username>",
+  "password": "<votre_password>"
+}
+```
+
+**Réponse attendue**
+
+```json
+{
+  "refresh": "...",
+  "access": "..."
+}
+```
+
+Copier la valeur de `access`.
+
+### 2) Appeler l'endpoint DRF des appareils
+
+**Requête**
+
+- Méthode: `GET`
+- URL: `http://localhost:8000/api/devices/`
+- Authorization: `Bearer Token` → coller le token `access`
+
+Optionnel (pour ne voir que vos appareils):
+
+`http://localhost:8000/api/devices/?owner_only=true`
+
+**Réponse JSON attendue (exemple)**
+
+```json
+[
+  {
+    "id": 12,
+    "serial": "DS-K1T...",
+    "name": "Porte principale",
+    "status": "online"
+  }
+]
+```
+
+### 3) Erreurs fréquentes
+
+- `401 Unauthorized`: token absent/invalide/expiré.
+- `403 Forbidden`: permissions insuffisantes selon votre configuration.
+- `200 OK` avec `[]`: aucun appareil en base pour cet utilisateur/filtre.
+
+### 4) Variante Gateway (non-DRF métier)
+
+Si vous voulez tester la liste issue du proxy gateway (normalisée côté intégration), utilisez:
+
+`GET http://localhost:8000/api/hikgateway/devices/?tenant=<tenant_code>`
+
+Cet endpoint est différent de `/api/devices/`.
+
 ---
 
 # 🗂️ Structure Projet
@@ -331,4 +401,3 @@ Créer une plateforme SaaS sécurisée permettant :
 * Gestion centralisée multi-entreprises
 * Intégration temps réel
 * Modèle économique scalable
-

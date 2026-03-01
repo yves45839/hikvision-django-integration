@@ -19,9 +19,9 @@ services:
       DJANGO_DEBUG: "1"
       ALLOWED_HOSTS: "213.156.133.202,localhost,127.0.0.1"
       DATABASE_URL: "postgres://saas:saas_pass_change_me@db:5432/saas"
-      HIKGW_BASE_URL: "http://host.docker.internal:88"
-      HIKGW_USERNAME: "admin"
-      HIKGW_PASSWORD: "Lsg@2020"
+      HIK_DEVICE_GATEWAY_BASE_URL: "http://213.156.133.202:88"
+      HIK_DEVICE_GATEWAY_USERNAME: "admin"
+      HIK_DEVICE_GATEWAY_PASSWORD: "Lsg@2020"
     depends_on:
       - db
     command: >

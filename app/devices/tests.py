@@ -1,8 +1,11 @@
+from unittest.mock import Mock, patch
+
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from devices.models import Device
+from tenants.models import Tenant
 
 
 User = get_user_model()
@@ -12,10 +15,12 @@ class DeviceOwnershipTests(APITestCase):
     def setUp(self):
         self.user1 = User.objects.create_user(username='alice', password='pwd12345')
         self.user2 = User.objects.create_user(username='bob', password='pwd12345')
+        self.tenant_a = Tenant.objects.create(name='Tenant A', code='TENANT-A')
+        self.tenant_b = Tenant.objects.create(name='Tenant B', code='TENANT-B')
 
     def test_list_devices_returns_all_by_default(self):
-        Device.objects.create(owner=self.user1, dev_index='dev-alice', serial_number='SN1234567')
-        Device.objects.create(owner=self.user2, dev_index='dev-bob', serial_number='SN7654321')
+        Device.objects.create(owner=self.user1, dev_index='dev-alice', serial_number='SN1234567AB', tenant=self.tenant_a)
+        Device.objects.create(owner=self.user2, dev_index='dev-bob', serial_number='SN7654321CD', tenant=self.tenant_b)
 
         self.client.force_authenticate(self.user1)
         response = self.client.get('/api/devices/')
@@ -24,21 +29,22 @@ class DeviceOwnershipTests(APITestCase):
         self.assertEqual(len(response.data), 2)
 
     def test_owner_only_filters_devices(self):
-        Device.objects.create(owner=self.user1, dev_index='dev-alice', serial_number='SN1234567')
-        Device.objects.create(owner=self.user2, dev_index='dev-bob', serial_number='SN7654321')
+        Device.objects.create(owner=self.user1, dev_index='dev-alice', serial_number='SN1234567AB', tenant=self.tenant_a)
+        Device.objects.create(owner=self.user2, dev_index='dev-bob', serial_number='SN7654321CD', tenant=self.tenant_b)
 
         self.client.force_authenticate(self.user1)
         response = self.client.get('/api/devices/?owner_only=true')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['serial_number'], 'SN1234567')
+        self.assertEqual(response.data[0]['serial_number'], 'SN1234567AB')
 
     def test_create_device_with_constraints(self):
         self.client.force_authenticate(self.user1)
         payload = {
+            'tenant': self.tenant_a.id,
             'dev_index': 'dev-new',
-            'serial_number': 'ABC123456',
+            'serial_number': 'ABC123456XYZ',
             'port': 7660,
             'ip_address': '1.2.3.4',
         }
@@ -52,24 +58,12 @@ class DeviceOwnershipTests(APITestCase):
         self.assertEqual(device.ip_address, '213.156.133.202')
         self.assertEqual(device.protocol, 'ISUP')
 
-    def test_serial_number_must_be_exactly_9_characters(self):
-        self.client.force_authenticate(self.user1)
-        payload = {
-            'dev_index': 'dev-invalid-sn',
-            'serial_number': 'SHORT',
-            'port': 7661,
-        }
-
-        response = self.client.post('/api/devices/', payload, format='json')
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('serial_number', response.data)
-
     def test_port_must_be_7660_or_7661(self):
         self.client.force_authenticate(self.user1)
         payload = {
+            'tenant': self.tenant_a.id,
             'dev_index': 'dev-invalid-port',
-            'serial_number': 'ABC123456',
+            'serial_number': 'ABC123456XYZ',
             'port': 7000,
         }
 
@@ -77,3 +71,125 @@ class DeviceOwnershipTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('port', response.data)
+
+    @patch('devices.views.get_shared_gateway_client')
+    def test_onboard_claim_conflict_other_tenant(self, mocked_client):
+        Device.objects.create(
+            owner=self.user2,
+            tenant=self.tenant_b,
+            dev_index='dev-existing',
+            serial_number='K1T642',
+        )
+        self.client.force_authenticate(self.user1)
+
+        response = self.client.post(
+            '/api/devices/onboard/',
+            {
+                'tenant_code': self.tenant_a.code,
+                'sn': 'K1T642',
+                'ehome_key': 'test2024',
+                'dev_name': 'Pointeuse Entree',
+                'dev_type': 'AccessControl',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        mocked_client.assert_not_called()
+
+    @patch('devices.views.get_shared_gateway_client')
+    def test_onboard_is_idempotent_for_same_tenant(self, mocked_client):
+        existing = Device.objects.create(
+            owner=self.user1,
+            tenant=self.tenant_a,
+            dev_index='dev-existing',
+            serial_number='K1T642',
+        )
+        self.client.force_authenticate(self.user1)
+
+        response = self.client.post(
+            '/api/devices/onboard/',
+            {
+                'tenant_code': self.tenant_a.code,
+                'sn': 'K1T642',
+                'ehome_key': 'test2024',
+                'dev_name': 'Pointeuse Entree',
+                'dev_type': 'AccessControl',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['id'], existing.id)
+        mocked_client.assert_not_called()
+
+    @patch('devices.views.get_shared_gateway_client')
+    def test_onboard_success_with_devindex_from_add_device_response(self, mocked_client):
+        gateway = Mock()
+        gateway.add_device.return_value = {
+            'DeviceOutList': {
+                'Device': {
+                    'status': 'success',
+                    'devIndex': 'uuid-001',
+                }
+            }
+        }
+        mocked_client.return_value = gateway
+
+        self.client.force_authenticate(self.user1)
+        response = self.client.post(
+            '/api/devices/onboard/',
+            {
+                'tenant_code': self.tenant_a.code,
+                'sn': 'K1T642',
+                'ehome_key': 'test2024',
+                'dev_name': 'Pointeuse Entree',
+                'dev_type': 'AccessControl',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['dev_index'], 'uuid-001')
+        self.assertEqual(Device.objects.get(dev_index='uuid-001').tenant, self.tenant_a)
+
+    @patch('devices.views.get_shared_gateway_client')
+    def test_onboard_device_exist_fallbacks_to_device_list(self, mocked_client):
+        gateway = Mock()
+        gateway.add_device.return_value = {
+            'DeviceOutList': {
+                'Device': {
+                    'status': 'failed',
+                    'subStatusCode': 'deviceExist',
+                }
+            }
+        }
+        gateway.device_list_all.return_value = {
+            'SearchResult': {
+                'MatchList': [
+                    {
+                        'Device': {
+                            'devIndex': 'uuid-from-list',
+                            'EhomeParams': {'EhomeID': 'K1T642'},
+                        }
+                    }
+                ]
+            }
+        }
+        mocked_client.return_value = gateway
+
+        self.client.force_authenticate(self.user1)
+        response = self.client.post(
+            '/api/devices/onboard/',
+            {
+                'tenant_code': self.tenant_a.code,
+                'sn': 'K1T642',
+                'ehome_key': 'test2024',
+                'dev_name': 'Pointeuse Entree',
+                'dev_type': 'AccessControl',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['dev_index'], 'uuid-from-list')

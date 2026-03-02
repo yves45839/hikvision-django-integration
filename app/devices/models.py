@@ -17,7 +17,7 @@ class Device(models.Model):
 
     ip_address = models.GenericIPAddressField(default='213.156.133.202', editable=False)
     port = models.PositiveIntegerField(choices=ISUP_PORT_CHOICES, default=7661)
-    serial_number = models.CharField(max_length=9, blank=True, default='')
+    serial_number = models.CharField(max_length=31, unique=True)
 
     dev_index = models.CharField(max_length=64, unique=True)
 

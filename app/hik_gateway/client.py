@@ -150,3 +150,11 @@ class HikGatewayClient:
             payload=cond,
             params={"format": "json", "devIndex": dev_index},
         )
+
+    def add_device(self, payload: dict[str, Any], timeout: int | None = None) -> dict[str, Any]:
+        return self._post(
+            "/ISAPI/ContentMgmt/DeviceMgmt/addDevice",
+            payload=payload,
+            params={"format": "json"},
+            timeout=timeout,
+        )

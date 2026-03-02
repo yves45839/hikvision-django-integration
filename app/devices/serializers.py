@@ -5,7 +5,7 @@ from .models import Device
 class DeviceSerializer(serializers.ModelSerializer):
     owner = serializers.HiddenField(default=serializers.CurrentUserDefault())
     ip_address = serializers.CharField(read_only=True)
-    serial_number = serializers.CharField(required=True, min_length=9, max_length=9)
+    serial_number = serializers.CharField(required=True, min_length=1, max_length=31)
 
     class Meta:
         model = Device
@@ -18,6 +18,7 @@ class DeviceSerializer(serializers.ModelSerializer):
             'serial_number',
             'dev_index',
             'device_id',
+            'name',
             'model',
             'protocol',
             'status',
@@ -25,11 +26,19 @@ class DeviceSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['created_at', 'protocol', 'status', 'device_id', 'model']
 
-    def validate_serial_number(self, value):
-        if len(value) != 9:
-            raise serializers.ValidationError('Le numéro de série doit contenir exactement 9 caractères.')
-        return value
-
     def create(self, validated_data):
         validated_data['protocol'] = 'ISUP'
         return super().create(validated_data)
+
+
+class DeviceOnboardSerializer(serializers.Serializer):
+    tenant_code = serializers.CharField(max_length=50)
+    sn = serializers.CharField(max_length=31)
+    ehome_key = serializers.CharField(max_length=32, write_only=True)
+    dev_name = serializers.CharField(max_length=255)
+    dev_type = serializers.CharField(max_length=64, default='AccessControl')
+
+    def validate_dev_type(self, value):
+        if value != 'AccessControl':
+            raise serializers.ValidationError('dev_type doit être AccessControl.')
+        return value

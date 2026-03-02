@@ -110,6 +110,22 @@
     {
       "key": "gatewaySearchKey",
       "value": ""
+    },
+    {
+      "key": "deviceSn",
+      "value": "SN-POSTMAN-0001"
+    },
+    {
+      "key": "deviceEhomeKey",
+      "value": "0123456789ABCDEF0123456789ABCDEF"
+    },
+    {
+      "key": "deviceName",
+      "value": "Pointeuse Entrée Principale"
+    },
+    {
+      "key": "deviceType",
+      "value": "AccessControl"
     }
   ],
   "item": [
@@ -430,6 +446,53 @@
                   "if (pm.response.code === 201) {",
                   "  const jsonData = pm.response.json();",
                   "  if (jsonData.id) pm.collectionVariables.set('deviceId', jsonData.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Onboard device (ajout via gateway)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenant_code\": \"{{tenantCode}}\",\n  \"sn\": \"{{deviceSn}}\",\n  \"ehome_key\": \"{{deviceEhomeKey}}\",\n  \"dev_name\": \"{{deviceName}}\",\n  \"dev_type\": \"{{deviceType}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/devices/onboard/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "devices",
+                "onboard",
+                ""
+              ]
+            },
+            "description": "Ajoute un appareil sur la gateway HikCentral puis crée le mapping local (tenant/device). Retourne 201 si créé, 200 si déjà onboardé sur le même tenant, 409 si SN déjà affecté à un autre tenant."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status onboard: 200/201/409', function () {",
+                  "    pm.expect([200, 201, 409]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  const jsonData = pm.response.json();",
+                  "  if (jsonData.id) pm.collectionVariables.set('deviceId', jsonData.id);",
+                  "  if (jsonData.serial_number) pm.collectionVariables.set('deviceSn', jsonData.serial_number);",
                   "}"
                 ]
               }

@@ -754,6 +754,39 @@ class HikCatchupServiceTests(APITestCase):
 
 
 class HikDeviceSyncServiceTests(APITestCase):
+    @patch("hik_gateway.services.device_sync.get_shared_gateway_client")
+    def test_sync_gateway_devices_creates_settings_gateway_and_links_device(self, mock_get_client):
+        from hik_gateway.services.device_sync import sync_gateway_devices
+
+        tenant = Tenant.objects.create(name="Tenant Settings Gateway", code="tenant-settings-gw")
+        mock_get_client.return_value.device_list_all.return_value = {
+            "SearchResult": {
+                "MatchList": [
+                    {
+                        "Device": {
+                            "EhomeParams": {"EhomeID": "SN-SETTINGS"},
+                            "devIndex": "IDX-SETTINGS",
+                            "devName": "Settings Reader",
+                            "devStatus": "online",
+                            "protocolType": "ehomeV5",
+                        }
+                    }
+                ]
+            }
+        }
+
+        with self.settings(
+            HIK_DEVICE_GATEWAY_BASE_URL="https://shared-gw.local",
+            HIK_DEVICE_GATEWAY_USERNAME="admin",
+            HIK_DEVICE_GATEWAY_PASSWORD="pass",
+        ):
+            synced = sync_gateway_devices(tenant)
+
+        self.assertEqual(synced, 1)
+        gateway = Gateway.objects.get(tenant=tenant)
+        device = Device.objects.get(tenant=tenant, dev_index="IDX-SETTINGS")
+        self.assertEqual(device.gateway, gateway)
+
     @patch("hik_gateway.services.device_sync.sync_gateway_devices")
     def test_sync_all_gateways_uses_gateway_tenants_even_without_devices(self, mock_sync):
         from hik_gateway.services.device_sync import sync_all_gateways

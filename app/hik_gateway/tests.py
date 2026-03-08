@@ -751,3 +751,39 @@ class HikCatchupServiceTests(APITestCase):
         processed = catchup_device(self.device, max_results=50)
 
         self.assertEqual(processed, 2)
+
+
+class HikDeviceSyncServiceTests(APITestCase):
+    @patch("hik_gateway.services.device_sync.sync_gateway_devices")
+    def test_sync_all_gateways_uses_gateway_tenants_even_without_devices(self, mock_sync):
+        from hik_gateway.services.device_sync import sync_all_gateways
+
+        t1 = Tenant.objects.create(name="Tenant Sync 1", code="tenant-sync-1")
+        t2 = Tenant.objects.create(name="Tenant Sync 2", code="tenant-sync-2")
+        Gateway.objects.create(tenant=t1, base_url="https://gw-sync-1.local", username="admin", password="pass")
+        Gateway.objects.create(tenant=t2, base_url="https://gw-sync-2.local", username="admin", password="pass")
+
+        mock_sync.side_effect = [2, 3]
+
+        total = sync_all_gateways()
+
+        self.assertEqual(total, 5)
+        self.assertEqual(mock_sync.call_count, 2)
+        called_tenants = {call.args[0].code for call in mock_sync.call_args_list}
+        self.assertEqual(called_tenants, {"tenant-sync-1", "tenant-sync-2"})
+
+    @patch("hik_gateway.services.device_sync.sync_gateway_devices")
+    def test_sync_all_gateways_falls_back_to_all_tenants_with_settings_gateway(self, mock_sync):
+        from hik_gateway.services.device_sync import sync_all_gateways
+
+        Tenant.objects.create(name="Tenant Settings 1", code="tenant-settings-1")
+        Tenant.objects.create(name="Tenant Settings 2", code="tenant-settings-2")
+
+        mock_sync.side_effect = [1, 4]
+
+        total = sync_all_gateways()
+
+        self.assertEqual(total, 5)
+        self.assertEqual(mock_sync.call_count, 2)
+        called_tenants = {call.args[0].code for call in mock_sync.call_args_list}
+        self.assertEqual(called_tenants, {"tenant-settings-1", "tenant-settings-2"})

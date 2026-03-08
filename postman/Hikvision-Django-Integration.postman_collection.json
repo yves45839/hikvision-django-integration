@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "f0b16d89-5c38-4fab-b708-8e4be17d9f6b",
     "name": "Hikvision Django Integration API",
-    "description": "Collection exhaustive des endpoints exposés par l'application Django (JWT, tenants, devices, events, webhook Hikvision), API devices gateway Hikcentral.",
+    "description": "Collection mise à jour des endpoints Django (JWT, tenants, devices, onboarding gateway, import admin, webhook Hikvision).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "event": [
@@ -12,7 +12,7 @@
         "type": "text/javascript",
         "exec": [
           "if (!pm.collectionVariables.get('baseUrl')) {",
-          "    pm.collectionVariables.set('baseUrl', 'http://213.156.133.202');",
+          "    pm.collectionVariables.set('baseUrl', 'http://localhost:8000');",
           "}"
         ]
       }
@@ -21,7 +21,7 @@
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://213.156.133.202"
+      "value": "http://localhost:8000"
     },
     {
       "key": "accessToken",
@@ -1064,6 +1064,16 @@
               ]
             },
             "description": "Récupère la page HTML listant les devices vus via les gateways du tenant passé en query param."
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{accessToken}}",
+                "type": "string"
+              }
+            ]
           }
         },
         {
@@ -1104,6 +1114,16 @@
               ]
             },
             "description": "Récupère la page HTML \"HikDevice Devices Space\" pour visualiser les appareils avec filtres protocol/status/dev_type/key."
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{accessToken}}",
+                "type": "string"
+              }
+            ]
           }
         },
         {
@@ -1161,7 +1181,7 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/api/hikgateway/devices/?tenant={{tenantCode}}&protocol={{gatewayProtocol}}&status={{gatewayStatus}}&max_result={{maxResult}}",
+              "raw": "{{baseUrl}}/api/hikgateway/devices/?tenant={{tenantCode}}&protocol={{gatewayProtocol}}&status={{gatewayStatus}}&dev_type={{gatewayDevType}}&key={{gatewaySearchKey}}&max_result={{maxResult}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1183,6 +1203,14 @@
                 {
                   "key": "status",
                   "value": "{{gatewayStatus}}"
+                },
+                {
+                  "key": "dev_type",
+                  "value": "{{gatewayDevType}}"
+                },
+                {
+                  "key": "key",
+                  "value": "{{gatewaySearchKey}}"
                 },
                 {
                   "key": "max_result",
@@ -1209,14 +1237,24 @@
                 ]
               }
             }
-          ]
+          ],
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{accessToken}}",
+                "type": "string"
+              }
+            ]
+          }
         },
         {
           "name": "Lister devices gateway (API brute)",
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/api/hikgateway/devices/?tenant={{tenantCode}}&normalized=0&protocol={{gatewayProtocol}}&status={{gatewayStatus}}&max_result={{maxResult}}",
+              "raw": "{{baseUrl}}/api/hikgateway/devices/?tenant={{tenantCode}}&normalized=0&protocol={{gatewayProtocol}}&status={{gatewayStatus}}&dev_type={{gatewayDevType}}&key={{gatewaySearchKey}}&max_result={{maxResult}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1244,6 +1282,14 @@
                   "value": "{{gatewayStatus}}"
                 },
                 {
+                  "key": "dev_type",
+                  "value": "{{gatewayDevType}}"
+                },
+                {
+                  "key": "key",
+                  "value": "{{gatewaySearchKey}}"
+                },
+                {
                   "key": "max_result",
                   "value": "{{maxResult}}"
                 }
@@ -1268,7 +1314,17 @@
                 ]
               }
             }
-          ]
+          ],
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{accessToken}}",
+                "type": "string"
+              }
+            ]
+          }
         }
       ],
       "description": "### Webhook Hikvision - mode test rapide\nCe dossier est optimisé pour valider rapidement le pipeline webhook en local ou en environnement distant.\n\n**Pré-requis**\n1. Vérifier `{{baseUrl}}` et `{{tenantCode}}`.\n2. Si la sécurité token est active côté Django, renseigner `{{hikToken}}`.\n3. Adapter `{{webhookDevIndex}}` à un device existant/synchronisé pour éviter un `202 ignored`.\n\n**Ordre recommandé**\n1. `Webhook access event (POST) - /api/hik/events`\n2. `Webhook access event (POST) - /api/hikvision/events`\n3. `Webhook - payload invalide (test 400)`\n4. `Lister devices gateway (...)` pour diagnostiquer les devices visibles.\n\nLes scripts enregistrent automatiquement `lastWebhookStatus`, `lastRawEventId`, `lastAttendanceLogId`.\n",

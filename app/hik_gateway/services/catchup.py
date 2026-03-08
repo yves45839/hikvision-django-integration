@@ -1,12 +1,17 @@
 from __future__ import annotations
 
+from datetime import datetime
 from datetime import timedelta
+from datetime import timezone as dt_timezone
 
 from django.utils import timezone
 
-from hik_gateway.models import AttendanceLog, Device, DeviceCursor
+from hik_gateway.models import Device, DeviceCursor
 from hik_gateway.services.gateway_connection import get_shared_gateway_client
 from hik_gateway.services.webhook_ingest import ingest_acs_event
+
+
+INITIAL_CATCHUP_START = datetime(1970, 1, 1, tzinfo=dt_timezone.utc)
 
 
 def _extract_acs_info(payload: dict) -> tuple[list[dict], int]:
@@ -24,7 +29,10 @@ def catchup_device(device: Device, max_results: int = 50) -> int:
     cursor, _ = DeviceCursor.objects.get_or_create(device=device, defaults={"tenant": device.tenant})
 
     now = timezone.now()
-    start_time = (cursor.last_event_time or (now - timedelta(minutes=30))) - timedelta(minutes=2)
+    if cursor.last_event_time is None:
+        start_time = INITIAL_CATCHUP_START
+    else:
+        start_time = cursor.last_event_time - timedelta(minutes=2)
     end_time = now
     search_id = cursor.last_search_id or f"{device.tenant_id}-{device.dev_index}"
     position = cursor.last_search_result_position
@@ -51,14 +59,15 @@ def catchup_device(device: Device, max_results: int = 50) -> int:
             break
 
         for event in events:
-            raw_event, attendance = ingest_acs_event(device, event)
+            raw_event, _ = ingest_acs_event(device, event)
             if raw_event:
                 if raw_event.serial_no is not None and (max_serial_no is None or raw_event.serial_no > max_serial_no):
                     max_serial_no = raw_event.serial_no
-            if raw_event and attendance:
+            if raw_event:
                 processed += 1
-                if max_processed_time is None or attendance.timestamp > max_processed_time:
-                    max_processed_time = attendance.timestamp
+                event_time = raw_event.event_datetime
+                if max_processed_time is None or event_time > max_processed_time:
+                    max_processed_time = event_time
 
         position += returned
         if returned < max_results:

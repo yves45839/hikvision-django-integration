@@ -595,3 +595,87 @@ class HikDeviceDevicesSpaceTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertContains(response, "Ajoute ?tenant=&lt;code_tenant&gt;", status_code=status.HTTP_403_FORBIDDEN)
+
+
+class HikGatewayAdminApiTests(APITestCase):
+    def setUp(self):
+        self.tenant = Tenant.objects.create(name="Tenant Admin API", code="tenant-admin-api")
+        self.gateway = Gateway.objects.create(
+            tenant=self.tenant,
+            base_url="https://gw-admin.local",
+            username="admin",
+            password="pass",
+        )
+        self.device = Device.objects.create(
+            gateway=self.gateway,
+            tenant=self.tenant,
+            serial_number="SN-ADMIN",
+            dev_index="IDX-ADMIN",
+            status="online",
+        )
+        user_model = get_user_model()
+        self.admin = user_model.objects.create_user(username="admin-api", password="pass", is_staff=True)
+        self.user = user_model.objects.create_user(username="simple-user", password="pass")
+
+    def test_sync_devices_endpoint_requires_admin(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post("/api/hikgateway/sync-devices/", {}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @patch("hik_gateway.views.sync_all_gateways")
+    @patch("hik_gateway.views.dispatch_hik_devices_to_core_devices")
+    def test_sync_devices_endpoint_runs_sync(self, mock_dispatch, mock_sync):
+        mock_sync.return_value = 2
+        mock_dispatch.return_value = 2
+        self.client.force_authenticate(user=self.admin)
+
+        response = self.client.post(
+            "/api/hikgateway/sync-devices/",
+            {"dispatch_core_devices": True},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()["synced"], 2)
+        self.assertEqual(response.json()["dispatched"], 2)
+
+    @patch("hik_gateway.views.catchup_all_devices")
+    def test_catchup_endpoint_runs(self, mock_catchup):
+        mock_catchup.return_value = 5
+        self.client.force_authenticate(user=self.admin)
+
+        response = self.client.post(
+            "/api/hikgateway/catchup-acs-events/",
+            {"max_results": 100},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()["processed"], 5)
+        mock_catchup.assert_called_once_with(max_results=100)
+
+    @patch("hik_gateway.views.get_shared_gateway_client")
+    def test_register_webhooks_endpoint_registers_all_devices(self, mock_get_client):
+        mock_client = mock_get_client.return_value
+        self.client.force_authenticate(user=self.admin)
+
+        response = self.client.post(
+            "/api/hikgateway/register-webhooks/",
+            {"ip_address": "213.156.133.202", "port": 443, "url": "/api/hik/events"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()["registered"], 1)
+        mock_client.set_http_host.assert_called_once()
+
+    def test_register_webhooks_endpoint_requires_ip(self):
+        self.client.force_authenticate(user=self.admin)
+
+        response = self.client.post(
+            "/api/hikgateway/register-webhooks/",
+            {"ip_address": ""},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

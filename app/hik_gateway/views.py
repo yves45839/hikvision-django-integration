@@ -10,13 +10,18 @@ from django.views.decorators.http import require_GET
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from rest_framework.decorators import api_view
+from rest_framework.decorators import permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 
 from hik_gateway.client import HikGatewayClient  # backward-compatible import for tests
 from hik_gateway.models import AttendanceLog, Device
 from hik_gateway.services.device_payload import extract_devices, normalize_device
+from hik_gateway.services.device_dispatch import dispatch_hik_devices_to_core_devices
+from hik_gateway.services.device_sync import sync_all_gateways
 from hik_gateway.services.gateway_connection import get_shared_gateway_client
+from hik_gateway.services.catchup import catchup_all_devices
 from hik_gateway.services.webhook_ingest import ingest_event
 from tenants.models import Tenant
 
@@ -116,6 +121,121 @@ def _to_bool(value: str | None) -> bool:
 def _is_admin_request(request: HttpRequest) -> bool:
     user = getattr(request, "user", None)
     return bool(user and user.is_authenticated and (user.is_staff or user.is_superuser))
+
+
+def _require_admin_api(request: HttpRequest) -> Response | None:
+    if _is_admin_request(request):
+        return None
+    return Response(
+        {"detail": "Admin privileges required."},
+        status=status.HTTP_403_FORBIDDEN,
+    )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def hik_sync_devices_api(request: HttpRequest) -> Response:
+    denied = _require_admin_api(request)
+    if denied is not None:
+        return denied
+
+    dispatch_core_devices = _to_bool(request.data.get("dispatch_core_devices", True))
+    synced = sync_all_gateways()
+    dispatched = dispatch_hik_devices_to_core_devices() if dispatch_core_devices else 0
+    return Response(
+        {
+            "status": "ok",
+            "synced": synced,
+            "dispatched": dispatched,
+            "dispatch_core_devices": dispatch_core_devices,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def hik_catchup_acs_events_api(request: HttpRequest) -> Response:
+    denied = _require_admin_api(request)
+    if denied is not None:
+        return denied
+
+    try:
+        max_results = int(request.data.get("max_results", 50))
+    except (TypeError, ValueError):
+        return Response({"detail": "max_results must be an integer"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if max_results <= 0:
+        return Response({"detail": "max_results must be > 0"}, status=status.HTTP_400_BAD_REQUEST)
+
+    total = catchup_all_devices(max_results=max_results)
+    return Response(
+        {
+            "status": "ok",
+            "processed": total,
+            "max_results": max_results,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def hik_register_webhooks_api(request: HttpRequest) -> Response:
+    denied = _require_admin_api(request)
+    if denied is not None:
+        return denied
+
+    ip_address = str(request.data.get("ip_address") or getattr(settings, "HIK_WEBHOOK_IP", "")).strip()
+    if not ip_address:
+        return Response({"detail": "ip_address is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        port = int(request.data.get("port", getattr(settings, "HIK_WEBHOOK_PORT", 443)))
+    except (TypeError, ValueError):
+        return Response({"detail": "port must be an integer"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if port <= 0:
+        return Response({"detail": "port must be > 0"}, status=status.HTTP_400_BAD_REQUEST)
+
+    url = str(request.data.get("url") or getattr(settings, "HIK_WEBHOOK_URL", "/api/hik/events")).strip()
+    if not url:
+        return Response({"detail": "url is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    client = get_shared_gateway_client()
+    registered = 0
+    for device in Device.objects.all().iterator():
+        payload = {
+            "HttpHostNotificationList": [
+                {
+                    "HttpHostNotification": {
+                        "id": "1",
+                        "url": url,
+                        "protocolType": "HTTP",
+                        "addressingFormatType": "ipaddress",
+                        "ipAddress": ip_address,
+                        "portNo": port,
+                        "SubscribeEvent": {
+                            "heartbeat": 30,
+                            "eventMode": "all",
+                        },
+                    }
+                }
+            ]
+        }
+        client.set_http_host(device.dev_index, payload)
+        registered += 1
+
+    return Response(
+        {
+            "status": "ok",
+            "registered": registered,
+            "ip_address": ip_address,
+            "port": port,
+            "url": url,
+        },
+        status=status.HTTP_200_OK,
+    )
 
 
 @api_view(["GET"])

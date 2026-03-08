@@ -1,3 +1,5 @@
+from datetime import datetime
+from datetime import timezone as dt_timezone
 from io import StringIO
 from unittest.mock import patch
 
@@ -679,3 +681,73 @@ class HikGatewayAdminApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class HikCatchupServiceTests(APITestCase):
+    def setUp(self):
+        self.tenant = Tenant.objects.create(name="Tenant Catchup", code="tenant-catchup")
+        self.gateway = Gateway.objects.create(
+            tenant=self.tenant,
+            base_url="https://gw-catchup.local",
+            username="admin",
+            password="pass",
+        )
+        self.device = Device.objects.create(
+            gateway=self.gateway,
+            tenant=self.tenant,
+            serial_number="SN-CATCHUP",
+            dev_index="IDX-CATCHUP",
+            status="online",
+        )
+
+    @patch("hik_gateway.services.catchup.ingest_acs_event")
+    @patch("hik_gateway.services.catchup.get_shared_gateway_client")
+    def test_initial_catchup_uses_full_history_window(self, mock_get_client, mock_ingest):
+        from hik_gateway.services.catchup import catchup_device
+
+        mock_client = mock_get_client.return_value
+        mock_client.acs_event_search.side_effect = [
+            {
+                "AcsEventTotalNum": {
+                    "totalMatches": 1,
+                    "InfoList": [{"serialNo": "1", "dateTime": "2026-01-01T08:00:00Z"}],
+                }
+            },
+            {"AcsEventTotalNum": {"totalMatches": 0, "InfoList": []}},
+        ]
+        mock_ingest.return_value = (None, None)
+
+        processed = catchup_device(self.device, max_results=50)
+
+        self.assertEqual(processed, 0)
+        first_call_condition = mock_client.acs_event_search.call_args_list[0].args[1]
+        self.assertEqual(first_call_condition["AcsEventCond"]["startTime"], "1970-01-01T00:00:00+00:00")
+
+    @patch("hik_gateway.services.catchup.ingest_acs_event")
+    @patch("hik_gateway.services.catchup.get_shared_gateway_client")
+    def test_catchup_counts_all_returned_events(self, mock_get_client, mock_ingest):
+        from hik_gateway.services.catchup import catchup_device
+
+        mock_client = mock_get_client.return_value
+        mock_client.acs_event_search.side_effect = [
+            {
+                "AcsEventTotalNum": {
+                    "totalMatches": 2,
+                    "InfoList": [
+                        {"serialNo": "10", "dateTime": "2026-01-01T08:00:00Z"},
+                        {"serialNo": "11", "dateTime": "2026-01-01T08:01:00Z"},
+                    ],
+                }
+            },
+            {"AcsEventTotalNum": {"totalMatches": 0, "InfoList": []}},
+        ]
+        from types import SimpleNamespace
+
+        mock_ingest.side_effect = [
+            (SimpleNamespace(serial_no=10, event_datetime=datetime(2026, 1, 1, 8, 0, tzinfo=dt_timezone.utc)), None),
+            (SimpleNamespace(serial_no=11, event_datetime=datetime(2026, 1, 1, 8, 1, tzinfo=dt_timezone.utc)), None),
+        ]
+
+        processed = catchup_device(self.device, max_results=50)
+
+        self.assertEqual(processed, 2)

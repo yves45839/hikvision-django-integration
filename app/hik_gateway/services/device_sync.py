@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from datetime import datetime, timezone as dt_timezone
 
+from django.conf import settings
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
-from hik_gateway.models import Device
+from hik_gateway.models import Device, Gateway
 from hik_gateway.services.device_payload import extract_devices, normalize_device
 from hik_gateway.services.gateway_connection import get_shared_gateway_client
 from tenants.models import Tenant
@@ -27,6 +28,19 @@ def sync_gateway_devices(tenant=None) -> int:
     response = client.device_list_all()
     items = extract_devices(response)
 
+    gateway = Gateway.objects.filter(tenant=tenant).order_by("id").first()
+    if gateway is None:
+        base_url = (getattr(settings, "HIK_DEVICE_GATEWAY_BASE_URL", "") or "").strip()
+        username = (getattr(settings, "HIK_DEVICE_GATEWAY_USERNAME", "") or "").strip()
+        password = (getattr(settings, "HIK_DEVICE_GATEWAY_PASSWORD", "") or "").strip()
+        if base_url and username and password:
+            gateway = Gateway.objects.create(
+                tenant=tenant,
+                base_url=base_url,
+                username=username,
+                password=password,
+            )
+
     synced = 0
     for item in items:
         normalized = normalize_device(item)
@@ -40,6 +54,7 @@ def sync_gateway_devices(tenant=None) -> int:
             tenant=tenant,
             dev_index=dev_index,
             defaults={
+                "gateway": gateway,
                 "tenant": tenant,
                 "serial_number": serial_number,
                 "device_id": item.get("deviceID", "") or item.get("deviceId", ""),

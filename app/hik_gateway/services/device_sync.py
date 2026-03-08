@@ -56,9 +56,17 @@ def sync_gateway_devices(tenant=None) -> int:
 
 
 def sync_all_gateways() -> int:
-    # Single shared gateway connection: resync known devices by tenant mapping.
+    # Initial sync must not depend on existing devices.
+    #
+    # When DB gateways exist, sync only tenants that have at least one gateway row.
+    # When using settings-based singleton credentials (no Gateway row), sync every
+    # tenant because each tenant still needs local Device mapping.
     total = 0
-    tenant_ids = Device.objects.values_list("tenant_id", flat=True).distinct()
-    for tenant in Tenant.objects.filter(id__in=tenant_ids).iterator():
+    if Tenant.objects.filter(hik_gateways__isnull=False).exists():
+        tenants = Tenant.objects.filter(hik_gateways__isnull=False).distinct()
+    else:
+        tenants = Tenant.objects.all()
+
+    for tenant in tenants.iterator():
         total += sync_gateway_devices(tenant)
     return total

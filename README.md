@@ -201,6 +201,45 @@ Fonction :
 * Récupère `serial`, `devIndex`, `status`
 * Met à jour les devices Django
 
+### Endpoints d'import administrateur (JWT + staff/superuser)
+
+Ces endpoints permettent d'orchestrer l'import complet devices/events depuis Postman (sans shell):
+
+```http
+POST /api/hikgateway/sync-devices/
+Content-Type: application/json
+
+{
+  "dispatch_core_devices": true
+}
+```
+
+```http
+POST /api/hikgateway/register-webhooks/
+Content-Type: application/json
+
+{
+  "ip_address": "<public_ip>",
+  "port": 443,
+  "url": "/api/hik/events"
+}
+```
+
+```http
+POST /api/hikgateway/catchup-acs-events/
+Content-Type: application/json
+
+{
+  "max_results": 100
+}
+```
+
+Flux recommandé d'import complet:
+
+1. `sync-devices` pour récupérer toutes les infos devices depuis Gateway.
+2. `register-webhooks` pour activer le temps réel sur chaque device.
+3. `catchup-acs-events` pour rattraper les événements manqués avant webhook.
+
 ### API liste des appareils (proxy Gateway)
 
 ```

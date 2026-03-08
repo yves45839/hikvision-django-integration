@@ -126,6 +126,26 @@
     {
       "key": "deviceType",
       "value": "AccessControl"
+    },
+    {
+      "key": "dispatchCoreDevices",
+      "value": "true"
+    },
+    {
+      "key": "catchupMaxResults",
+      "value": "100"
+    },
+    {
+      "key": "webhookPublicIp",
+      "value": "213.156.133.202"
+    },
+    {
+      "key": "webhookUrl",
+      "value": "/api/hik/events"
+    },
+    {
+      "key": "webhookPort",
+      "value": "443"
     }
   ],
   "item": [
@@ -755,6 +775,149 @@
               ]
             }
           }
+        }
+      ]
+    },
+    {
+      "name": "Gateway Import (Admin)",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{accessToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "description": "Exécuter ces requêtes dans cet ordre pour importer toutes les infos devices + events: sync devices -> register webhooks -> catchup events. Endpoints réservés aux admins (staff/superuser).",
+      "item": [
+        {
+          "name": "Sync devices (POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dispatch_core_devices\": {{dispatchCoreDevices}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/hikgateway/sync-devices/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hikgateway",
+                "sync-devices",
+                ""
+              ]
+            },
+            "description": "Lance une synchronisation immédiate depuis Hik Gateway et, si activé, recopie vers /api/devices/."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "const jsonData = pm.response.json();",
+                  "pm.expect(jsonData).to.have.property('synced');",
+                  "pm.expect(jsonData).to.have.property('dispatched');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register webhooks (POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ip_address\": \"{{webhookPublicIp}}\",\n  \"port\": {{webhookPort}},\n  \"url\": \"{{webhookUrl}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/hikgateway/register-webhooks/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hikgateway",
+                "register-webhooks",
+                ""
+              ]
+            },
+            "description": "Configure la souscription HttpHostNotification sur chaque device synchronisé."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "const jsonData = pm.response.json();",
+                  "pm.expect(jsonData).to.have.property('registered');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Catchup ACS events (POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"max_results\": {{catchupMaxResults}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/hikgateway/catchup-acs-events/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hikgateway",
+                "catchup-acs-events",
+                ""
+              ]
+            },
+            "description": "Rattrape les événements de contrôle d'accès manqués depuis /ISAPI/AccessControl/AcsEvent."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "const jsonData = pm.response.json();",
+                  "pm.expect(jsonData).to.have.property('processed');"
+                ]
+              }
+            }
+          ]
         }
       ]
     },

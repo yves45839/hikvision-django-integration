@@ -6,3 +6,4 @@ python-dotenv>=1.0
 dj-database-url>=2.1
 requests>=2.31
 djangorestframework-simplejwt>=5.3
+drf-spectacular>=0.27

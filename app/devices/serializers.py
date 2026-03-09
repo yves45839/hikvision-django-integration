@@ -6,6 +6,7 @@ class DeviceSerializer(serializers.ModelSerializer):
     owner = serializers.HiddenField(default=serializers.CurrentUserDefault())
     ip_address = serializers.CharField(read_only=True)
     serial_number = serializers.CharField(required=True, min_length=1, max_length=31)
+    device_password = serializers.CharField(required=False, allow_blank=True, write_only=True)
 
     class Meta:
         model = Device
@@ -22,6 +23,8 @@ class DeviceSerializer(serializers.ModelSerializer):
             'model',
             'protocol',
             'status',
+            'device_username',
+            'device_password',
             'created_at',
         ]
         read_only_fields = ['created_at', 'protocol', 'status', 'device_id', 'model']
@@ -37,6 +40,8 @@ class DeviceOnboardSerializer(serializers.Serializer):
     ehome_key = serializers.CharField(max_length=32, write_only=True)
     dev_name = serializers.CharField(max_length=255)
     dev_type = serializers.CharField(max_length=64, default='AccessControl')
+    device_username = serializers.CharField(max_length=150, required=False, allow_blank=True, default='')
+    device_password = serializers.CharField(max_length=255, required=False, allow_blank=True, default='', write_only=True)
 
     def validate_dev_type(self, value):
         if value != 'AccessControl':

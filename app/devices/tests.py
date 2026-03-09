@@ -47,6 +47,8 @@ class DeviceOwnershipTests(APITestCase):
             'serial_number': 'ABC123456XYZ',
             'port': 7660,
             'ip_address': '1.2.3.4',
+            'device_username': 'admin-device',
+            'device_password': 'secret-device',
         }
 
         response = self.client.post('/api/devices/', payload, format='json')
@@ -57,6 +59,9 @@ class DeviceOwnershipTests(APITestCase):
         self.assertEqual(device.port, 7660)
         self.assertEqual(device.ip_address, '213.156.133.202')
         self.assertEqual(device.protocol, 'ISUP')
+        self.assertEqual(device.device_username, 'admin-device')
+        self.assertEqual(device.device_password, 'secret-device')
+        self.assertNotIn('device_password', response.data)
 
     def test_port_must_be_7660_or_7661(self):
         self.client.force_authenticate(self.user1)
@@ -145,13 +150,19 @@ class DeviceOwnershipTests(APITestCase):
                 'ehome_key': 'test2024',
                 'dev_name': 'Pointeuse Entree',
                 'dev_type': 'AccessControl',
+                'device_username': 'operator1',
+                'device_password': 'super-secret',
             },
             format='json',
         )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['dev_index'], 'uuid-001')
-        self.assertEqual(Device.objects.get(dev_index='uuid-001').tenant, self.tenant_a)
+        device = Device.objects.get(dev_index='uuid-001')
+        self.assertEqual(device.tenant, self.tenant_a)
+        self.assertEqual(device.device_username, 'operator1')
+        self.assertEqual(device.device_password, 'super-secret')
+        self.assertNotIn('device_password', response.data)
 
     @patch('devices.views.get_shared_gateway_client')
     def test_onboard_device_exist_fallbacks_to_device_list(self, mocked_client):

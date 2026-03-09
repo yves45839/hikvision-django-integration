@@ -154,6 +154,8 @@ class DeviceViewSet(viewsets.ModelViewSet):
                 name=validated['dev_name'],
                 protocol='ehomeV5',
                 status='online',
+                device_username=validated.get('device_username', ''),
+                device_password=validated.get('device_password', ''),
             )
 
         output = DeviceSerializer(device)

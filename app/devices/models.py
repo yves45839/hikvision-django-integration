@@ -26,6 +26,8 @@ class Device(models.Model):
     model = models.CharField(max_length=100, blank=True, default='')
     protocol = models.CharField(max_length=50, blank=True, default='')
     status = models.CharField(max_length=30, blank=True, default='')
+    device_username = models.CharField(max_length=150, blank=True, default='')
+    device_password = models.CharField(max_length=255, blank=True, default='')
 
     created_at = models.DateTimeField(auto_now_add=True)
 

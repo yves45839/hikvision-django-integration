@@ -4,6 +4,7 @@ from hik_gateway.views import (
     hik_catchup_acs_events_api,
     hik_devices_api,
     hik_devices_page,
+    hik_events_api,
     hik_event_webhook,
     hik_register_webhooks_api,
     hik_sync_devices_api,
@@ -13,6 +14,7 @@ from hik_gateway.views import (
 urlpatterns = [
     path("hikgateway/devices/", hik_devices_api, name="hikgateway-devices-api"),
     path("hikgateway/sync-devices/", hik_sync_devices_api, name="hikgateway-sync-devices-api"),
+    path("hikgateway/events/", hik_events_api, name="hikgateway-events-api"),
     path("hikgateway/catchup-acs-events/", hik_catchup_acs_events_api, name="hikgateway-catchup-acs-events-api"),
     path("hikgateway/register-webhooks/", hik_register_webhooks_api, name="hikgateway-register-webhooks-api"),
     path("hik/devices", hik_devices_page, name="hik-devices"),

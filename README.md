@@ -234,6 +234,14 @@ Content-Type: application/json
 }
 ```
 
+```http
+GET /api/hikgateway/events/?tenant=<tenant_code>&limit=50&source=realtime&dev_index=<dev_index>&person_id=<person_id>
+Authorization: Bearer <jwt>
+```
+
+* Liste les événements ingérés (`AttendanceLog` + métadonnées `RawEvent`).
+* Sans `tenant`, l'accès est réservé aux administrateurs (staff/superuser).
+
 Flux recommandé d'import complet:
 
 1. `sync-devices` pour récupérer toutes les infos devices depuis Gateway.

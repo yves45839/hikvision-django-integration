@@ -239,6 +239,81 @@ def hik_register_webhooks_api(request: HttpRequest) -> Response:
 
 
 @api_view(["GET"])
+def hik_events_api(request: HttpRequest) -> Response:
+    tenant_code = (request.GET.get("tenant") or "").strip()
+    source = (request.GET.get("source") or "").strip().lower()
+    dev_index = (request.GET.get("dev_index") or "").strip()
+    person_id = (request.GET.get("person_id") or "").strip()
+
+    try:
+        limit = int(request.GET.get("limit", 100))
+    except ValueError:
+        return Response({"detail": "limit must be an integer"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if limit <= 0:
+        return Response({"detail": "limit must be > 0"}, status=status.HTTP_400_BAD_REQUEST)
+    limit = min(limit, 500)
+
+    if not tenant_code and not _is_admin_request(request):
+        return Response(
+            {"detail": "Ajoute ?tenant=<code_tenant> (ou connecte-toi en administrateur pour voir tous les événements)."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    queryset = AttendanceLog.objects.select_related("device", "tenant", "raw_event").order_by("-timestamp", "-id")
+    if tenant_code:
+        queryset = queryset.filter(tenant__code__iexact=tenant_code)
+    if source:
+        queryset = queryset.filter(source__iexact=source)
+    if dev_index:
+        queryset = queryset.filter(device__dev_index=dev_index)
+    if person_id:
+        queryset = queryset.filter(person_id=person_id)
+
+    logs = list(queryset[:limit])
+    results = [
+        {
+            "id": log.id,
+            "tenant": log.tenant.code,
+            "timestamp": log.timestamp,
+            "person_id": log.person_id,
+            "device": {
+                "id": log.device_id,
+                "dev_index": log.device.dev_index,
+                "serial_number": log.device.serial_number,
+            },
+            "attendance_type": log.attendance_type,
+            "attendance_status": log.attendance_status,
+            "direction": log.direction,
+            "source": log.source,
+            "raw_event": {
+                "id": log.raw_event_id,
+                "event_type": log.raw_event.event_type,
+                "event_datetime": log.raw_event.event_datetime,
+                "major_event_type": log.raw_event.major_event_type,
+                "sub_event_type": log.raw_event.sub_event_type,
+                "serial_no": log.raw_event.serial_no,
+            },
+        }
+        for log in logs
+    ]
+
+    return Response(
+        {
+            "count": len(results),
+            "results": results,
+            "filters": {
+                "tenant": tenant_code or None,
+                "source": source or None,
+                "dev_index": dev_index or None,
+                "person_id": person_id or None,
+                "limit": limit,
+            },
+        }
+    )
+
+
+@api_view(["GET"])
 def hik_devices_api(request: HttpRequest) -> Response:
     tenant_code = (request.GET.get("tenant") or "").strip()
     protocol_query = (request.GET.get("protocol") or "").strip()

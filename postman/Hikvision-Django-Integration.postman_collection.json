@@ -918,6 +918,43 @@
               }
             }
           ]
+        },
+        {
+          "name": "Lister events Hikvision (GET)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/hikgateway/events/?tenant={{tenant_code}}&limit=50",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "hikgateway",
+                "events",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "tenant",
+                  "value": "{{tenant_code}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Liste les événements Hikvision ingérés (AttendanceLog + RawEvent). Filtres supportés: tenant, source, dev_index, person_id, limit."
+          },
+          "response": []
         }
       ]
     },

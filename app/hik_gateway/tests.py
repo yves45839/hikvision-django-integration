@@ -682,6 +682,48 @@ class HikGatewayAdminApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_events_endpoint_requires_tenant_for_non_admin(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get("/api/hikgateway/events/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_events_endpoint_lists_attendance_logs_for_tenant(self):
+        self.client.force_authenticate(user=self.user)
+        raw_event = RawEvent.objects.create(
+            tenant=self.tenant,
+            device=self.device,
+            dev_index=self.device.dev_index,
+            event_type="AccessControllerEvent",
+            event_datetime="2026-02-01T08:00:00Z",
+            major_event_type=5,
+            sub_event_type=1,
+            serial_no=100,
+            dedupe_key="event-100",
+            payload={"sample": True},
+        )
+        AttendanceLog.objects.create(
+            tenant=self.tenant,
+            person_id="E1001",
+            device=self.device,
+            timestamp="2026-02-01T08:00:00Z",
+            attendance_type="checkin",
+            attendance_status="checkin",
+            direction="IN",
+            source=AttendanceLog.SOURCE_REALTIME,
+            raw_event=raw_event,
+        )
+
+        response = self.client.get(
+            "/api/hikgateway/events/",
+            {"tenant": self.tenant.code, "source": "realtime", "dev_index": self.device.dev_index},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload["count"], 1)
+        self.assertEqual(payload["results"][0]["person_id"], "E1001")
+        self.assertEqual(payload["results"][0]["device"]["dev_index"], self.device.dev_index)
+
 
 class HikCatchupServiceTests(APITestCase):
     def setUp(self):

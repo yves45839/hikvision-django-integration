@@ -1,6 +1,4 @@
 import os
-import os
-import os
 """
 Django settings for config project.
 
@@ -14,9 +12,17 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = BASE_DIR.parent
+
+# Load .env from both project root and app dir for local/dev runs.
+# Docker/container env vars still override these values at runtime.
+for env_path in (PROJECT_ROOT / ".env", BASE_DIR / ".env"):
+    if env_path.exists():
+        load_dotenv(env_path)
 
 
 # Quick-start development settings - unsuitable for production
@@ -28,7 +34,11 @@ SECRET_KEY = 'django-insecure-ngt+_!1zvxw(3#1+$h17crgo_6hrm1u%phwis5-#ka*1$g5dkx
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
+    if host.strip()
+]
 
 
 # Application definition
@@ -39,6 +49,7 @@ INSTALLED_APPS = [
     'tenants',
     'devices',
     'events',
+    'employees',
     'hik_gateway',
     'django.contrib.admin',
     'django.contrib.auth',

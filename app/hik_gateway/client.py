@@ -158,3 +158,17 @@ class HikGatewayClient:
             params={"format": "json"},
             timeout=timeout,
         )
+
+    def add_access_user(self, dev_index: str, payload: dict[str, Any]) -> dict[str, Any]:
+        return self._post(
+            "/ISAPI/AccessControl/UserInfo/Record",
+            payload=payload,
+            params={"format": "json", "devIndex": dev_index},
+        )
+
+    def add_access_card(self, dev_index: str, payload: dict[str, Any]) -> dict[str, Any]:
+        return self._post(
+            "/ISAPI/AccessControl/CardInfo/Record",
+            payload=payload,
+            params={"format": "json", "devIndex": dev_index},
+        )

@@ -146,6 +146,26 @@
     {
       "key": "webhookPort",
       "value": "443"
+    },
+    {
+      "key": "acsDevIndex",
+      "value": "49ACE3EE-BF88-CD49-810E-A5019FD7E7E8"
+    },
+    {
+      "key": "acsSearchId",
+      "value": "123"
+    },
+    {
+      "key": "acsSearchResultPosition",
+      "value": "0"
+    },
+    {
+      "key": "acsMaxResults",
+      "value": "30"
+    },
+    {
+      "key": "unassignedOnly",
+      "value": "1"
     }
   ],
   "item": [
@@ -920,20 +940,124 @@
           ]
         },
         {
+          "name": "ACS events direct (GET rapide)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/hikgateway/acs-events/?dev_index={{acsDevIndex}}&searchID={{acsSearchId}}&searchResultPosition={{acsSearchResultPosition}}&maxResults={{acsMaxResults}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hikgateway",
+                "acs-events",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "dev_index",
+                  "value": "{{acsDevIndex}}"
+                },
+                {
+                  "key": "searchID",
+                  "value": "{{acsSearchId}}"
+                },
+                {
+                  "key": "searchResultPosition",
+                  "value": "{{acsSearchResultPosition}}"
+                },
+                {
+                  "key": "maxResults",
+                  "value": "{{acsMaxResults}}"
+                }
+              ]
+            },
+            "description": "Test rapide depuis navigateur/Postman sans body JSON. Retourne la réponse brute /ISAPI/AccessControl/AcsEvent."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "const jsonData = pm.response.json();",
+                  "pm.expect(jsonData).to.have.property('response');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "ACS events direct (POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dev_index\": \"{{acsDevIndex}}\",\n  \"searchID\": \"{{acsSearchId}}\",\n  \"searchResultPosition\": {{acsSearchResultPosition}},\n  \"maxResults\": {{acsMaxResults}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/hikgateway/acs-events/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hikgateway",
+                "acs-events",
+                ""
+              ]
+            },
+            "description": "Version POST de l'appel direct AcsEvent (même endpoint que GET)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "const jsonData = pm.response.json();",
+                  "pm.expect(jsonData).to.have.property('response');"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Lister events Hikvision (GET)",
           "request": {
             "method": "GET",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{access_token}}",
+                "value": "Bearer {{accessToken}}",
                 "type": "text"
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/hikgateway/events/?tenant={{tenant_code}}&limit=50",
+              "raw": "{{baseUrl}}/api/hikgateway/events/?tenant={{tenantCode}}&limit=50",
               "host": [
-                "{{base_url}}"
+                "{{baseUrl}}"
               ],
               "path": [
                 "api",
@@ -944,7 +1068,7 @@
               "query": [
                 {
                   "key": "tenant",
-                  "value": "{{tenant_code}}"
+                  "value": "{{tenantCode}}"
                 },
                 {
                   "key": "limit",
@@ -1361,6 +1485,145 @@
                 "type": "string"
               }
             ]
+          }
+        },
+        {
+          "name": "Lister devices non assign?s (API normalis?e)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/hikgateway/devices/?unassigned_only={{unassignedOnly}}&protocol={{gatewayProtocol}}&status={{gatewayStatus}}&dev_type={{gatewayDevType}}&key={{gatewaySearchKey}}&max_result={{maxResult}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hikgateway",
+                "devices",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "unassigned_only",
+                  "value": "{{unassignedOnly}}"
+                },
+                {
+                  "key": "protocol",
+                  "value": "{{gatewayProtocol}}"
+                },
+                {
+                  "key": "status",
+                  "value": "{{gatewayStatus}}"
+                },
+                {
+                  "key": "dev_type",
+                  "value": "{{gatewayDevType}}"
+                },
+                {
+                  "key": "key",
+                  "value": "{{gatewaySearchKey}}"
+                },
+                {
+                  "key": "max_result",
+                  "value": "{{maxResult}}"
+                }
+              ]
+            },
+            "description": "Liste les appareils remont?s par le gateway qui ne sont li?s ? aucun tenant local (tenant_code vide). N?cessite un utilisateur authentifi?."
+          }
+        },
+        {
+          "name": "Page devices gateway non assign?s (JSON)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/hik/devices?unassigned_only={{unassignedOnly}}&format=json",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hik",
+                "devices"
+              ],
+              "query": [
+                {
+                  "key": "unassigned_only",
+                  "value": "{{unassignedOnly}}"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            },
+            "description": "Retourne la vue /api/hik/devices en JSON pour les appareils non assign?s ? un tenant."
+          }
+        },
+        {
+          "name": "Page HikDevice non assign?s (HTML)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/hikdevice/devices?unassigned_only={{unassignedOnly}}&protocol={{gatewayProtocol}}&status={{gatewayStatus}}&dev_type={{gatewayDevType}}&key={{gatewaySearchKey}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hikdevice",
+                "devices"
+              ],
+              "query": [
+                {
+                  "key": "unassigned_only",
+                  "value": "{{unassignedOnly}}"
+                },
+                {
+                  "key": "protocol",
+                  "value": "{{gatewayProtocol}}"
+                },
+                {
+                  "key": "status",
+                  "value": "{{gatewayStatus}}"
+                },
+                {
+                  "key": "dev_type",
+                  "value": "{{gatewayDevType}}"
+                },
+                {
+                  "key": "key",
+                  "value": "{{gatewaySearchKey}}"
+                }
+              ]
+            },
+            "description": "Affiche la page HTML HikDevice avec uniquement les appareils non assign?s ? un tenant."
           }
         }
       ],

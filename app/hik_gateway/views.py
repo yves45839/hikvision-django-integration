@@ -123,6 +123,11 @@ def _is_admin_request(request: HttpRequest) -> bool:
     return bool(user and user.is_authenticated and (user.is_staff or user.is_superuser))
 
 
+def _is_authenticated_request(request: HttpRequest) -> bool:
+    user = getattr(request, "user", None)
+    return bool(user and user.is_authenticated)
+
+
 def _require_admin_api(request: HttpRequest) -> Response | None:
     if _is_admin_request(request):
         return None
@@ -130,6 +135,35 @@ def _require_admin_api(request: HttpRequest) -> Response | None:
         {"detail": "Admin privileges required."},
         status=status.HTTP_403_FORBIDDEN,
     )
+
+
+def _normalize_acs_event_cond(payload: dict, *, default_max_results: int) -> dict:
+    def _to_int_or_value(value, default=None):
+        if value is None:
+            return default
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return value
+
+    if "AcsEventCond" in payload and isinstance(payload["AcsEventCond"], dict):
+        cond = dict(payload["AcsEventCond"])
+    else:
+        cond = {
+            "searchID": payload.get("searchID", ""),
+            "searchResultPosition": _to_int_or_value(payload.get("searchResultPosition", 0), 0),
+            "maxResults": _to_int_or_value(payload.get("maxResults", default_max_results), default_max_results),
+        }
+        if payload.get("startTime"):
+            cond["startTime"] = payload.get("startTime")
+        if payload.get("endTime"):
+            cond["endTime"] = payload.get("endTime")
+
+    if "searchResultPosition" in cond:
+        cond["searchResultPosition"] = _to_int_or_value(cond.get("searchResultPosition"), 0)
+    if "maxResults" in cond:
+        cond["maxResults"] = _to_int_or_value(cond.get("maxResults"), default_max_results)
+    return {"AcsEventCond": cond}
 
 
 @api_view(["POST"])
@@ -148,6 +182,48 @@ def hik_sync_devices_api(request: HttpRequest) -> Response:
             "synced": synced,
             "dispatched": dispatched,
             "dispatch_core_devices": dispatch_core_devices,
+        },
+        status=status.HTTP_200_OK,
+    )    
+
+
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def hik_acs_events_api(request: HttpRequest) -> Response:
+    payload_source = request.query_params if request.method == "GET" else request.data
+
+    dev_index = str(payload_source.get("dev_index") or "").strip()
+    if not dev_index:
+        return Response({"detail": "dev_index is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    payload = payload_source.get("payload")
+    if payload is None:
+        payload = payload_source
+    if not isinstance(payload, dict):
+        return Response({"detail": "payload must be an object"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        max_results = int(payload_source.get("max_results") or payload_source.get("maxResults") or 30)
+    except (TypeError, ValueError):
+        return Response({"detail": "max_results must be an integer"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if max_results <= 0:
+        return Response({"detail": "max_results must be > 0"}, status=status.HTTP_400_BAD_REQUEST)
+
+    request_payload = _normalize_acs_event_cond(payload, default_max_results=max_results)
+
+    try:
+        client = get_shared_gateway_client()
+        gateway_response = client.acs_event_search(dev_index, request_payload)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Unable to fetch AcsEvent from shared gateway")
+        return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+
+    return Response(
+        {
+            "dev_index": dev_index,
+            "request": request_payload,
+            "response": gateway_response,
         },
         status=status.HTTP_200_OK,
     )
@@ -316,6 +392,7 @@ def hik_events_api(request: HttpRequest) -> Response:
 @api_view(["GET"])
 def hik_devices_api(request: HttpRequest) -> Response:
     tenant_code = (request.GET.get("tenant") or "").strip()
+    unassigned_only = _to_bool(request.GET.get("unassigned_only", "0"))
     protocol_query = (request.GET.get("protocol") or "").strip()
     status_query = (request.GET.get("status") or "").strip()
     dev_type = (request.GET.get("dev_type") or "").strip()
@@ -331,9 +408,18 @@ def hik_devices_api(request: HttpRequest) -> Response:
     statuses = _parse_csv_query_list(status_query)
 
     if not tenant_code and not _is_admin_request(request):
+        if unassigned_only and _is_authenticated_request(request):
+            pass
+        else:
+            return Response(
+                {"detail": "Ajoute ?tenant=<code_tenant> (ou connecte-toi en administrateur pour voir tous les appareils)."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+    if tenant_code and unassigned_only:
         return Response(
-            {"detail": "Ajoute ?tenant=<code_tenant> (ou connecte-toi en administrateur pour voir tous les appareils)."},
-            status=status.HTTP_403_FORBIDDEN,
+            {"detail": "Utilise soit ?tenant=<code_tenant>, soit ?unassigned_only=1, mais pas les deux."},
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
     devices = []
@@ -384,6 +470,8 @@ def hik_devices_api(request: HttpRequest) -> Response:
         normalized_item["offline_hint"] = item.get("offlineHint") or item.get("offlineReason") or ""
         normalized_item["tenant_code"] = tenant_by_dev_index.get(dev_index_value, "")
         normalized_item["gateway_base_url"] = "shared"
+        if unassigned_only and normalized_item["tenant_code"]:
+            continue
         devices.append(normalized_item)
 
     if not normalized:
@@ -395,6 +483,7 @@ def hik_devices_api(request: HttpRequest) -> Response:
 @require_GET
 def hik_devices_page(request: HttpRequest):
     tenant_code = (request.GET.get("tenant") or "").strip()
+    unassigned_only = _to_bool(request.GET.get("unassigned_only", "0"))
     is_admin = _is_admin_request(request)
 
     request_parameters = request.GET.get("request", "").strip() or json.dumps(
@@ -417,11 +506,20 @@ def hik_devices_page(request: HttpRequest):
     }
 
     if not tenant_code and not is_admin:
-        error_message = "Ajoute ?tenant=<code_tenant> (ou connecte-toi en administrateur pour voir tous les appareils)."
+        if not (unassigned_only and _is_authenticated_request(request)):
+            error_message = "Ajoute ?tenant=<code_tenant> (ou connecte-toi en administrateur pour voir tous les appareils)."
+            if wants_json:
+                return JsonResponse({"detail": error_message}, status=403)
+            context["error"] = error_message
+            return render(request, "hik_gateway/device_list.html", context, status=403)
+
+    if tenant_code and unassigned_only:
+        error_message = "Utilise soit ?tenant=<code_tenant>, soit ?unassigned_only=1, mais pas les deux."
         if wants_json:
-            return JsonResponse({"detail": error_message}, status=403)
+            return JsonResponse({"detail": error_message}, status=400)
         context["error"] = error_message
-        return render(request, "hik_gateway/device_list.html", context, status=403)
+        return render(request, "hik_gateway/device_list.html", context, status=400)
+
 
     devices = []
     errors = []
@@ -466,6 +564,8 @@ def hik_devices_page(request: HttpRequest):
         if allowed_dev_indexes is not None and dev_index_value not in allowed_dev_indexes:
             continue
         normalized["tenant_code"] = tenant_by_dev_index.get(dev_index_value, "")
+        if unassigned_only and normalized["tenant_code"]:
+            continue
         normalized["gateway_base_url"] = "shared"
         devices.append(normalized)
 
@@ -485,6 +585,7 @@ def hik_devices_page(request: HttpRequest):
                 "results": devices,
                 "errors": errors,
                 "tenant": tenant_code or None,
+                "unassigned_only": unassigned_only,
                 "status_code": context["status_code"],
                 "response_parameters": response_payload,
             }
@@ -497,6 +598,7 @@ def hik_devices_page(request: HttpRequest):
 def hikdevice_devices_space(request: HttpRequest):
     """Interface simple pour visualiser les appareils disponibles sur HikDevice."""
     tenant_code = (request.GET.get("tenant") or "").strip()
+    unassigned_only = _to_bool(request.GET.get("unassigned_only", "0"))
     protocol_query = (request.GET.get("protocol") or "").strip()
     status_query = (request.GET.get("status") or "").strip()
     dev_type = (request.GET.get("dev_type") or "").strip()
@@ -518,8 +620,13 @@ def hikdevice_devices_space(request: HttpRequest):
     }
 
     if not tenant_code and not is_admin:
-        context["error"] = "Ajoute ?tenant=<code_tenant> (ou connecte-toi en administrateur pour voir tous les appareils)."
-        return render(request, "hik_gateway/hikdevice_devices_space.html", context, status=403)
+        if not (unassigned_only and _is_authenticated_request(request)):
+            context["error"] = "Ajoute ?tenant=<code_tenant> (ou connecte-toi en administrateur pour voir tous les appareils)."
+            return render(request, "hik_gateway/hikdevice_devices_space.html", context, status=403)
+
+    if tenant_code and unassigned_only:
+        context["error"] = "Utilise soit ?tenant=<code_tenant>, soit ?unassigned_only=1, mais pas les deux."
+        return render(request, "hik_gateway/hikdevice_devices_space.html", context, status=400)
 
     tenant_by_dev_index = {
         dev_index: tenant__code
@@ -559,6 +666,8 @@ def hikdevice_devices_space(request: HttpRequest):
 
         normalized_item["sn"] = (item.get("EhomeParams", {}) or {}).get("EhomeID", "")
         normalized_item["tenant_code"] = tenant_by_dev_index.get(dev_index_value, "")
+        if unassigned_only and normalized_item["tenant_code"]:
+            continue
         devices.append(normalized_item)
 
     context["devices"] = devices

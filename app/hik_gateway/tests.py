@@ -377,6 +377,35 @@ class HikDevicesPageTests(APITestCase):
         self.assertContains(response, "Access Controller")
         self.assertContains(response, "FN2090414")
 
+    @patch("hik_gateway.services.gateway_connection.HikGatewayClient.device_list")
+    def test_page_allows_unassigned_only_for_authenticated_non_admin(self, mock_device_list):
+        mock_device_list.return_value = {
+            "SearchResult": {
+                "MatchList": [
+                    {
+                        "Device": {
+                            "EhomeParams": {"EhomeID": "SN-UNASSIGNED"},
+                            "devIndex": "IDX-UNASSIGNED",
+                            "devName": "Reader Unassigned",
+                            "devStatus": "online",
+                        }
+                    }
+                ]
+            }
+        }
+
+        user_model = get_user_model()
+        user = user_model.objects.create_user(username="viewer-unassigned", password="pass")
+        self.client.force_login(user)
+
+        response = self.client.get("/api/hik/devices?unassigned_only=1&format=json")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload["count"], 1)
+        self.assertEqual(payload["results"][0]["dev_index"], "IDX-UNASSIGNED")
+        self.assertEqual(payload["results"][0]["tenant_code"], "")
+
 
 class HikDevicesApiTests(APITestCase):
     def setUp(self):
@@ -449,6 +478,36 @@ class HikDevicesApiTests(APITestCase):
         self.assertEqual(payload["count"], 1)
         self.assertIn("search_result", payload["results"][0])
         self.assertEqual(payload["results"][0]["tenant_code"], "tenant-api")
+
+    @patch("hik_gateway.services.gateway_connection.HikGatewayClient.device_list_all")
+    def test_devices_api_allows_unassigned_only_for_authenticated_non_admin(self, mock_device_list_all):
+        mock_device_list_all.return_value = {
+            "SearchResult": {
+                "numOfMatches": 1,
+                "totalMatches": 1,
+                "MatchList": [
+                    {
+                        "Device": {
+                            "EhomeParams": {"EhomeID": "SN-UNASSIGNED"},
+                            "devIndex": "IDX-UNASSIGNED",
+                            "devName": "Reader Unassigned",
+                            "devStatus": "online",
+                        }
+                    }
+                ],
+            }
+        }
+        user_model = get_user_model()
+        user = user_model.objects.create_user(username="api-user-unassigned", password="pass")
+        self.client.force_authenticate(user=user)
+
+        response = self.client.get("/api/hikgateway/devices/?unassigned_only=1")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload["count"], 1)
+        self.assertEqual(payload["results"][0]["devIndex"], "IDX-UNASSIGNED")
+        self.assertEqual(payload["results"][0]["tenant_code"], "")
 
 
 class _DummyResponse:
@@ -598,6 +657,31 @@ class HikDeviceDevicesSpaceTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertContains(response, "Ajoute ?tenant=&lt;code_tenant&gt;", status_code=status.HTTP_403_FORBIDDEN)
 
+    @patch("hik_gateway.services.gateway_connection.HikGatewayClient.device_list_all")
+    def test_space_allows_unassigned_only_for_authenticated_non_admin(self, mock_device_list_all):
+        mock_device_list_all.return_value = {
+            "SearchResult": {
+                "MatchList": [
+                    {
+                        "Device": {
+                            "EhomeParams": {"EhomeID": "SN-UNASSIGNED"},
+                            "devIndex": "IDX-UNASSIGNED",
+                            "devName": "Reader Unassigned",
+                            "devStatus": "online",
+                        }
+                    }
+                ]
+            }
+        }
+        user_model = get_user_model()
+        user = user_model.objects.create_user(username="space-user", password="pass")
+        self.client.force_login(user)
+
+        response = self.client.get("/api/hikdevice/devices?unassigned_only=1")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertContains(response, "Reader Unassigned")
+
 
 class HikGatewayAdminApiTests(APITestCase):
     def setUp(self):
@@ -724,6 +808,82 @@ class HikGatewayAdminApiTests(APITestCase):
         self.assertEqual(payload["results"][0]["person_id"], "E1001")
         self.assertEqual(payload["results"][0]["device"]["dev_index"], self.device.dev_index)
 
+
+class HikAcsEventsApiTests(APITestCase):
+    def setUp(self):
+        user_model = get_user_model()
+        self.user = user_model.objects.create_user(username="acs-user", password="pass")
+        self.client.force_authenticate(user=self.user)
+
+    @patch("hik_gateway.views.get_shared_gateway_client")
+    def test_acs_events_endpoint_queries_shared_gateway_without_tenant(self, mock_get_client):
+        mock_client = mock_get_client.return_value
+        mock_client.acs_event_search.return_value = {
+            "AcsEvent": {
+                "InfoList": [
+                    {
+                        "major": 2,
+                        "minor": 1024,
+                        "serialNo": 1,
+                    }
+                ]
+            }
+        }
+
+        response = self.client.post(
+            "/api/hikgateway/acs-events/",
+            {
+                "dev_index": "49ACE3EE-BF88-CD49-810E-A5019FD7E7E8",
+                "searchID": "123",
+                "searchResultPosition": 0,
+                "maxResults": 30,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload["dev_index"], "49ACE3EE-BF88-CD49-810E-A5019FD7E7E8")
+        self.assertIn("response", payload)
+        mock_get_client.assert_called_once_with()
+        mock_client.acs_event_search.assert_called_once_with(
+            "49ACE3EE-BF88-CD49-810E-A5019FD7E7E8",
+            {
+                "AcsEventCond": {
+                    "searchID": "123",
+                    "searchResultPosition": 0,
+                    "maxResults": 30,
+                }
+            },
+        )
+
+    @patch("hik_gateway.views.get_shared_gateway_client")
+    def test_acs_events_endpoint_supports_get_query_params(self, mock_get_client):
+        mock_client = mock_get_client.return_value
+        mock_client.acs_event_search.return_value = {"AcsEvent": {"InfoList": []}}
+
+        response = self.client.get(
+            "/api/hikgateway/acs-events/",
+            {
+                "dev_index": "IDX-GET-1",
+                "searchID": "abc",
+                "searchResultPosition": "0",
+                "maxResults": "10",
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        mock_get_client.assert_called_once_with()
+        mock_client.acs_event_search.assert_called_once_with(
+            "IDX-GET-1",
+            {
+                "AcsEventCond": {
+                    "searchID": "abc",
+                    "searchResultPosition": 0,
+                    "maxResults": 10,
+                }
+            },
+        )
 
 class HikCatchupServiceTests(APITestCase):
     def setUp(self):

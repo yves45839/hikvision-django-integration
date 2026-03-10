@@ -28,13 +28,25 @@ class HikGatewayClient:
             auth=self.auth,
             timeout=timeout or self.timeout,
         )
-        response.raise_for_status()
+        if not response.ok:
+            body = (response.text or "").strip()
+            body = body[:1000]
+            raise requests.HTTPError(
+                f"{response.status_code} {response.reason} for url: {response.url}; body={body}",
+                response=response,
+            )
         return response.json() if response.content else {}
 
     def _put(self, path: str, payload: dict[str, Any], params: dict[str, Any] | None = None) -> dict[str, Any]:
         url = urljoin(self.base_url, path.lstrip("/"))
         response = requests.put(url, json=payload, params=params or {}, auth=self.auth, timeout=self.timeout)
-        response.raise_for_status()
+        if not response.ok:
+            body = (response.text or "").strip()
+            body = body[:1000]
+            raise requests.HTTPError(
+                f"{response.status_code} {response.reason} for url: {response.url}; body={body}",
+                response=response,
+            )
         return response.json() if response.content else {}
 
     def _device_search_payload(
@@ -172,3 +184,62 @@ class HikGatewayClient:
             payload=payload,
             params={"format": "json", "devIndex": dev_index},
         )
+
+    def search_access_users(
+        self,
+        dev_index: str,
+        *,
+        search_id: str = "1",
+        search_result_position: int = 0,
+        max_results: int = 50,
+    ) -> dict[str, Any]:
+        payload = {
+            "UserInfoSearchCond": {
+                "searchID": search_id,
+                "searchResultPosition": search_result_position,
+                "maxResults": max_results,
+            }
+        }
+        return self._post(
+            "/ISAPI/AccessControl/UserInfo/Search",
+            payload=payload,
+            params={"format": "json", "devIndex": dev_index},
+        )
+
+    def search_access_users_all(self, dev_index: str, *, max_results: int = 50) -> dict[str, Any]:
+        position = 0
+        total_matches = 0
+        users: list[dict[str, Any]] = []
+
+        while True:
+            payload = self.search_access_users(
+                dev_index=dev_index,
+                search_result_position=position,
+                max_results=max_results,
+            )
+            search = payload.get("UserInfoSearch", {}) if isinstance(payload, dict) else {}
+            batch = search.get("UserInfo", []) if isinstance(search, dict) else []
+            if isinstance(batch, dict):
+                batch = [batch]
+            if not isinstance(batch, list):
+                batch = []
+
+            num_of_matches = int(search.get("numOfMatches", len(batch)) or 0)
+            total_matches = int(search.get("totalMatches", total_matches) or total_matches)
+            users.extend([item for item in batch if isinstance(item, dict)])
+
+            position += num_of_matches
+            if num_of_matches <= 0:
+                break
+            if total_matches and position >= total_matches:
+                break
+
+        return {
+            "UserInfoSearch": {
+                "searchID": "1",
+                "responseStatusStrg": "OK",
+                "numOfMatches": len(users),
+                "totalMatches": total_matches or len(users),
+                "UserInfo": users,
+            }
+        }

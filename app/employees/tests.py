@@ -49,7 +49,12 @@ class EmployeeApiTests(APITestCase):
             code="DEP-RH",
         )
 
-    def test_create_employee_with_attributes(self):
+    @patch("employees.views.get_shared_gateway_client")
+    def test_create_employee_with_attributes(self, mock_get_client):
+        mock_client = mock_get_client.return_value
+        mock_client.add_access_user.return_value = {"status": "ok"}
+        mock_client.add_access_card.return_value = {"status": "ok"}
+
         response = self.client.post(
             "/api/employees/",
             {
@@ -77,6 +82,7 @@ class EmployeeApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.json()["gateway_push"]["status"], "ok")
         employee = Employee.objects.get(employee_no="E1001")
         self.assertEqual(employee.tenant, self.tenant)
         self.assertEqual(employee.attributes.count(), 1)
@@ -85,6 +91,8 @@ class EmployeeApiTests(APITestCase):
         self.assertEqual(employee.cards.count(), 2)
         self.assertEqual(employee.fingerprints.count(), 2)
         self.assertTrue(hasattr(employee, "face"))
+        mock_client.add_access_user.assert_called_once()
+        self.assertEqual(mock_client.add_access_card.call_count, 2)
 
     @patch("employees.views.get_shared_gateway_client")
     def test_push_to_gateway_uses_user_and_card_endpoints(self, mock_get_client):
@@ -135,6 +143,94 @@ class EmployeeApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("department", response.json())
+
+    @patch("employees.views.get_shared_gateway_client")
+    def test_post_employees_upsert_updates_existing_employee(self, mock_get_client):
+        existing = Employee.objects.create(
+            tenant=self.tenant,
+            department=self.child_department,
+            employee_no="E7007",
+            name="Old Name",
+        )
+        existing.devices.add(self.device)
+
+        mock_client = mock_get_client.return_value
+        mock_client.add_access_user.return_value = {"status": "ok"}
+        mock_client.add_access_card.return_value = {"status": "ok"}
+
+        response = self.client.post(
+            "/api/employees/",
+            {
+                "tenant": self.tenant.id,
+                "department": self.child_department.id,
+                "devices": [self.device.id],
+                "employee_no": "E7007",
+                "name": "New Name",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()["id"], existing.id)
+        self.assertEqual(response.json()["name"], "New Name")
+        self.assertEqual(response.json()["gateway_push"]["status"], "ok")
+        self.assertEqual(Employee.objects.filter(tenant=self.tenant, employee_no="E7007").count(), 1)
+
+    @patch("employees.views.get_shared_gateway_client")
+    def test_import_from_gateway_upserts_employees(self, mock_get_client):
+        mock_client = mock_get_client.return_value
+        mock_client.search_access_users_all.return_value = {
+            "UserInfoSearch": {
+                "searchID": "1",
+                "responseStatusStrg": "OK",
+                "numOfMatches": 2,
+                "totalMatches": 2,
+                "UserInfo": [
+                    {
+                        "employeeNo": "IMP1001",
+                        "name": "Imported One",
+                        "userType": "normal",
+                        "doorRight": "1",
+                        "RightPlan": [{"doorNo": 1, "planTemplateNo": "1"}],
+                        "localUIRight": True,
+                        "Valid": {
+                            "enable": True,
+                            "beginTime": "2026-01-01T08:00:00",
+                            "endTime": "2027-01-01T08:00:00",
+                        },
+                    },
+                    {
+                        "employeeNo": "IMP1002",
+                        "name": "Imported Two",
+                        "userType": "visitor",
+                        "Valid": {
+                            "enable": False,
+                            "beginTime": "2026-01-01T08:00:00",
+                            "endTime": "2027-01-01T08:00:00",
+                        },
+                    },
+                ],
+            }
+        }
+
+        response = self.client.post(
+            "/api/employees/import-from-gateway/",
+            {
+                "tenant": self.tenant.id,
+                "dev_indexes": [self.device.dev_index],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()["imported_count"], 2)
+        self.assertEqual(Employee.objects.filter(tenant=self.tenant, employee_no="IMP1001").count(), 1)
+        self.assertEqual(Employee.objects.filter(tenant=self.tenant, employee_no="IMP1002").count(), 1)
+        imported = Employee.objects.get(tenant=self.tenant, employee_no="IMP1001")
+        self.assertTrue(imported.devices.filter(id=self.device.id).exists())
+        self.assertEqual(imported.attributes.get(name="user_type").value, "normal")
+        self.assertEqual(imported.attributes.get(name="gateway_door_right").value, "1")
+        self.assertIn("planTemplateNo", imported.attributes.get(name="gateway_right_plan").value)
 
     def test_department_effective_planning_uses_parent(self):
         response = self.client.get(f"/api/departments/{self.child_department.id}/", format="json")

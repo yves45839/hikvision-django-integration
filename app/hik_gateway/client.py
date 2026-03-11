@@ -243,3 +243,62 @@ class HikGatewayClient:
                 "UserInfo": users,
             }
         }
+
+    def search_access_cards(
+        self,
+        dev_index: str,
+        *,
+        search_id: str = "1",
+        search_result_position: int = 0,
+        max_results: int = 50,
+    ) -> dict[str, Any]:
+        payload = {
+            "CardInfoSearchCond": {
+                "searchID": search_id,
+                "searchResultPosition": search_result_position,
+                "maxResults": max_results,
+            }
+        }
+        return self._post(
+            "/ISAPI/AccessControl/CardInfo/Search",
+            payload=payload,
+            params={"format": "json", "devIndex": dev_index},
+        )
+
+    def search_access_cards_all(self, dev_index: str, *, max_results: int = 50) -> dict[str, Any]:
+        position = 0
+        total_matches = 0
+        cards: list[dict[str, Any]] = []
+
+        while True:
+            payload = self.search_access_cards(
+                dev_index=dev_index,
+                search_result_position=position,
+                max_results=max_results,
+            )
+            search = payload.get("CardInfoSearch", {}) if isinstance(payload, dict) else {}
+            batch = search.get("CardInfo", []) if isinstance(search, dict) else []
+            if isinstance(batch, dict):
+                batch = [batch]
+            if not isinstance(batch, list):
+                batch = []
+
+            num_of_matches = int(search.get("numOfMatches", len(batch)) or 0)
+            total_matches = int(search.get("totalMatches", total_matches) or total_matches)
+            cards.extend([item for item in batch if isinstance(item, dict)])
+
+            position += num_of_matches
+            if num_of_matches <= 0:
+                break
+            if total_matches and position >= total_matches:
+                break
+
+        return {
+            "CardInfoSearch": {
+                "searchID": "1",
+                "responseStatusStrg": "OK",
+                "numOfMatches": len(cards),
+                "totalMatches": total_matches or len(cards),
+                "CardInfo": cards,
+            }
+        }

@@ -189,10 +189,23 @@ class EmployeeApiTests(APITestCase):
                     {
                         "employeeNo": "IMP1001",
                         "name": "Imported One",
+                        "firstName": "Imported",
+                        "lastName": "One",
                         "userType": "normal",
                         "doorRight": "1",
                         "RightPlan": [{"doorNo": 1, "planTemplateNo": "1"}],
                         "localUIRight": True,
+                        "isSuperUser": True,
+                        "isBlocklisted": False,
+                        "isDeviceOperator": True,
+                        "customProfile": "staff",
+                        "remark": "badge actif",
+                        "dateOfBirth": "1990-01-10",
+                        "certificateType": "passport",
+                        "certificateNo": "AB123456",
+                        "position": "Supervisor",
+                        "hireDate": "2020-05-20",
+                        "address": "Abidjan",
                         "Valid": {
                             "enable": True,
                             "beginTime": "2026-01-01T08:00:00",
@@ -212,6 +225,21 @@ class EmployeeApiTests(APITestCase):
                 ],
             }
         }
+        mock_client.search_access_cards_all.return_value = {
+            "CardInfoSearch": {
+                "searchID": "1",
+                "responseStatusStrg": "OK",
+                "numOfMatches": 1,
+                "totalMatches": 1,
+                "CardInfo": [
+                    {
+                        "employeeNo": "IMP1001",
+                        "cardNo": "CARD-IMP-001",
+                        "cardType": "normalCard",
+                    }
+                ],
+            }
+        }
 
         response = self.client.post(
             "/api/employees/import-from-gateway/",
@@ -224,6 +252,10 @@ class EmployeeApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json()["imported_count"], 2)
+        self.assertIn("gateway_user_info", response.json()["imported"][0])
+        self.assertIn("RightPlan", response.json()["imported"][0]["gateway_user_info"])
+        imported_rows = {row["employee_no"]: row for row in response.json()["imported"]}
+        self.assertIn("CARD-IMP-001", imported_rows["IMP1001"]["card_numbers"])
         self.assertEqual(Employee.objects.filter(tenant=self.tenant, employee_no="IMP1001").count(), 1)
         self.assertEqual(Employee.objects.filter(tenant=self.tenant, employee_no="IMP1002").count(), 1)
         imported = Employee.objects.get(tenant=self.tenant, employee_no="IMP1001")
@@ -231,6 +263,16 @@ class EmployeeApiTests(APITestCase):
         self.assertEqual(imported.attributes.get(name="user_type").value, "normal")
         self.assertEqual(imported.attributes.get(name="gateway_door_right").value, "1")
         self.assertIn("planTemplateNo", imported.attributes.get(name="gateway_right_plan").value)
+        self.assertEqual(imported.attributes.get(name="gateway_valid_begin_time").value, "2026-01-01T08:00:00")
+        self.assertEqual(imported.attributes.get(name="door_no").value, "1")
+        self.assertEqual(imported.attributes.get(name="plan_template_no").value, "1")
+        self.assertTrue(imported.is_super_user)
+        self.assertFalse(imported.is_visitor)
+        self.assertTrue(imported.is_device_operator)
+        self.assertEqual(imported.custom_profile, "staff")
+        self.assertEqual(imported.identity_type, "passport")
+        self.assertEqual(imported.identity_no, "AB123456")
+        self.assertTrue(imported.cards.filter(card_no="CARD-IMP-001").exists())
 
     def test_department_effective_planning_uses_parent(self):
         response = self.client.get(f"/api/departments/{self.child_department.id}/", format="json")

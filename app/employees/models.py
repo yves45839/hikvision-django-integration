@@ -200,7 +200,7 @@ class Employee(models.Model):
 class EmployeeAttribute(models.Model):
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name="attributes")
     name = models.CharField(max_length=64)
-    value = models.CharField(max_length=255)
+    value = models.TextField(default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

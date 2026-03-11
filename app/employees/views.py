@@ -2,18 +2,19 @@ from __future__ import annotations
 
 import json
 import re
+from hashlib import sha1
 from datetime import timezone as dt_timezone
 
 from django.http import HttpRequest
 from django.utils import timezone
-from django.utils.dateparse import parse_datetime
+from django.utils.dateparse import parse_date, parse_datetime
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from devices.models import Device
-from employees.models import Department, Employee, Organization, Planning
+from employees.models import Department, Employee, EmployeeCard, Organization, Planning
 from employees.serializers import (
     DepartmentSerializer,
     EmployeeSerializer,
@@ -157,7 +158,12 @@ class EmployeeViewSet(viewsets.ModelViewSet):
     def _to_attr_name(key: str) -> str:
         snake = re.sub(r"(?<!^)(?=[A-Z])", "_", str(key or "")).lower()
         snake = re.sub(r"[^a-z0-9_]+", "_", snake).strip("_")
-        return f"gateway_{snake}" if snake else "gateway_unknown"
+        raw = f"gateway_{snake}" if snake else "gateway_unknown"
+        if len(raw) <= 64:
+            return raw
+        digest = sha1(raw.encode("utf-8")).hexdigest()[:8]
+        keep = 64 - len(digest) - 1
+        return f"{raw[:keep]}_{digest}"
 
     @staticmethod
     def _to_attr_value(value) -> str:
@@ -175,16 +181,45 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             return None
         return parsed or None
 
+    @staticmethod
+    def _to_bool(value, default: bool = False) -> bool:
+        if value is None:
+            return default
+        if isinstance(value, bool):
+            return value
+        text = str(value).strip().lower()
+        if text in {"1", "true", "yes", "y", "on"}:
+            return True
+        if text in {"0", "false", "no", "n", "off"}:
+            return False
+        return default
+
+    @staticmethod
+    def _parse_gateway_date(value: str | None):
+        if not value:
+            return None
+        parsed = parse_date(str(value))
+        return parsed
+
+    def _iter_attr_pairs(self, key: str, value):
+        attr_name = self._to_attr_name(key)
+        yield attr_name, self._to_attr_value(value)
+        if isinstance(value, dict):
+            for child_key, child_value in value.items():
+                child_name = f"{key}_{child_key}" if key else str(child_key)
+                yield from self._iter_attr_pairs(child_name, child_value)
+        elif isinstance(value, list):
+            for idx, child_value in enumerate(value):
+                child_name = f"{key}_{idx}" if key else str(idx)
+                yield from self._iter_attr_pairs(child_name, child_value)
+
     def _sync_gateway_attributes(self, employee: Employee, row: dict):
-        synced_names = set()
         for key, value in row.items():
-            attr_name = self._to_attr_name(key)
-            attr_value = self._to_attr_value(value)
-            synced_names.add(attr_name)
-            employee.attributes.update_or_create(
-                name=attr_name,
-                defaults={"value": attr_value},
-            )
+            for attr_name, attr_value in self._iter_attr_pairs(str(key), value):
+                employee.attributes.update_or_create(
+                    name=attr_name,
+                    defaults={"value": attr_value},
+                )
         # keep explicit user_type used by push payload
         user_type = str(row.get("userType") or "").strip()
         if user_type:
@@ -192,6 +227,30 @@ class EmployeeViewSet(viewsets.ModelViewSet):
                 name="user_type",
                 defaults={"value": user_type},
             )
+        door_right = str(row.get("doorRight") or "").strip()
+        if door_right:
+            employee.attributes.update_or_create(
+                name="door_right",
+                defaults={"value": door_right},
+            )
+        right_plan = row.get("RightPlan")
+        if isinstance(right_plan, dict):
+            right_plan = [right_plan]
+        if isinstance(right_plan, list) and right_plan:
+            first_plan = right_plan[0] if isinstance(right_plan[0], dict) else {}
+            if first_plan:
+                door_no = str(first_plan.get("doorNo") or "").strip()
+                plan_template_no = str(first_plan.get("planTemplateNo") or "").strip()
+                if door_no:
+                    employee.attributes.update_or_create(
+                        name="door_no",
+                        defaults={"value": door_no},
+                    )
+                if plan_template_no:
+                    employee.attributes.update_or_create(
+                        name="plan_template_no",
+                        defaults={"value": plan_template_no},
+                    )
 
     def create(self, request: HttpRequest, *args, **kwargs):
         tenant_id = request.data.get("tenant")
@@ -249,7 +308,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         except Tenant.DoesNotExist:
             return Response({"detail": "Tenant introuvable."}, status=status.HTTP_404_NOT_FOUND)
 
-        link_device = bool(request.data.get("link_device", True))
+        link_device = self._to_bool(request.data.get("link_device", True), default=True)
         max_results = int(request.data.get("max_results", 50))
 
         dev_indexes_input = request.data.get("dev_indexes")
@@ -303,6 +362,34 @@ class EmployeeViewSet(viewsets.ModelViewSet):
                 if not isinstance(users, list):
                     users = []
 
+                card_rows = []
+                card_lookup_error = None
+                try:
+                    card_payload = client.search_access_cards_all(dev_index=dev_index, max_results=max_results)
+                    card_search = card_payload.get("CardInfoSearch", {}) if isinstance(card_payload, dict) else {}
+                    card_rows = card_search.get("CardInfo", []) if isinstance(card_search, dict) else []
+                    if isinstance(card_rows, dict):
+                        card_rows = [card_rows]
+                    if not isinstance(card_rows, list):
+                        card_rows = []
+                except Exception as exc:  # noqa: BLE001
+                    card_lookup_error = str(exc)
+                    card_rows = []
+
+                card_map: dict[str, list[dict]] = {}
+                for card_row in card_rows:
+                    if not isinstance(card_row, dict):
+                        continue
+                    card_employee_no = str(
+                        card_row.get("employeeNo")
+                        or card_row.get("employeeNoString")
+                        or card_row.get("cardUserNo")
+                        or ""
+                    ).strip()
+                    if not card_employee_no:
+                        continue
+                    card_map.setdefault(card_employee_no, []).append(card_row)
+
                 for row in users:
                     if not isinstance(row, dict):
                         continue
@@ -313,7 +400,18 @@ class EmployeeViewSet(viewsets.ModelViewSet):
                     valid = row.get("Valid", {}) if isinstance(row.get("Valid"), dict) else {}
                     valid_from = self._parse_gateway_datetime(valid.get("beginTime"))
                     valid_to = self._parse_gateway_datetime(valid.get("endTime"))
-                    is_active = bool(valid.get("enable", True))
+                    is_active = self._to_bool(valid.get("enable", True), default=True)
+                    user_type = str(row.get("userType") or "").strip().lower()
+                    is_visitor = user_type == "visitor"
+                    is_super_user = self._to_bool(
+                        row.get("isSuperUser", row.get("superUser", False)),
+                        default=False,
+                    )
+                    is_blocklisted = self._to_bool(
+                        row.get("isBlocklisted", row.get("isBlocked", False)),
+                        default=False,
+                    )
+                    is_device_operator = self._to_bool(row.get("isDeviceOperator", False), default=False)
 
                     employee, was_created = Employee.objects.update_or_create(
                         tenant=tenant,
@@ -325,13 +423,25 @@ class EmployeeViewSet(viewsets.ModelViewSet):
                             "gender": str(row.get("gender") or "").strip(),
                             "email": str(row.get("email") or "").strip(),
                             "phone": str(row.get("phoneNo") or "").strip(),
+                            "remark": str(row.get("remark") or "").strip(),
                             "valid_from": valid_from,
                             "valid_to": valid_to,
                             "is_active": is_active,
                             "access_group": str(row.get("belongGroup") or "").strip(),
                             "pin_code": str(row.get("password") or "").strip(),
-                            "only_authenticate": bool(row.get("onlyVerify", False)),
+                            "is_super_user": is_super_user,
+                            "only_authenticate": self._to_bool(row.get("onlyVerify", False), default=False),
                             "extended_door_open_time": self._to_int_or_none(row.get("maxOpenDoorTime")),
+                            "is_blocklisted": is_blocklisted,
+                            "is_visitor": is_visitor,
+                            "is_device_operator": is_device_operator,
+                            "custom_profile": str(row.get("customProfile") or "").strip(),
+                            "date_of_birth": self._parse_gateway_date(row.get("dateOfBirth")),
+                            "identity_type": str(row.get("certificateType") or row.get("identityType") or "").strip(),
+                            "identity_no": str(row.get("certificateNo") or row.get("identityNo") or "").strip(),
+                            "position": str(row.get("position") or "").strip(),
+                            "hire_date": self._parse_gateway_date(row.get("hireDate")),
+                            "address": str(row.get("address") or "").strip(),
                         },
                     )
                     if was_created:
@@ -342,18 +452,35 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
                     self._sync_gateway_attributes(employee, row)
 
+                    employee_card_rows = card_map.get(employee_no, [])
+                    card_numbers: list[str] = []
+                    for card_row in employee_card_rows:
+                        card_no = str(card_row.get("cardNo") or "").strip()
+                        if not card_no:
+                            continue
+                        card_type = str(card_row.get("cardType") or "normalCard").strip() or "normalCard"
+                        EmployeeCard.objects.update_or_create(
+                            employee=employee,
+                            card_no=card_no,
+                            defaults={"card_type": card_type},
+                        )
+                        card_numbers.append(card_no)
+
                     if link_device and dev_index in device_by_index:
                         employee.devices.add(device_by_index[dev_index])
 
-                    imported.append(
-                        {
-                            "employee_id": employee.id,
-                            "employee_no": employee.employee_no,
-                            "name": employee.name,
-                            "dev_index": dev_index,
-                            "created": was_created,
-                        }
-                    )
+                    imported_row = {
+                        "employee_id": employee.id,
+                        "employee_no": employee.employee_no,
+                        "name": employee.name,
+                        "dev_index": dev_index,
+                        "created": was_created,
+                        "gateway_user_info": row,
+                        "card_numbers": card_numbers,
+                    }
+                    if card_lookup_error:
+                        imported_row["card_lookup_error"] = card_lookup_error
+                    imported.append(imported_row)
             except Exception as exc:  # noqa: BLE001
                 errors.append({"dev_index": dev_index, "detail": str(exc)})
 

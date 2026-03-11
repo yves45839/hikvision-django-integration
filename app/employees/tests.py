@@ -309,3 +309,34 @@ class EmployeeApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("fingerprints", response.json())
+
+    @patch("employees.views.get_shared_gateway_client")
+    def test_patch_employee_updates_name_but_ignores_id(self, mock_get_client):
+        mock_client = mock_get_client.return_value
+        mock_client.add_access_user.return_value = {"status": "ok"}
+        mock_client.add_access_card.return_value = {"status": "ok"}
+
+        employee = Employee.objects.create(
+            tenant=self.tenant,
+            department=self.child_department,
+            employee_no="E8008",
+            name="Nom Initial",
+            phone="+2250100000000",
+        )
+
+        response = self.client.patch(
+            f"/api/employees/{employee.id}/",
+            {
+                "id": employee.id + 999,
+                "name": "Nom Modifie",
+                "phone": "+2250700000000",
+                "remark": "Mise a jour OK",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        employee.refresh_from_db()
+        self.assertEqual(employee.name, "Nom Modifie")
+        self.assertEqual(employee.phone, "+2250700000000")
+        self.assertEqual(employee.remark, "Mise a jour OK")

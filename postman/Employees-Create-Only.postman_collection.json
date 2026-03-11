@@ -1,8 +1,8 @@
 ﻿{
   "info": {
     "_postman_id": "9e8dc260-06a4-4a38-9a84-9dc4f676f63a",
-    "name": "Employees - Create Person Only",
-    "description": "Collection Postman dédiée uniquement à l'ajout des personnes (POST /api/employees/). Inclut auth JWT, payload minimal, payload complet, multi-cartes, multi-empreintes et cas d'erreurs.",
+    "name": "Employees - Create And Modify",
+    "description": "Collection Postman pour l'ajout et la modification des personnes (POST/PATCH /api/employees/). Inclut auth JWT, creation, import depuis device et edition.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "event": [
@@ -211,6 +211,50 @@
               "pm.test('Status 200/207', function () { pm.expect([200, 207]).to.include(pm.response.code); });",
               "var json = pm.response.json();",
               "pm.test('imported_count exists', function () { pm.expect(json.imported_count).to.be.a('number'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Modify Person - PATCH",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id\": 999999,\n  \"name\": \"Awa Traore Modifiee\",\n  \"phone\": \"+2250708091011\",\n  \"remark\": \"Mise a jour via Postman\",\n  \"is_active\": true\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/employees/{{employeeId}}/",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "employees",
+            "{{employeeId}}",
+            ""
+          ]
+        },
+        "description": "Modifie une personne existante. Le champ name est modifiable. Le champ id est ignore par l'API."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+              "var json = pm.response.json();",
+              "pm.test('name updated', function () { pm.expect(json.name).to.eql('Awa Traore Modifiee'); });",
+              "pm.test('phone updated', function () { pm.expect(json.phone).to.eql('+2250708091011'); });"
             ]
           }
         }

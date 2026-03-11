@@ -190,6 +190,8 @@ class EmployeeSerializer(serializers.ModelSerializer):
         fingerprints_data = validated_data.pop("fingerprints", None)
         face_data = validated_data.pop("face", serializers.empty)
         validated_data.pop("require_credential", None)
+        # id is immutable on edit.
+        validated_data.pop("id", None)
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)

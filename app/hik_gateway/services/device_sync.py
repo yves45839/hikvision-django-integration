@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import logging
+import time
 from datetime import datetime, timezone as dt_timezone
 
 from django.conf import settings
+from django.db import IntegrityError, OperationalError, transaction
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
@@ -11,6 +14,11 @@ from hik_gateway.services.device_payload import extract_devices, normalize_devic
 from hik_gateway.services.gateway_connection import get_shared_gateway_client
 from tenants.models import Tenant
 
+logger = logging.getLogger(__name__)
+
+_WRITE_RETRIES = 5
+_LOCK_BACKOFF_SECONDS = 0.1
+
 
 def _as_aware(dt: datetime | None) -> datetime | None:
     if dt is None:
@@ -18,6 +26,128 @@ def _as_aware(dt: datetime | None) -> datetime | None:
     if timezone.is_naive(dt):
         return timezone.make_aware(dt, dt_timezone.utc)
     return dt
+
+
+def _is_locked_error(exc: OperationalError) -> bool:
+    return "database is locked" in str(exc).lower()
+
+
+def _update_device_fields(
+    *,
+    device: Device,
+    gateway,
+    tenant,
+    serial_number: str,
+    dev_index: str,
+    item: dict,
+    normalized: dict,
+    last_seen,
+) -> None:
+    device.gateway = gateway
+    device.tenant = tenant
+    device.device_id = item.get("deviceID", "") or item.get("deviceId", "")
+    device.device_name = normalized["device_name"]
+    device.protocol_type = normalized["protocol_type"]
+    device.status = normalized["status"]
+    device.offline_hint = item.get("offlineReason", "")
+    device.last_seen_at = last_seen
+
+    # Keep unique constraints stable even when upstream identifiers drift.
+    existing_with_dev_index = Device.objects.filter(
+        tenant=tenant,
+        dev_index=dev_index,
+    ).exclude(pk=device.pk).exists()
+    if not existing_with_dev_index:
+        device.dev_index = dev_index
+
+    existing_with_serial = Device.objects.filter(
+        tenant=tenant,
+        serial_number=serial_number,
+    ).exclude(pk=device.pk).exists()
+    if not existing_with_serial:
+        device.serial_number = serial_number
+
+    device.save()
+
+
+def _sync_one_device(*, tenant, gateway, item: dict, normalized: dict, last_seen) -> bool:
+    dev_index = normalized["dev_index"]
+    serial_number = normalized["serial_number"]
+    defaults = {
+        "gateway": gateway,
+        "tenant": tenant,
+        "serial_number": serial_number,
+        "device_id": item.get("deviceID", "") or item.get("deviceId", ""),
+        "device_name": normalized["device_name"],
+        "protocol_type": normalized["protocol_type"],
+        "status": normalized["status"],
+        "offline_hint": item.get("offlineReason", ""),
+        "last_seen_at": last_seen,
+    }
+
+    for attempt in range(_WRITE_RETRIES):
+        try:
+            Device.objects.update_or_create(
+                tenant=tenant,
+                dev_index=dev_index,
+                defaults=defaults,
+            )
+            return True
+        except IntegrityError:
+            # Fallback for constraint conflicts between (tenant, dev_index) and (tenant, serial_number).
+            try:
+                with transaction.atomic():
+                    by_serial = Device.objects.filter(tenant=tenant, serial_number=serial_number).first()
+                    if by_serial is not None:
+                        _update_device_fields(
+                            device=by_serial,
+                            gateway=gateway,
+                            tenant=tenant,
+                            serial_number=serial_number,
+                            dev_index=dev_index,
+                            item=item,
+                            normalized=normalized,
+                            last_seen=last_seen,
+                        )
+                        return True
+
+                    by_index = Device.objects.filter(tenant=tenant, dev_index=dev_index).first()
+                    if by_index is not None:
+                        _update_device_fields(
+                            device=by_index,
+                            gateway=gateway,
+                            tenant=tenant,
+                            serial_number=serial_number,
+                            dev_index=dev_index,
+                            item=item,
+                            normalized=normalized,
+                            last_seen=last_seen,
+                        )
+                        return True
+            except OperationalError as exc:
+                if _is_locked_error(exc) and attempt < _WRITE_RETRIES - 1:
+                    time.sleep(_LOCK_BACKOFF_SECONDS * (attempt + 1))
+                    continue
+                raise
+            except IntegrityError:
+                pass
+
+            if attempt == _WRITE_RETRIES - 1:
+                logger.warning(
+                    "Skipped conflicting device during sync tenant=%s dev_index=%s serial=%s",
+                    tenant.code,
+                    dev_index,
+                    serial_number,
+                )
+                return False
+            time.sleep(_LOCK_BACKOFF_SECONDS * (attempt + 1))
+        except OperationalError as exc:
+            if _is_locked_error(exc) and attempt < _WRITE_RETRIES - 1:
+                time.sleep(_LOCK_BACKOFF_SECONDS * (attempt + 1))
+                continue
+            raise
+
+    return False
 
 
 def sync_gateway_devices(tenant=None) -> int:
@@ -50,22 +180,15 @@ def sync_gateway_devices(tenant=None) -> int:
             continue
 
         last_seen = _as_aware(parse_datetime(item.get("lastOnlineTime", "")))
-        Device.objects.update_or_create(
-            tenant=tenant,
-            dev_index=dev_index,
-            defaults={
-                "gateway": gateway,
-                "tenant": tenant,
-                "serial_number": serial_number,
-                "device_id": item.get("deviceID", "") or item.get("deviceId", ""),
-                "device_name": normalized["device_name"],
-                "protocol_type": normalized["protocol_type"],
-                "status": normalized["status"],
-                "offline_hint": item.get("offlineReason", ""),
-                "last_seen_at": last_seen,
-            },
+        synced += int(
+            _sync_one_device(
+                tenant=tenant,
+                gateway=gateway,
+                item=item,
+                normalized=normalized,
+                last_seen=last_seen,
+            )
         )
-        synced += 1
 
     return synced
 

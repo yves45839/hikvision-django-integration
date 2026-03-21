@@ -57,8 +57,16 @@
       "value": "1"
     },
     {
+      "key": "organizationId",
+      "value": "1"
+    },
+    {
       "key": "departmentId",
       "value": "1"
+    },
+    {
+      "key": "subDepartmentId",
+      "value": ""
     },
     {
       "key": "deviceId",
@@ -154,7 +162,7 @@
             ""
           ]
         },
-        "description": "Création préremplie compatible terminal (ajout personne + push auto sur device lié)."
+        "description": "Création préremplie compatible terminal (ajout personne en mode différé, push manuel ensuite)."
       },
       "response": [],
       "event": [
@@ -259,6 +267,172 @@
           }
         }
       ]
+    },
+    {
+      "name": "Push Pending Persons - Batch",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"tenant\": {{tenantId}}\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/employees/push-pending/",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "employees",
+            "push-pending",
+            ""
+          ]
+        },
+        "description": "Pousse en un coup toutes les personnes en attente de push (nouvelles + modifiées) pour le tenant."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200/207', function () { pm.expect([200, 207]).to.include(pm.response.code); });",
+              "var json = pm.response.json();",
+              "pm.test('pushed_count exists', function () { pm.expect(json.pushed_count).to.be.a('number'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create Sub-Department",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"tenant\": {{tenantId}},\n  \"organization\": {{organizationId}},\n  \"parent\": {{departmentId}},\n  \"name\": \"Sous Dep RH\",\n  \"code\": \"DEP-RH-SUB\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/departments/",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "departments",
+            ""
+          ]
+        },
+        "description": "Crée un sous-département sous le département parent (departmentId)."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 201', function () { pm.response.to.have.status(201); });",
+              "var json = pm.response.json();",
+              "pm.collectionVariables.set('subDepartmentId', json.id || '');"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Modify Sub-Department - PATCH",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Sous Dep RH MAJ\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/departments/{{subDepartmentId}}/",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "departments",
+            "{{subDepartmentId}}",
+            ""
+          ]
+        },
+        "description": "Modifie un sous-département existant."
+      },
+      "response": []
+    },
+    {
+      "name": "Move Employee To Another Department",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"department\": {{subDepartmentId}}\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/employees/{{employeeId}}/move-department/",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "employees",
+            "{{employeeId}}",
+            "move-department",
+            ""
+          ]
+        },
+        "description": "Déplace un employé vers un autre département."
+      },
+      "response": []
+    },
+    {
+      "name": "Delete Sub-Department",
+      "request": {
+        "method": "DELETE",
+        "url": {
+          "raw": "{{baseUrl}}/api/departments/{{subDepartmentId}}/",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "departments",
+            "{{subDepartmentId}}",
+            ""
+          ]
+        },
+        "description": "Supprime le sous-département."
+      },
+      "response": []
     }
   ]
 }

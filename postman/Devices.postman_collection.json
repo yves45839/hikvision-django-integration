@@ -1,0 +1,410 @@
+﻿{
+    "info":  {
+                 "_postman_id":  "c2696669-2b73-428e-8889-5a1c985943c3",
+                 "name":  "Hikvision Devices API",
+                 "description":  "Jeu Postman pour les endpoints devices (CRUD, onboard, config-page).",
+                 "schema":  "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+             },
+    "event":  [
+                  {
+                      "listen":  "prerequest",
+                      "script":  {
+                                     "type":  "text/javascript",
+                                     "exec":  [
+                                                  "if (!pm.collectionVariables.get(\u0027baseUrl\u0027)) {",
+                                                  "  pm.collectionVariables.set(\u0027baseUrl\u0027, \u0027http://localhost:8000\u0027);",
+                                                  "}"
+                                              ]
+                                 }
+                  }
+              ],
+    "variable":  [
+                     {
+                         "key":  "baseUrl",
+                         "value":  "http://localhost:8000"
+                     },
+                     {
+                         "key":  "accessToken",
+                         "value":  ""
+                     },
+                     {
+                         "key":  "refreshToken",
+                         "value":  ""
+                     },
+                     {
+                         "key":  "tenantId",
+                         "value":  "1"
+                     },
+                     {
+                         "key":  "tenantCode",
+                         "value":  "HQ-CASA"
+                     },
+                     {
+                         "key":  "ownerOnly",
+                         "value":  "true"
+                     },
+                     {
+                         "key":  "deviceId",
+                         "value":  "1"
+                     },
+                     {
+                         "key":  "deviceSn",
+                         "value":  "GC8777985"
+                     },
+                     {
+                         "key":  "deviceDevIndex",
+                         "value":  "83A68600-2D81-744A-9F4A-952B4B3681A0"
+                     },
+                     {
+                         "key":  "deviceEhomeKey",
+                         "value":  "0123456789ABCDEF0123456789ABCDEF"
+                     },
+                     {
+                         "key":  "deviceName",
+                         "value":  "DS-K1T342MFWX-E1"
+                     },
+                     {
+                         "key":  "deviceType",
+                         "value":  "AccessControl"
+                     },
+                     {
+                         "key":  "deviceUsername",
+                         "value":  "admin"
+                     },
+                     {
+                         "key":  "devicePassword",
+                         "value":  "12345"
+                     },
+                     {
+                         "key":  "configScheme",
+                         "value":  "http"
+                     },
+                     {
+                         "key":  "configHost",
+                         "value":  "213.156.133.202"
+                     },
+                     {
+                         "key":  "configPort",
+                         "value":  "88"
+                     },
+                     {
+                         "key":  "configPath",
+                         "value":  "/home/deviceManagement/accessControl?devIndex={{deviceDevIndex}}"
+                     }
+                 ],
+    "item":  [
+                 {
+                     "name":  "Auth JWT",
+                     "item":  [
+                                  {
+                                      "name":  "Obtenir token (pair)",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\n  \"username\": \"admin\",\n  \"password\": \"admin\"\n}"
+                                                               },
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/api/auth/token/",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "auth",
+                                                                               "token",
+                                                                               ""
+                                                                           ]
+                                                              }
+                                                  },
+                                      "event":  [
+                                                    {
+                                                        "listen":  "test",
+                                                        "script":  {
+                                                                       "type":  "text/javascript",
+                                                                       "exec":  [
+                                                                                    "if (pm.response.code === 200) {",
+                                                                                    "  const data = pm.response.json();",
+                                                                                    "  if (data.access) pm.collectionVariables.set(\u0027accessToken\u0027, data.access);",
+                                                                                    "  if (data.refresh) pm.collectionVariables.set(\u0027refreshToken\u0027, data.refresh);",
+                                                                                    "}"
+                                                                                ]
+                                                                   }
+                                                    }
+                                                ]
+                                  }
+                              ]
+                 },
+                 {
+                     "name":  "Devices",
+                     "auth":  {
+                                  "type":  "bearer",
+                                  "bearer":  [
+                                                 {
+                                                     "key":  "token",
+                                                     "type":  "string",
+                                                     "value":  "{{accessToken}}"
+                                                 }
+                                             ]
+                              },
+                     "item":  [
+                                  {
+                                      "name":  "Lister devices",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/api/devices/?owner_only={{ownerOnly}}",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "devices",
+                                                                               ""
+                                                                           ],
+                                                                  "query":  [
+                                                                                {
+                                                                                    "key":  "owner_only",
+                                                                                    "description":  "true/false, 1/0, yes/no",
+                                                                                    "value":  "{{ownerOnly}}"
+                                                                                }
+                                                                            ]
+                                                              }
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Creer device",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\n  \"tenant\": {{tenantId}},\n  \"port\": 7661,\n  \"serial_number\": \"{{deviceSn}}\",\n  \"dev_index\": \"{{deviceDevIndex}}\",\n  \"device_username\": \"{{deviceUsername}}\",\n  \"device_password\": \"{{devicePassword}}\"\n}"
+                                                               },
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/api/devices/",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "devices",
+                                                                               ""
+                                                                           ]
+                                                              }
+                                                  },
+                                      "event":  [
+                                                    {
+                                                        "listen":  "test",
+                                                        "script":  {
+                                                                       "type":  "text/javascript",
+                                                                       "exec":  [
+                                                                                    "if (pm.response.code === 201) {",
+                                                                                    "  const jsonData = pm.response.json();",
+                                                                                    "  if (jsonData.id) pm.collectionVariables.set(\u0027deviceId\u0027, jsonData.id);",
+                                                                                    "}"
+                                                                                ]
+                                                                   }
+                                                    }
+                                                ]
+                                  },
+                                  {
+                                      "name":  "Onboard device (gateway)",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\n  \"tenant_code\": \"{{tenantCode}}\",\n  \"sn\": \"{{deviceSn}}\",\n  \"ehome_key\": \"{{deviceEhomeKey}}\",\n  \"dev_name\": \"{{deviceName}}\",\n  \"dev_type\": \"{{deviceType}}\",\n  \"device_username\": \"{{deviceUsername}}\",\n  \"device_password\": \"{{devicePassword}}\"\n}"
+                                                               },
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/api/devices/onboard/",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "devices",
+                                                                               "onboard",
+                                                                               ""
+                                                                           ]
+                                                              }
+                                                  },
+                                      "event":  [
+                                                    {
+                                                        "listen":  "test",
+                                                        "script":  {
+                                                                       "type":  "text/javascript",
+                                                                       "exec":  [
+                                                                                    "pm.test(\u0027Status onboard: 200/201/409\u0027, function () { pm.expect([200, 201, 409]).to.include(pm.response.code); });",
+                                                                                    "if (pm.response.code === 200 || pm.response.code === 201) {",
+                                                                                    "  const jsonData = pm.response.json();",
+                                                                                    "  if (jsonData.id) pm.collectionVariables.set(\u0027deviceId\u0027, jsonData.id);",
+                                                                                    "}"
+                                                                                ]
+                                                                   }
+                                                    }
+                                                ]
+                                  },
+                                  {
+                                      "name":  "Detail device",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/api/devices/{{deviceId}}/",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "devices",
+                                                                               "{{deviceId}}",
+                                                                               ""
+                                                                           ]
+                                                              }
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Modifier device (PATCH)",
+                                      "request":  {
+                                                      "method":  "PATCH",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\n  \"port\": 7661\n}"
+                                                               },
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/api/devices/{{deviceId}}/",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "devices",
+                                                                               "{{deviceId}}",
+                                                                               ""
+                                                                           ]
+                                                              }
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Supprimer device",
+                                      "request":  {
+                                                      "method":  "DELETE",
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/api/devices/{{deviceId}}/",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "devices",
+                                                                               "{{deviceId}}",
+                                                                               ""
+                                                                           ]
+                                                              }
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Config page (URL JSON)",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/api/devices/{{deviceId}}/config-page/?host={{configHost}}\u0026scheme={{configScheme}}\u0026port={{configPort}}\u0026path={{configPath}}",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "devices",
+                                                                               "{{deviceId}}",
+                                                                               "config-page",
+                                                                               ""
+                                                                           ],
+                                                                  "query":  [
+                                                                                {
+                                                                                    "key":  "host",
+                                                                                    "value":  "{{configHost}}"
+                                                                                },
+                                                                                {
+                                                                                    "key":  "scheme",
+                                                                                    "value":  "{{configScheme}}"
+                                                                                },
+                                                                                {
+                                                                                    "key":  "port",
+                                                                                    "value":  "{{configPort}}"
+                                                                                },
+                                                                                {
+                                                                                    "key":  "path",
+                                                                                    "value":  "{{configPath}}"
+                                                                                }
+                                                                            ]
+                                                              }
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Config page (redirect)",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/api/devices/{{deviceId}}/config-page/?redirect=1\u0026host={{configHost}}\u0026scheme={{configScheme}}\u0026port={{configPort}}\u0026path={{configPath}}",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "devices",
+                                                                               "{{deviceId}}",
+                                                                               "config-page",
+                                                                               ""
+                                                                           ],
+                                                                  "query":  [
+                                                                                {
+                                                                                    "key":  "redirect",
+                                                                                    "value":  "1"
+                                                                                },
+                                                                                {
+                                                                                    "key":  "host",
+                                                                                    "value":  "{{configHost}}"
+                                                                                },
+                                                                                {
+                                                                                    "key":  "scheme",
+                                                                                    "value":  "{{configScheme}}"
+                                                                                },
+                                                                                {
+                                                                                    "key":  "port",
+                                                                                    "value":  "{{configPort}}"
+                                                                                },
+                                                                                {
+                                                                                    "key":  "path",
+                                                                                    "value":  "{{configPath}}"
+                                                                                }
+                                                                            ]
+                                                              }
+                                                  }
+                                  }
+                              ]
+                 }
+             ]
+}

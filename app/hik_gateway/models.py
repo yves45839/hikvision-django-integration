@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 from tenants.models import Tenant
@@ -81,13 +82,39 @@ class AttendanceLog(models.Model):
         (SOURCE_REALTIME, "Realtime"),
         (SOURCE_CATCHUP, "Catchup"),
     ]
+    ACTION_CHECK_IN = "CHECK_IN"
+    ACTION_CHECK_OUT = "CHECK_OUT"
+    ACTION_BREAK_IN = "BREAK_IN"
+    ACTION_BREAK_OUT = "BREAK_OUT"
+    ACTION_OVERTIME_IN = "OVERTIME_IN"
+    ACTION_OVERTIME_OUT = "OVERTIME_OUT"
+    ACTION_ACCESS_DENIED = "ACCESS_DENIED"
+    ACTION_UNKNOWN = "UNKNOWN"
+    ACTION_CHOICES = [
+        (ACTION_CHECK_IN, "Check-in"),
+        (ACTION_CHECK_OUT, "Check-out"),
+        (ACTION_BREAK_IN, "Break-in"),
+        (ACTION_BREAK_OUT, "Break-out"),
+        (ACTION_OVERTIME_IN, "Overtime-in"),
+        (ACTION_OVERTIME_OUT, "Overtime-out"),
+        (ACTION_ACCESS_DENIED, "Access denied"),
+        (ACTION_UNKNOWN, "Unknown"),
+    ]
 
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="hik_attendance_logs")
+    employee = models.ForeignKey(
+        "employees.Employee",
+        on_delete=models.SET_NULL,
+        related_name="hik_attendance_logs",
+        null=True,
+        blank=True,
+    )
     person_id = models.CharField(max_length=128, blank=True, default="")
     device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name="attendance_logs")
     timestamp = models.DateTimeField()
     attendance_type = models.CharField(max_length=64)
     attendance_status = models.CharField(max_length=64, blank=True, default="")
+    normalized_action = models.CharField(max_length=32, choices=ACTION_CHOICES, default=ACTION_UNKNOWN)
     direction = models.CharField(max_length=16, default="UNKNOWN")
     source = models.CharField(max_length=32, choices=SOURCE_CHOICES)
     raw_event = models.OneToOneField(RawEvent, on_delete=models.CASCADE, related_name="attendance_log")
@@ -98,6 +125,89 @@ class AttendanceLog(models.Model):
             models.Index(fields=["tenant", "timestamp"]),
             models.Index(fields=["person_id"]),
             models.Index(fields=["attendance_type"]),
+            models.Index(fields=["normalized_action"]),
+        ]
+
+
+class AttendanceCorrection(models.Model):
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="attendance_corrections")
+    employee = models.ForeignKey(
+        "employees.Employee",
+        on_delete=models.CASCADE,
+        related_name="attendance_corrections",
+    )
+    work_date = models.DateField()
+    arrival_time = models.TimeField(null=True, blank=True)
+    departure_time = models.TimeField(null=True, blank=True)
+    break_start_time = models.TimeField(null=True, blank=True)
+    break_end_time = models.TimeField(null=True, blank=True)
+    overtime_hours = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    notes = models.TextField(blank=True, default="")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="created_attendance_corrections",
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="updated_attendance_corrections",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tenant", "employee", "work_date"],
+                name="uq_hik_attendance_correction_employee_day",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["tenant", "work_date"]),
+            models.Index(fields=["tenant", "employee", "work_date"]),
+        ]
+
+
+class AttendanceCorrectionLog(models.Model):
+    ACTION_CREATE = "CREATE"
+    ACTION_UPDATE = "UPDATE"
+    ACTION_CHOICES = [
+        (ACTION_CREATE, "Create"),
+        (ACTION_UPDATE, "Update"),
+    ]
+
+    correction = models.ForeignKey(
+        AttendanceCorrection,
+        on_delete=models.CASCADE,
+        related_name="audit_logs",
+    )
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="attendance_correction_logs")
+    employee = models.ForeignKey(
+        "employees.Employee",
+        on_delete=models.CASCADE,
+        related_name="attendance_correction_logs",
+    )
+    work_date = models.DateField()
+    action = models.CharField(max_length=16, choices=ACTION_CHOICES)
+    payload = models.JSONField(default=dict, blank=True)
+    changed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="attendance_correction_logs",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["tenant", "employee", "work_date"]),
+            models.Index(fields=["tenant", "created_at"]),
         ]
 
 

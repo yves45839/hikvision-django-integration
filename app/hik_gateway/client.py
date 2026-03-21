@@ -28,11 +28,17 @@ class HikGatewayClient:
             auth=self.auth,
             timeout=timeout or self.timeout,
         )
-        if not response.ok:
+        ok = getattr(response, "ok", None)
+        if ok is None:
+            status_code = int(getattr(response, "status_code", 200) or 200)
+            ok = 200 <= status_code < 400
+
+        if not ok:
             body = (response.text or "").strip()
             body = body[:1000]
             raise requests.HTTPError(
-                f"{response.status_code} {response.reason} for url: {response.url}; body={body}",
+                f"{getattr(response, 'status_code', 'unknown')} "
+                f"{getattr(response, 'reason', '')} for url: {getattr(response, 'url', url)}; body={body}",
                 response=response,
             )
         return response.json() if response.content else {}
@@ -40,11 +46,35 @@ class HikGatewayClient:
     def _put(self, path: str, payload: dict[str, Any], params: dict[str, Any] | None = None) -> dict[str, Any]:
         url = urljoin(self.base_url, path.lstrip("/"))
         response = requests.put(url, json=payload, params=params or {}, auth=self.auth, timeout=self.timeout)
-        if not response.ok:
+        ok = getattr(response, "ok", None)
+        if ok is None:
+            status_code = int(getattr(response, "status_code", 200) or 200)
+            ok = 200 <= status_code < 400
+
+        if not ok:
             body = (response.text or "").strip()
             body = body[:1000]
             raise requests.HTTPError(
-                f"{response.status_code} {response.reason} for url: {response.url}; body={body}",
+                f"{getattr(response, 'status_code', 'unknown')} "
+                f"{getattr(response, 'reason', '')} for url: {getattr(response, 'url', url)}; body={body}",
+                response=response,
+            )
+        return response.json() if response.content else {}
+
+    def _delete(self, path: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        url = urljoin(self.base_url, path.lstrip("/"))
+        response = requests.delete(url, params=params or {}, auth=self.auth, timeout=self.timeout)
+        ok = getattr(response, "ok", None)
+        if ok is None:
+            status_code = int(getattr(response, "status_code", 200) or 200)
+            ok = 200 <= status_code < 400
+
+        if not ok:
+            body = (response.text or "").strip()
+            body = body[:1000]
+            raise requests.HTTPError(
+                f"{getattr(response, 'status_code', 'unknown')} "
+                f"{getattr(response, 'reason', '')} for url: {getattr(response, 'url', url)}; body={body}",
                 response=response,
             )
         return response.json() if response.content else {}
@@ -169,6 +199,12 @@ class HikGatewayClient:
             payload=payload,
             params={"format": "json"},
             timeout=timeout,
+        )
+
+    def delete_device(self, dev_index: str) -> dict[str, Any]:
+        return self._delete(
+            "/ISAPI/ContentMgmt/DeviceMgmt/delDevice",
+            params={"format": "json", "devIndex": dev_index},
         )
 
     def add_access_user(self, dev_index: str, payload: dict[str, Any]) -> dict[str, Any]:

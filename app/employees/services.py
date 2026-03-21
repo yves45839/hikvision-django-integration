@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from datetime import datetime
 from datetime import timezone as dt_timezone
 
 from django.utils import timezone
@@ -27,18 +28,24 @@ def _normalize_hik_identifier(value: str) -> str:
     return normalized.strip()
 
 
+def _normalize_hik_card_no(value: str) -> str:
+    # Preserve the original card number format (e.g. CARD-10001, hex, etc.).
+    # Some terminals reject card values if we alter characters before sync.
+    return str(value or "").strip()
+
+
 def build_user_info_payload(employee: Employee) -> dict:
     attrs = {_normalize_attr_name(item.name): item.value for item in employee.attributes.all()}
     employee_no = _normalize_hik_identifier(attrs.get("gateway_employee_no", employee.employee_no))
 
     person_name = employee.name or employee.full_name or employee.employee_no
+    valid_from = employee.valid_from or timezone.now()
+    valid_to = employee.valid_to or datetime(2037, 12, 31, 23, 59, 59, tzinfo=dt_timezone.utc)
     validity = {
         "enable": bool(employee.is_active),
+        "beginTime": _iso_or_empty(valid_from),
+        "endTime": _iso_or_empty(valid_to),
     }
-    if employee.valid_from is not None:
-        validity["beginTime"] = _iso_or_empty(employee.valid_from)
-    if employee.valid_to is not None:
-        validity["endTime"] = _iso_or_empty(employee.valid_to)
 
     user_info = {
         "employeeNo": employee_no,
@@ -77,7 +84,7 @@ def build_card_info_payloads(employee: Employee) -> list[dict]:
     employee_no = _normalize_hik_identifier(attrs.get("gateway_employee_no", employee.employee_no))
     payloads = []
     for card in employee.cards.all():
-        card_no = _normalize_hik_identifier(card.card_no)
+        card_no = _normalize_hik_card_no(card.card_no)
         if not card_no:
             continue
         payloads.append(
@@ -86,8 +93,6 @@ def build_card_info_payloads(employee: Employee) -> list[dict]:
                     "employeeNo": employee_no,
                     "cardNo": card_no,
                     "cardType": card.card_type or "normalCard",
-                    "leaderCard": False,
-                    "deleteCard": False,
                 }
             }
         )
@@ -96,7 +101,7 @@ def build_card_info_payloads(employee: Employee) -> list[dict]:
         return payloads
 
     # Backward compatibility with legacy attributes-based card fields.
-    card_no = _normalize_hik_identifier(str(attrs.get("card_no") or "").strip())
+    card_no = _normalize_hik_card_no(str(attrs.get("card_no") or "").strip())
     if not card_no:
         return []
 
@@ -106,8 +111,6 @@ def build_card_info_payloads(employee: Employee) -> list[dict]:
                 "employeeNo": employee_no,
                 "cardNo": card_no,
                 "cardType": attrs.get("card_type", "normalCard"),
-                "leaderCard": False,
-                "deleteCard": False,
             }
         }
     ]

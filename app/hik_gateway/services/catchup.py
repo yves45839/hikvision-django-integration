@@ -4,6 +4,7 @@ from datetime import datetime
 from datetime import timedelta
 from datetime import timezone as dt_timezone
 
+import requests
 from django.utils import timezone
 
 from hik_gateway.models import Device, DeviceCursor
@@ -15,7 +16,7 @@ INITIAL_CATCHUP_START = datetime(1970, 1, 1, tzinfo=dt_timezone.utc)
 
 
 def _extract_acs_info(payload: dict) -> tuple[list[dict], int]:
-    info = payload.get("AcsEventTotalNum", payload)
+    info = payload.get("AcsEventTotalNum") or payload.get("AcsEvent") or payload
     events = info.get("InfoList", [])
     total = info.get("totalMatches")
     if isinstance(events, dict):
@@ -23,6 +24,13 @@ def _extract_acs_info(payload: dict) -> tuple[list[dict], int]:
     if total is None:
         total = len(events)
     return events if isinstance(events, list) else [], int(total)
+
+
+def _is_bad_json_error(exc: Exception) -> bool:
+    if not isinstance(exc, requests.HTTPError):
+        return False
+    message = str(exc).lower()
+    return "badjsoncontent" in message or "wrong json content" in message
 
 
 def catchup_device(device: Device, max_results: int = 50) -> int:
@@ -44,7 +52,7 @@ def catchup_device(device: Device, max_results: int = 50) -> int:
     max_serial_no = cursor.last_serial_no
 
     while True:
-        condition = {
+        condition_with_window = {
             "AcsEventCond": {
                 "searchID": search_id,
                 "searchResultPosition": position,
@@ -53,7 +61,19 @@ def catchup_device(device: Device, max_results: int = 50) -> int:
                 "endTime": end_time.isoformat(),
             }
         }
-        response = client.acs_event_search(device.dev_index, condition)
+        condition_without_window = {
+            "AcsEventCond": {
+                "searchID": search_id,
+                "searchResultPosition": position,
+                "maxResults": max_results,
+            }
+        }
+        try:
+            response = client.acs_event_search(device.dev_index, condition_with_window)
+        except Exception as exc:  # noqa: BLE001
+            if not _is_bad_json_error(exc):
+                raise
+            response = client.acs_event_search(device.dev_index, condition_without_window)
         events, returned = _extract_acs_info(response)
         if not events:
             break

@@ -1,450 +1,333 @@
-```bash
-nano README.md
+# Hikvision Django Integration
+
+Backend Django/DRF pour piloter des équipements Hikvision via Hik Device Gateway, gérer des tenants, onboarder des devices, importer des employés et exploiter les événements de présence/contrôle d'accès.
+
+Le dépôt contient aussi une interface frontend séparée dans `v0-secure-point-dashboard-design/`.
+
+## Fonctionnalités couvertes
+
+- Authentification JWT via `djangorestframework-simplejwt`
+- API REST Django REST Framework
+- Documentation OpenAPI via Swagger et ReDoc
+- Gestion multi-tenant
+- Gestion des devices Hikvision liés à un tenant
+- Onboarding d'un device via la gateway partagée
+- Synchronisation des devices depuis Hik Device Gateway
+- Enregistrement des webhooks Hikvision
+- Rattrapage des événements ACS (`catchup`)
+- Gestion des employés, départements, organisations, plannings, shifts et groupes d'accès
+- Rapports de présence agrégés par jour, semaine ou mois
+
+## Architecture
+
+```text
+Terminaux Hikvision
+        |
+        |  ISUP / ISAPI
+        v
+Hik Device Gateway
+        |
+        |  HTTP API
+        v
+Django API (app/)
+        |
+        +--> SQLite par défaut (configuration actuelle)
+        |
+        +--> API DRF / JWT / Swagger
 ```
 
-Puis colle tout ce qui suit 👇
+## Structure du dépôt
 
----
-
-# 🚀 Hikvision Django SaaS Platform
-
-Plateforme SaaS multi-clients permettant :
-
-* 🔐 Connexion des appareils Hikvision via ISUP (Device Gateway)
-* 🏢 Gestion multi-tenant
-* 🖥 Enregistrement automatique des devices par numéro de série (SN)
-* 📡 Synchronisation temps réel avec Hik Device Gateway
-* 🐳 Déploiement via Docker
-* 🌐 API REST sécurisée
-
----
-
-# 🧠 Architecture
-
-```
-Devices Hikvision (ISUP 5.0)
-        │
-        │  (Port 7660)
-        ▼
-Hik Device Gateway (VPS)
-        │
-        │  (API ISAPI)
-        ▼
-Django SaaS API (Docker)
-        │
-        ▼
-PostgreSQL
+```text
+.
+|-- app/
+|   |-- config/
+|   |-- devices/
+|   |-- employees/
+|   |-- events/
+|   |-- hik_gateway/
+|   `-- tenants/
+|-- postman/
+|-- v0-secure-point-dashboard-design/
+|-- Dockerfile
+|-- docker-compose.yml
+`-- requirements.txt
 ```
 
----
+## Prérequis
 
-# 🏗️ Stack Technique
+- Python 3.12+
+- Docker + Docker Compose si vous utilisez la stack conteneurisée
+- Un accès à Hik Device Gateway si vous voulez tester l'intégration réelle
 
-* Python 3.12
-* Django 5 / Django REST Framework
-* PostgreSQL
-* Docker & Docker Compose
-* Hik Device Gateway v1.8+
-* ISUP 5.0 Protocol
-* Nginx (reverse proxy recommandé en prod)
+## Variables d'environnement utilisées
 
----
+Le projet charge les variables depuis :
 
-# 🏢 Multi-Tenant Logic
+- `.env` à la racine du dépôt
+- `app/.env`
 
-Chaque client (tenant) possède :
-
-* Un `code` unique
-* Une liste de devices revendiqués
-* Un espace logique isolé en base
-
-## Device Claim Flow
-
-1. Le client saisit le **SN réel** de son appareil dans l’interface SaaS
-2. Le device est créé en statut `PENDING`
-3. L’appareil se connecte au Gateway (ISUP)
-4. Django synchronise avec Gateway
-5. Si le SN correspond → statut `ACTIVE`
-
----
-
-# 📦 Installation
-
-## 1️⃣ Cloner le projet
-
-```bash
-git clone git@github.com:yves45839/hikvision-django-integration.git
-cd hikvision-django-integration
-```
-
----
-
-## 2️⃣ Configuration environnement
-
-Créer `.env` :
-
-```bash
-cp .env.example .env
-nano .env
-```
-
-Exemple :
-
-```
-DJANGO_DEBUG=1
-DJANGO_SECRET_KEY=change-me
-DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,213.156.133.202
-
-DB_NAME=saas
-DB_USER=saas
-DB_PASSWORD=saas
-DB_HOST=db
-DB_PORT=5432
-
-HIK_DEVICE_GATEWAY_BASE_URL=http://213.156.133.202:88
-HIK_DEVICE_GATEWAY_USERNAME=admin
-HIK_DEVICE_GATEWAY_PASSWORD=your_password
-```
-
----
-
-## 3️⃣ Lancer la stack
-
-```bash
-docker compose up -d --build
-```
-
----
-
-## 4️⃣ Migrations
-
-```bash
-docker compose exec web python manage.py migrate
-```
-
----
-
-## 5️⃣ Créer un superuser
-
-```bash
-docker compose exec web python manage.py createsuperuser
-```
-
----
-
-# 🔐 Configuration des Devices Hikvision
-
-Sur l’appareil :
-
-* ISUP Enabled
-* Server IP → IP publique du VPS
-* Port → `7661`
-* Device ID → SN réel
-* Encryption Key → clé configurée côté Gateway et device
-
----
-
-# 📡 Synchronisation Gateway
-
-## Connexion unique HikDeviceGateway
-
-Le projet utilise désormais **une seule connexion partagée** vers HikDeviceGateway (pas une gateway par tenant).
-Le routage multi-tenant est fait côté Django via le mapping `devIndex -> tenant`.
-
-Variables d'environnement :
+Variables principales :
 
 ```env
-HIK_DEVICE_GATEWAY_BASE_URL=https://<gateway-host>
-HIK_DEVICE_GATEWAY_USERNAME=<username>
-HIK_DEVICE_GATEWAY_PASSWORD=<password>
+ALLOWED_HOSTS=127.0.0.1,localhost
+CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+
+HIK_DEVICE_GATEWAY_BASE_URL=http://gateway-host:88
+HIK_DEVICE_GATEWAY_USERNAME=admin
+HIK_DEVICE_GATEWAY_PASSWORD=change-me
+
+HIK_GATEWAY_WEBHOOK_TOKEN=
+HIK_GATEWAY_ALLOWED_IPS=
+HIK_WEBHOOK_IP=
+HIK_WEBHOOK_PORT=443
+HIK_WEBHOOK_URL=/api/hik/events
+PAYMENT_WEBHOOK_TOKEN=
+
+JWT_ACCESS_TOKEN_MINUTES=1440
+JWT_REFRESH_TOKEN_DAYS=30
 ```
 
-## Test simple de communication Django ↔ Gateway
+## Point important sur la base de données
 
-Tu peux vérifier rapidement qu'un device déjà ajouté est bien visible depuis Django via sa gateway :
+La configuration Django actuelle utilise **SQLite** par défaut via `app/db.sqlite3`.
+
+Le fichier `docker-compose.yml` démarre aussi un conteneur PostgreSQL, mais `DATABASE_URL` n'est pas exploité dans `app/config/settings.py` à l'heure actuelle. Le README documente donc le comportement réel du projet tel qu'il est aujourd'hui.
+
+## Lancement en local
+
+### 1. Installer les dépendances
 
 ```bash
-docker compose exec web python manage.py hik_check_device --tenant <tenant_code> --serial <serial_number>
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
-ou avec le `devIndex` :
+### 2. Configurer l'environnement
+
+Créer un fichier `.env` à la racine ou dans `app/`, puis renseigner au minimum la connexion vers la gateway si vous voulez utiliser l'intégration Hikvision.
+
+### 3. Appliquer les migrations
 
 ```bash
-docker compose exec web python manage.py hik_check_device --tenant <tenant_code> --dev-index <dev_index>
+cd app
+python manage.py migrate
 ```
 
-Si tout est correct, la commande retourne `Communication OK ✅` avec le statut du device.
-
----
-
-## Synchronisation automatique continue
-
-Pour une synchro permanente (polling) avec dispatch vers la table `devices` multi-tenant:
+### 4. Créer un superutilisateur
 
 ```bash
-docker compose exec web python manage.py hik_sync_devices --loop --interval 30 --dispatch-core-devices
+python manage.py createsuperuser
 ```
 
-- `--interval`: fréquence de synchronisation en secondes.
-- `--loop`: boucle continue (arrêt manuel avec `CTRL+C`).
-- `--dispatch-core-devices`: copie les données synchronisées de `hik_gateway_device` vers l'app `devices` pour les APIs métier par tenant.
+### 5. Démarrer le serveur
 
-## Endpoint interne
-
-```
-POST /api/hikgateway/sync-devices/
+```bash
+python manage.py runserver
 ```
 
-Fonction :
+API disponible par défaut sur [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
-* Appelle ISAPI `deviceList`
-* Récupère `serial`, `devIndex`, `status`
-* Met à jour les devices Django
+## Lancement avec Docker
 
-### Endpoints d'import administrateur (JWT + staff/superuser)
+```bash
+docker compose up --build
+```
 
-Ces endpoints permettent d'orchestrer l'import complet devices/events depuis Postman (sans shell):
+Le service web est exposé sur le port `80`, donc l'API est accessible sur [http://localhost](http://localhost).
+
+Le conteneur web exécute automatiquement :
+
+- `python manage.py migrate`
+- `python manage.py runserver 0.0.0.0:8000`
+
+## Documentation API
+
+- Swagger UI : [http://127.0.0.1:8000/api/docs/](http://127.0.0.1:8000/api/docs/)
+- ReDoc : [http://127.0.0.1:8000/api/redoc/](http://127.0.0.1:8000/api/redoc/)
+- Schéma OpenAPI : [http://127.0.0.1:8000/api/schema/](http://127.0.0.1:8000/api/schema/)
+
+## Authentification
+
+Obtenir un token :
 
 ```http
-POST /api/hikgateway/sync-devices/
+POST /api/auth/token/
 Content-Type: application/json
 
 {
-  "dispatch_core_devices": true
+  "username": "admin",
+  "password": "mot-de-passe"
 }
 ```
 
-```http
-POST /api/hikgateway/register-webhooks/
-Content-Type: application/json
-
-{
-  "ip_address": "<public_ip>",
-  "port": 443,
-  "url": "/api/hik/events"
-}
-```
+Rafraîchir un token :
 
 ```http
-POST /api/hikgateway/catchup-acs-events/
-Content-Type: application/json
-
-{
-  "max_results": 100
-}
+POST /api/auth/refresh/
 ```
 
-```http
-GET /api/hikgateway/events/?tenant=<tenant_code>&limit=50&source=realtime&dev_index=<dev_index>&person_id=<person_id>
-Authorization: Bearer <jwt>
-```
+## Endpoints principaux
 
-* Liste les événements ingérés (`AttendanceLog` + métadonnées `RawEvent`).
-* Sans `tenant`, l'accès est réservé aux administrateurs (staff/superuser).
+### Ressources DRF
 
-Flux recommandé d'import complet:
+- `GET/POST /api/tenants/`
+- `GET/POST /api/devices/`
+- `GET/POST /api/events/`
+- `GET/POST /api/employees/`
+- `GET/POST /api/organizations/`
+- `GET/POST /api/departments/`
+- `GET/POST /api/plannings/`
+- `GET/POST /api/work-shifts/`
+- `GET/POST /api/access-groups/`
 
-1. `sync-devices` pour récupérer toutes les infos devices depuis Gateway.
-2. `register-webhooks` pour activer le temps réel sur chaque device.
-3. `catchup-acs-events` pour rattraper les événements manqués avant webhook.
+### Actions devices
 
-### API liste des appareils (proxy Gateway)
+- `POST /api/devices/onboard/`
+- `GET /api/devices/{id}/config-page/`
+- `POST /api/devices/{id}/add-persons/`
+- `POST /api/device-onboarding-jobs/`
+- `GET /api/device-onboarding-jobs/`
+- `GET /api/device-onboarding-jobs/{id}/`
+- `POST /api/device-onboarding-jobs/{id}/approve/`
 
-```
-GET /api/hikgateway/devices/?tenant=<tenant_code>&protocol=ehomeV5&status=online,offline
-```
-
-* Appelle `POST /ISAPI/ContentMgmt/DeviceMgmt/deviceList?format=json` avec Auth Digest.
-* Gère la pagination automatiquement jusqu'à `totalMatches`.
-* Mapping exposé : `sn = EhomeParams.EhomeID`, `devIndex = devIndex`.
-* Option `normalized=0` pour renvoyer le `SearchResult` brut par gateway.
-
-## 🧪 Tester la liste des appareils DRF avec Postman
-
-Voici la méthode la plus simple pour tester l'endpoint DRF qui retourne la liste des appareils en JSON.
-
-### 1) Récupérer un token JWT
-
-**Requête**
-
-- Méthode: `POST`
-- URL: `http://localhost:8000/api/auth/token/`
-- Headers: `Content-Type: application/json`
-- Body (raw / JSON):
+Exemple d'onboarding :
 
 ```json
 {
-  "username": "<votre_username>",
-  "password": "<votre_password>"
+  "tenant_code": "tenant-a",
+  "sn": "DS-K1T0001",
+  "ehome_key": "1234567890ABCDEF1234567890ABCDEF",
+  "dev_name": "Porte principale",
+  "dev_type": "AccessControl",
+  "device_username": "admin",
+  "device_password": "change-me"
 }
 ```
 
-**Réponse attendue**
+Exemple d'ajout de personnes sur un lecteur :
 
 ```json
 {
-  "refresh": "...",
-  "access": "..."
+  "employee_ids": [12, 18, 19],
+  "include_cards": true,
+  "stop_on_error": false
 }
 ```
 
-Copier la valeur de `access`.
+### Intégration Hik Gateway
 
-### 2) Appeler l'endpoint DRF des appareils
+- `GET /api/hikgateway/devices/`
+- `POST /api/hikgateway/sync-devices/`
+- `GET|POST /api/hikgateway/acs-events/`
+- `POST /api/hikgateway/catchup-acs-events/`
+- `POST /api/hikgateway/register-webhooks/`
+- `GET /api/hikgateway/events/`
+- `GET /api/hikgateway/reports/attendance/`
+- `POST /api/hik/events`
+- `POST /api/hikvision/events`
 
-**Requête**
+### Actions employees
 
-- Méthode: `GET`
-- URL: `http://localhost:8000/api/devices/`
-- Authorization: `Bearer Token` → coller le token `access`
+Le module `employees` expose en plus plusieurs actions métiers, notamment :
 
-Optionnel (pour ne voir que vos appareils):
+- `POST /api/employees/{id}/push-to-gateway/`
+- `GET /api/employees/{id}/schedule/`
+- `POST /api/employees/{id}/move-department/`
+- `POST /api/employees/{id}/assign-planning/`
+- `POST /api/employees/{id}/assign-work-shift/`
+- `POST /api/employees/{id}/assign-work-shifts/`
+- `POST /api/employees/push-pending/`
+- `POST /api/employees/import-from-gateway/`
 
-`http://localhost:8000/api/devices/?owner_only=true`
+Note push gateway:
+- La cible des lecteurs est résolue automatiquement à partir de:
+  - lecteurs liés directement à l'employé,
+  - lecteurs hérités du département (selon le mode d'affectation),
+  - lecteurs des groupes d'accès de l'employé (`access_groups.readers`).
+- Les actions de mise à jour employé déclenchent désormais un push gateway automatique par défaut.
+  - Pour différer la synchro, envoyer `push_now=false` dans le body de l'action concernée.
 
-**Réponse JSON attendue (exemple)**
+### Automatisation tenant et organisation
+
+- `POST /api/auth/client-signup/`
+- `POST /api/auth/verify-email/`
+- `POST /api/auth/payment-callback/`
+- `POST /api/auth/organizations/{organization_id}/invite/`
+- `POST /api/auth/invitations/accept/`
+- `GET /api/auth/me/organizations/`
+
+Le flux couvre:
+
+- creation automatique du tenant et d'une organisation par defaut
+- verification email avec activation automatique du tenant (si les regles sont satisfaites)
+- callback paiement optionnel pour finaliser l'activation
+- invitations via lien magique avec roles `org_admin`, `operator`, `viewer`
+- selection d'organisation limitee au scope utilisateur
+
+Exemple de payload pour un job d'onboarding asynchrone:
 
 ```json
-[
-  {
-    "id": 12,
-    "serial": "DS-K1T...",
-    "name": "Porte principale",
-    "status": "online"
-  }
-]
-```
-
-### 3) Erreurs fréquentes
-
-- `401 Unauthorized`: token absent/invalide/expiré.
-- `403 Forbidden`: permissions insuffisantes selon votre configuration.
-- `200 OK` avec `[]`: aucun appareil en base pour cet utilisateur/filtre.
-
-### 4) Variante Gateway (non-DRF métier)
-
-Si vous voulez tester la liste issue du proxy gateway (normalisée côté intégration), utilisez:
-
-`GET http://localhost:8000/api/hikgateway/devices/?tenant=<tenant_code>`
-
-Cet endpoint est différent de `/api/devices/`.
-
----
-
-# 🗂️ Structure Projet
-
-```
-/tenants
-/devices
-/events
-/core
-/docker-compose.yml
-/.env.example
-```
-
----
-
-# 🗃️ Modèle Device
-
-```python
-class Device(models.Model):
-    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE)
-    serial = models.CharField(max_length=100, unique=True)
-    dev_index = models.CharField(max_length=64, unique=True, null=True)
-    status = models.CharField(max_length=30)
-    protocol = models.CharField(max_length=50, default="ISUP5.0")
-    created_at = models.DateTimeField(auto_now_add=True)
-```
-
----
-
-# 🔄 Device Lifecycle
-
-| Status  | Description                            |
-| ------- | -------------------------------------- |
-| PENDING | SN enregistré mais pas encore connecté |
-| ACTIVE  | Device online et validé                |
-| OFFLINE | Déconnecté du gateway                  |
-
----
-
-# 🌍 Déploiement Production
-
-## Recommandé :
-
-* HTTPS via Nginx / Traefik
-* Reverse proxy unique port 443
-* Gateway port 7660 exposé
-* Celery pour sync automatique
-* Logs centralisés
-
----
-
-# 🛡️ Sécurité
-
-* Un device ne peut appartenir qu’à un seul tenant
-* Validation SN unique globale
-* Auth JWT pour API
-* Webhook Gateway sécurisé (HMAC recommandé)
-* Variables sensibles via `.env`
-
----
-
-# 🔄 Roadmap
-
-* [ ] Sync automatique toutes les 30 secondes
-* [ ] Webhook temps réel Gateway
-* [ ] Dashboard tenant
-* [ ] Monitoring device health
-* [ ] Streaming proxy intégré
-* [ ] Billing multi-tenant
-
----
-
-# 📘 API Principales
-
-### Claim Device
-
-```
-POST /api/devices/claim/
 {
-  "serial": "FN2090414"
+  "tenant_code": "tenant-a",
+  "organization_id": 12,
+  "sn": "DS-K1T0001",
+  "ehome_key": "1234567890ABCDEF1234567890ABCDEF",
+  "dev_name": "Porte principale",
+  "dev_type": "AccessControl",
+  "device_username": "admin",
+  "device_password": "change-me"
 }
 ```
 
-### List Devices
+## Commandes de management utiles
 
+Depuis `app/` :
+
+```bash
+python manage.py hik_check_device --tenant tenant-a --serial DS-K1T0001
+python manage.py hik_sync_devices --dispatch-core-devices
+python manage.py hik_sync_devices --loop --interval 30 --dispatch-core-devices
+python manage.py hik_register_webhooks --ip-address 1.2.3.4 --port 443 --url /api/hik/events
+python manage.py hik_catchup_acs_events --max-results 50
 ```
-GET /api/devices/
+
+## Flux d'utilisation recommandé
+
+1. Créer un tenant.
+2. Vérifier la connexion à la gateway.
+3. Onboarder ou synchroniser les devices.
+4. Enregistrer les webhooks sur les devices.
+5. Importer ou créer les employés.
+6. Pousser les employés vers les équipements si nécessaire.
+7. Consulter les événements et les rapports de présence.
+
+## Frontend séparé
+
+Le dossier `v0-secure-point-dashboard-design/` contient une application Next.js indépendante.
+
+Pour la lancer :
+
+```bash
+cd v0-secure-point-dashboard-design
+npm install
+npm run dev
 ```
 
-### Sync Gateway
+Elle peut être connectée au backend via son fichier `.env.local`.
 
-```
-POST /api/hikgateway/sync-devices/
-```
+## Collections Postman
 
----
+Le dossier `postman/` contient des collections utiles pour tester l'API.
 
-# 👨‍💻 Auteur
+## Limites et remarques actuelles
 
-Yves
-Projet SaaS Hikvision Multi-Tenant
-Côte d’Ivoire 🇨🇮
+- `DEBUG=True` est actuellement défini directement dans `settings.py`.
+- `SECRET_KEY` est codée en dur dans `settings.py`.
+- La configuration PostgreSQL présente dans `docker-compose.yml` n'est pas branchée côté Django pour l'instant.
+- Certains mots de passe/exemples présents dans les fichiers du dépôt doivent être remplacés avant tout usage en production.
 
----
+## Licence
 
-# 📜 Licence
-
-Propriétaire – Tous droits réservés.
-
----
-
-# 🎯 Vision
-
-Créer une plateforme SaaS sécurisée permettant :
-
-* Déploiement massif de terminaux Hikvision
-* Gestion centralisée multi-entreprises
-* Intégration temps réel
-* Modèle économique scalable
+Aucune licence open source explicite n'est déclarée dans ce dépôt.

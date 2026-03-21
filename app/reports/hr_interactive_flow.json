@@ -1,0 +1,367 @@
+{
+  "id": "hr_shift_assignment_wizard_v1",
+  "title": "Assistant RH - Attribution des quarts et planning de pointage",
+  "version": "1.0.0",
+  "locale": "fr-FR",
+  "description": "Flux interactif pour definir les quarts, les regles semaine/week-end, les rotations et les affectations RH en fonction des APIs employees/hik_gateway.",
+  "context": {
+    "tenant_code_env": "NEXT_PUBLIC_EMPLOYEE_TENANT_CODE",
+    "required_entities": [
+      "Tenant",
+      "WorkShift",
+      "Planning",
+      "PlanningEntry",
+      "PlanningAssignment",
+      "Employee/Department"
+    ]
+  },
+  "steps": [
+    {
+      "id": "scope",
+      "type": "single_choice",
+      "question": "Le planning s'applique a qui ?",
+      "field": "target_scope",
+      "options": [
+        { "value": "employee", "label": "Employe" },
+        { "value": "department", "label": "Departement" }
+      ],
+      "required": true
+    },
+    {
+      "id": "work_mode",
+      "type": "single_choice",
+      "question": "Avez-vous plusieurs quarts de travail ?",
+      "field": "multi_shift_enabled",
+      "options": [
+        { "value": false, "label": "Non, un seul quart principal" },
+        { "value": true, "label": "Oui, plusieurs quarts" }
+      ],
+      "required": true
+    },
+    {
+      "id": "weekend_specific",
+      "type": "single_choice",
+      "question": "Les horaires week-end sont-ils differents de ceux de semaine ?",
+      "field": "weekend_specific_enabled",
+      "options": [
+        { "value": false, "label": "Non" },
+        { "value": true, "label": "Oui" }
+      ],
+      "required": true
+    },
+    {
+      "id": "planning_style",
+      "type": "single_choice",
+      "question": "Le planning est-il fixe ou tournant ?",
+      "field": "planning_style",
+      "options": [
+        { "value": "fixed", "label": "Fixe (par jour de semaine)" },
+        { "value": "rotating", "label": "Tournant (cycle)" }
+      ],
+      "required": true
+    },
+    {
+      "id": "shift_catalog",
+      "type": "repeat_group",
+      "question": "Definis les quarts de travail",
+      "field": "work_shifts",
+      "required": true,
+      "item_schema": [
+        { "field": "name", "type": "text", "required": true, "label": "Nom du quart" },
+        { "field": "code", "type": "text", "required": false, "label": "Code quart (optionnel)" },
+        { "field": "description", "type": "text", "required": false, "label": "Description" },
+        { "field": "start_time", "type": "time", "required": true, "label": "Heure debut" },
+        { "field": "end_time", "type": "time", "required": true, "label": "Heure fin" },
+        { "field": "break_start_time", "type": "time", "required": false, "label": "Debut pause" },
+        { "field": "break_end_time", "type": "time", "required": false, "label": "Fin pause" },
+        { "field": "overtime_minutes", "type": "integer", "required": false, "default": 0, "label": "Minutes sup autorisees" },
+        { "field": "late_allowable_minutes", "type": "integer", "required": false, "default": 0, "label": "Retard tolere (min)" },
+        { "field": "early_leave_allowable_minutes", "type": "integer", "required": false, "default": 0, "label": "Depart anticipe tolere (min)" }
+      ],
+      "rules": [
+        "start_time et end_time obligatoires ensemble",
+        "si pause renseignee: break_start_time et break_end_time obligatoires ensemble",
+        "si quart de jour (start_time <= end_time): la pause doit rester dans le quart"
+      ]
+    },
+    {
+      "id": "planning_identity",
+      "type": "group",
+      "question": "Informations du planning",
+      "field": "planning",
+      "required": true,
+      "item_schema": [
+        { "field": "name", "type": "text", "required": true, "label": "Nom planning" },
+        { "field": "code", "type": "text", "required": true, "label": "Code planning" },
+        { "field": "description", "type": "text", "required": false, "label": "Description" },
+        { "field": "timezone", "type": "text", "required": true, "default": "Africa/Abidjan", "label": "Fuseau horaire" }
+      ]
+    },
+    {
+      "id": "weekly_map",
+      "type": "weekly_grid",
+      "question": "Associe les quarts aux jours (semaine/week-end)",
+      "field": "weekly_assignments",
+      "show_if": { "planning_style": "fixed" },
+      "required": true,
+      "days": [
+        { "day_of_week": 0, "label": "Lundi" },
+        { "day_of_week": 1, "label": "Mardi" },
+        { "day_of_week": 2, "label": "Mercredi" },
+        { "day_of_week": 3, "label": "Jeudi" },
+        { "day_of_week": 4, "label": "Vendredi" },
+        { "day_of_week": 5, "label": "Samedi" },
+        { "day_of_week": 6, "label": "Dimanche" }
+      ],
+      "item_schema": [
+        { "field": "is_rest_day", "type": "boolean", "default": false, "label": "Jour de repos" },
+        { "field": "shift_codes", "type": "multi_select_shift", "required": false, "label": "Quarts du jour" }
+      ],
+      "rules": [
+        "is_rest_day = true interdit shift_codes",
+        "si weekend_specific_enabled = true: les jours 5 et 6 doivent pouvoir referencer des quarts differents",
+        "au moins un jour avec travail (non repos) requis"
+      ]
+    },
+    {
+      "id": "rotation_setup",
+      "type": "group",
+      "question": "Configuration du cycle tournant",
+      "field": "rotation",
+      "show_if": { "planning_style": "rotating" },
+      "required": true,
+      "item_schema": [
+        { "field": "cycle_length_days", "type": "integer", "required": true, "min": 1, "label": "Longueur cycle (jours)" },
+        { "field": "cycle_anchor_date", "type": "date", "required": true, "label": "Date ancre du cycle" }
+      ]
+    },
+    {
+      "id": "rotation_entries",
+      "type": "repeat_group",
+      "question": "Definis les positions du cycle",
+      "field": "rotation_entries",
+      "show_if": { "planning_style": "rotating" },
+      "required": true,
+      "item_schema": [
+        { "field": "sequence_index", "type": "integer", "required": true, "min": 0, "label": "Index cycle (0..N-1)" },
+        { "field": "is_rest_day", "type": "boolean", "required": true, "label": "Repos" },
+        { "field": "shift_code", "type": "select_shift", "required": false, "label": "Quart" },
+        { "field": "label", "type": "text", "required": false, "label": "Label (optionnel)" }
+      ],
+      "rules": [
+        "si is_rest_day = true, shift_code doit etre vide",
+        "si is_rest_day = false, shift_code requis",
+        "sequence_index unique"
+      ]
+    },
+    {
+      "id": "temporary_exceptions",
+      "type": "repeat_group",
+      "question": "Y a-t-il des exceptions temporaires ?",
+      "field": "exceptions",
+      "required": false,
+      "item_schema": [
+        { "field": "label", "type": "text", "required": false, "label": "Motif" },
+        { "field": "start_date", "type": "date", "required": true, "label": "Date debut" },
+        { "field": "end_date", "type": "date", "required": true, "label": "Date fin" },
+        { "field": "is_rest_day", "type": "boolean", "required": true, "label": "Repos" },
+        { "field": "shift_code", "type": "select_shift", "required": false, "label": "Quart exceptionnel" }
+      ],
+      "rules": [
+        "end_date >= start_date",
+        "si is_rest_day = true, shift_code doit etre vide",
+        "si is_rest_day = false, shift_code requis"
+      ]
+    },
+    {
+      "id": "assignment_window",
+      "type": "group",
+      "question": "Periode d'application RH",
+      "field": "assignment_window",
+      "required": true,
+      "item_schema": [
+        { "field": "valid_from", "type": "date", "required": true, "label": "Valide a partir de" },
+        { "field": "valid_to", "type": "date", "required": false, "label": "Valide jusqu'au (optionnel)" }
+      ],
+      "rules": [
+        "si valid_to renseigne: valid_to >= valid_from"
+      ]
+    },
+    {
+      "id": "hr_rules",
+      "type": "group",
+      "question": "Regles RH de pointage",
+      "field": "hr_rules",
+      "required": true,
+      "item_schema": [
+        { "field": "check_in_not_required", "type": "boolean", "default": false, "label": "Entree non obligatoire" },
+        { "field": "check_out_not_required", "type": "boolean", "default": false, "label": "Sortie non obligatoire" },
+        { "field": "effective_for_holiday", "type": "boolean", "default": true, "label": "Applicable jours feries" },
+        { "field": "effective_for_overtime", "type": "boolean", "default": true, "label": "Applicable heures sup" },
+        { "field": "flexible_weekend", "type": "boolean", "default": false, "label": "Weekend flexible" },
+        { "field": "priority", "type": "integer", "default": 0, "label": "Priorite affectation" }
+      ]
+    },
+    {
+      "id": "target_selection",
+      "type": "entity_selector",
+      "question": "Selectionne les cibles RH",
+      "field": "targets",
+      "required": true,
+      "entities": [
+        { "scope": "employee", "source_endpoint": "/api/employees/?tenant={tenant_code}" },
+        { "scope": "department", "source_endpoint": "/api/departments/?tenant={tenant_code}" }
+      ],
+      "extra_fields": [
+        {
+          "field": "include_sub_departments",
+          "type": "boolean",
+          "default": false,
+          "show_if": { "target_scope": "department" },
+          "label": "Inclure sous-departements"
+        }
+      ]
+    },
+    {
+      "id": "review_apply",
+      "type": "summary_confirm",
+      "question": "Validation finale",
+      "field": "confirmation",
+      "required": true,
+      "checks": [
+        "quarts crees",
+        "planning genere",
+        "entrees de planning (hebdo/cycle/exceptions)",
+        "fenetre d'affectation",
+        "regles RH",
+        "cibles employees/departments"
+      ]
+    }
+  ],
+  "api_execution_plan": [
+    {
+      "order": 1,
+      "name": "CreateWorkShifts",
+      "method": "POST",
+      "endpoint": "/api/work-shifts/",
+      "repeat_from": "work_shifts",
+      "payload_template": {
+        "tenant": "{tenant_id}",
+        "name": "{item.name}",
+        "code": "{item.code}",
+        "description": "{item.description}",
+        "start_time": "{item.start_time}",
+        "end_time": "{item.end_time}",
+        "break_start_time": "{item.break_start_time}",
+        "break_end_time": "{item.break_end_time}",
+        "overtime_minutes": "{item.overtime_minutes}",
+        "late_allowable_minutes": "{item.late_allowable_minutes}",
+        "early_leave_allowable_minutes": "{item.early_leave_allowable_minutes}",
+        "metadata": {}
+      }
+    },
+    {
+      "order": 2,
+      "name": "CreatePlanning",
+      "method": "POST",
+      "endpoint": "/api/plannings/",
+      "payload_template": {
+        "tenant": "{tenant_id}",
+        "name": "{planning.name}",
+        "code": "{planning.code}",
+        "description": "{planning.description}",
+        "timezone": "{planning.timezone}",
+        "metadata": {
+          "cycle_length_days": "{rotation.cycle_length_days_if_rotating}",
+          "cycle_anchor_date": "{rotation.cycle_anchor_date_if_rotating}"
+        },
+        "entries": "{computed_entries}"
+      }
+    },
+    {
+      "order": 3,
+      "name": "AssignTargets",
+      "method": "POST",
+      "branch_by": "target_scope",
+      "branches": [
+        {
+          "scope": "employee",
+          "endpoint": "/api/employees/{target_id}/assign-planning/",
+          "payload_template": {
+            "planning": "{planning_id}"
+          }
+        },
+        {
+          "scope": "department",
+          "endpoint": "/api/departments/{target_id}/assign-planning/",
+          "payload_template": {
+            "planning": "{planning_id}",
+            "include_sub_departments": "{targets.include_sub_departments}"
+          }
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "name": "CreatePlanningAssignmentsForRhRules",
+      "method": "POST",
+      "endpoint": "/api/planning-assignments/",
+      "repeat_over_targets": true,
+      "payload_template": {
+        "tenant": "{tenant_id}",
+        "planning": "{planning_id}",
+        "work_shift": "{primary_shift_id}",
+        "department": "{target_id_if_department}",
+        "employee": "{target_id_if_employee}",
+        "valid_from": "{assignment_window.valid_from}",
+        "valid_to": "{assignment_window.valid_to}",
+        "include_sub_departments": "{targets.include_sub_departments_if_department}",
+        "check_in_not_required": "{hr_rules.check_in_not_required}",
+        "check_out_not_required": "{hr_rules.check_out_not_required}",
+        "effective_for_holiday": "{hr_rules.effective_for_holiday}",
+        "effective_for_overtime": "{hr_rules.effective_for_overtime}",
+        "flexible_weekend": "{hr_rules.flexible_weekend}",
+        "priority": "{hr_rules.priority}",
+        "metadata": {
+          "flow_id": "hr_shift_assignment_wizard_v1"
+        }
+      }
+    }
+  ],
+  "computed_entries_rules": {
+    "fixed": [
+      "produire une entry par day_of_week et quart selectionne",
+      "si jour de repos: entry avec is_rest_day=true et work_shift=null"
+    ],
+    "rotating": [
+      "produire des entries basees sur sequence_index",
+      "copier cycle_length_days et cycle_anchor_date dans planning.metadata"
+    ],
+    "exceptions": [
+      "produire des entries avec start_date/end_date",
+      "ces entries doivent prendre priorite lors de la resolution journaliere"
+    ]
+  },
+  "post_apply_verification": [
+    {
+      "name": "check_employee_schedule",
+      "method": "GET",
+      "endpoint": "/api/employees/{employee_id}/schedule/?month={yyyy-mm}",
+      "assertions": [
+        "jours week-end utilisent les quarts attendus",
+        "jours de repos correctement identifies",
+        "cycle tournant correctement deroule"
+      ]
+    },
+    {
+      "name": "check_attendance_report",
+      "method": "GET",
+      "endpoint": "/api/hikgateway/reports/attendance/?period=weekly&tenant={tenant_code}",
+      "assertions": [
+        "retards bases sur late_allowable_minutes",
+        "heures sup appliquees selon effective_for_overtime",
+        "anomalies RH visibles dans compliance"
+      ]
+    }
+  ]
+}

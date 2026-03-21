@@ -41,10 +41,20 @@ ALLOWED_HOSTS = [
     if host.strip()
 ]
 
+CORS_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ALLOWED_ORIGINS",
+        "http://localhost:3000,http://127.0.0.1:3000",
+    ).split(",")
+    if origin.strip()
+]
+
 
 # Application definition
 
 INSTALLED_APPS = [
+    'corsheaders',
     'rest_framework',
     'drf_spectacular',
     'tenants',
@@ -63,6 +73,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -97,6 +108,9 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+        'OPTIONS': {
+            'timeout': int(os.getenv("SQLITE_TIMEOUT_SECONDS", "20")),
+        },
     }
 }
 
@@ -173,3 +187,4 @@ HIK_GATEWAY_ALLOWED_IPS = [ip.strip() for ip in os.getenv("HIK_GATEWAY_ALLOWED_I
 HIK_WEBHOOK_IP = os.getenv("HIK_WEBHOOK_IP", "")
 HIK_WEBHOOK_PORT = int(os.getenv("HIK_WEBHOOK_PORT", "443"))
 HIK_WEBHOOK_URL = os.getenv("HIK_WEBHOOK_URL", "/api/hik/events")
+PAYMENT_WEBHOOK_TOKEN = os.getenv("PAYMENT_WEBHOOK_TOKEN", "")

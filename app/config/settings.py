@@ -1,5 +1,6 @@
 import os
 from datetime import timedelta
+from django.db.backends.signals import connection_created
 """
 Django settings for config project.
 
@@ -115,6 +116,19 @@ DATABASES = {
 }
 
 
+def _configure_sqlite_pragmas(sender, connection, **kwargs):
+    if connection.vendor != "sqlite":
+        return
+    journal_mode = os.getenv("SQLITE_JOURNAL_MODE", "WAL").strip().upper() or "WAL"
+    synchronous = os.getenv("SQLITE_SYNCHRONOUS", "NORMAL").strip().upper() or "NORMAL"
+    with connection.cursor() as cursor:
+        cursor.execute(f"PRAGMA journal_mode={journal_mode};")
+        cursor.execute(f"PRAGMA synchronous={synchronous};")
+
+
+connection_created.connect(_configure_sqlite_pragmas)
+
+
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 
@@ -187,4 +201,18 @@ HIK_GATEWAY_ALLOWED_IPS = [ip.strip() for ip in os.getenv("HIK_GATEWAY_ALLOWED_I
 HIK_WEBHOOK_IP = os.getenv("HIK_WEBHOOK_IP", "")
 HIK_WEBHOOK_PORT = int(os.getenv("HIK_WEBHOOK_PORT", "443"))
 HIK_WEBHOOK_URL = os.getenv("HIK_WEBHOOK_URL", "/api/hik/events")
+try:
+    HIK_EVENTS_AUTO_CATCHUP_THROTTLE_SECONDS = int(
+        os.getenv("HIK_EVENTS_AUTO_CATCHUP_THROTTLE_SECONDS", "2")
+    )
+except ValueError:
+    HIK_EVENTS_AUTO_CATCHUP_THROTTLE_SECONDS = 2
+try:
+    HIK_CATCHUP_LOOKBACK_HOURS = int(os.getenv("HIK_CATCHUP_LOOKBACK_HOURS", "24"))
+except ValueError:
+    HIK_CATCHUP_LOOKBACK_HOURS = 24
+try:
+    HIK_CATCHUP_FAST_ACTIVE_HOURS = int(os.getenv("HIK_CATCHUP_FAST_ACTIVE_HOURS", "48"))
+except ValueError:
+    HIK_CATCHUP_FAST_ACTIVE_HOURS = 48
 PAYMENT_WEBHOOK_TOKEN = os.getenv("PAYMENT_WEBHOOK_TOKEN", "")

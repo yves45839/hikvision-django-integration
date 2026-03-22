@@ -1,16 +1,17 @@
+import base64
+import binascii
+from datetime import datetime
+from datetime import timezone as dt_timezone
+
 from django.conf import settings
 from django.db import transaction
-from django.http import HttpResponseRedirect
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from urllib.parse import quote, urlparse
-import ipaddress
-import re
 
-from employees.models import Employee, Organization
-from employees.services import build_card_info_payloads, build_user_info_payload
+from employees.models import Employee, EmployeeFace, EmployeeFingerprint, Organization
+from employees.services import build_card_info_payloads, build_fingerprint_cfg_payloads, build_user_info_payload
 from hik_gateway.services.device_payload import extract_devices
 from hik_gateway.services.gateway_connection import get_shared_gateway_client
 from tenants.models import Tenant, TenantMembership, TenantRole
@@ -27,142 +28,46 @@ from .services.onboarding import create_job, process_job, schedule_job
 
 
 class DeviceViewSet(viewsets.ModelViewSet):
-    _DEFAULT_GATEWAY_PLACEHOLDER_IP = '213.156.133.202'
-    _HOST_KEYS = (
-        'ipAddress',
-        'ipv4Address',
-        'ipv6Address',
-        'devAddress',
-        'devIp',
-        'manageAddress',
-        'hostAddress',
-        'hostName',
-        'host',
-        'address',
-    )
-    _PORT_KEYS = (
-        'httpPort',
-        'webPort',
-        'portNo',
-        'port',
-        'managePort',
-    )
-
-    def _is_valid_host(self, value: str) -> bool:
-        if not value:
+    @staticmethod
+    def _to_bool(value, default: bool = False) -> bool:
+        if value is None:
+            return default
+        if isinstance(value, bool):
+            return value
+        text = str(value).strip().lower()
+        if text in {"1", "true", "yes", "y", "on"}:
+            return True
+        if text in {"0", "false", "no", "n", "off"}:
             return False
-        lowered = value.strip().lower()
-        if lowered in {'localhost'}:
-            return True
+        return default
+
+    @staticmethod
+    def _decode_face_data(face_data_raw: str) -> tuple[bytes, str]:
+        text = str(face_data_raw or "").strip()
+        if not text:
+            raise ValueError("face_data est vide.")
+
+        content_type = "image/jpeg"
+        if text.lower().startswith("data:"):
+            header, separator, payload = text.partition(",")
+            if not separator:
+                raise ValueError("face_data (data URI) est invalide.")
+            text = payload.strip()
+            mime_part = header[5:].split(";", 1)[0].strip()
+            if mime_part:
+                content_type = mime_part
+
+        normalized = "".join(text.split())
+        if not normalized:
+            raise ValueError("face_data est vide.")
         try:
-            ipaddress.ip_address(lowered)
-            return True
-        except ValueError:
-            return bool(re.fullmatch(r'[a-z0-9.-]+', lowered))
+            image_bytes = base64.b64decode(normalized, validate=True)
+        except (binascii.Error, ValueError) as exc:
+            raise ValueError("face_data doit etre une image base64 valide.") from exc
 
-    def _extract_host_and_port(self, payload: dict) -> tuple[str, int | None]:
-        if not isinstance(payload, dict):
-            return '', None
-
-        host = ''
-        port = None
-
-        def _walk(node):
-            nonlocal host, port
-            if isinstance(node, dict):
-                for key, value in node.items():
-                    if not host and key in self._HOST_KEYS and isinstance(value, str):
-                        parsed = urlparse(value if '://' in value else f'//{value}')
-                        candidate_host = parsed.hostname or value.strip()
-                        if self._is_valid_host(candidate_host):
-                            host = candidate_host
-                    if port is None and key in self._PORT_KEYS:
-                        try:
-                            candidate_port = int(value)
-                            if 1 <= candidate_port <= 65535:
-                                port = candidate_port
-                        except (TypeError, ValueError):
-                            pass
-
-                    if host and port is not None:
-                        return
-                    _walk(value)
-                    if host and port is not None:
-                        return
-            elif isinstance(node, list):
-                for item in node:
-                    _walk(item)
-                    if host and port is not None:
-                        return
-
-        _walk(payload)
-        return host, port
-
-    def _build_device_config_url(self, request, device: Device) -> tuple[str, str]:
-        host = ''
-        port = None
-        source = 'device_record'
-
-        manual_host = str(request.query_params.get('host', '')).strip()
-        if manual_host:
-            if not self._is_valid_host(manual_host):
-                raise ValueError('host must be a valid IP or hostname')
-            host = manual_host
-            source = 'request'
-
-        if not host:
-            try:
-                client = get_shared_gateway_client(tenant_code=device.tenant.code if device.tenant else None)
-                payload = client.device_list_all(max_result=100, key=device.serial_number)
-                for item in extract_devices(payload):
-                    ehome = item.get('EhomeParams', {}) if isinstance(item.get('EhomeParams'), dict) else {}
-                    same_index = str(item.get('devIndex') or '') == str(device.dev_index)
-                    same_sn = str(ehome.get('EhomeID') or '') == str(device.serial_number)
-                    if same_index or same_sn:
-                        host, port = self._extract_host_and_port(item)
-                        if host:
-                            source = 'gateway'
-                            break
-            except Exception:
-                host, port = '', None
-
-        fallback_ip = (device.ip_address or '').strip()
-        if not host and fallback_ip and fallback_ip != self._DEFAULT_GATEWAY_PLACEHOLDER_IP:
-            host = fallback_ip
-
-        if not host:
-            return '', source
-
-        scheme = str(request.query_params.get('scheme', 'http')).strip().lower()
-        if scheme not in {'http', 'https'}:
-            raise ValueError('scheme must be http or https')
-
-        explicit_port = request.query_params.get('port')
-        if explicit_port not in (None, ''):
-            try:
-                port = int(explicit_port)
-            except (TypeError, ValueError):
-                raise ValueError('port must be an integer') from None
-            if not (1 <= port <= 65535):
-                raise ValueError('port must be between 1 and 65535')
-
-        path = str(request.query_params.get('path', '/')).strip() or '/'
-        if not path.startswith('/'):
-            path = f'/{path}'
-
-        include_credentials = str(request.query_params.get('include_credentials', '')).strip().lower() in {'1', 'true', 'yes', 'on'}
-        credentials = ''
-        if include_credentials and device.device_username:
-            username = quote(device.device_username, safe='')
-            password = quote(device.device_password or '', safe='')
-            credentials = f'{username}:{password}@' if password else f'{username}@'
-
-        netloc = f'{credentials}{host}'
-        if port:
-            netloc = f'{netloc}:{port}'
-
-        return f'{scheme}://{netloc}{path}', source
-
+        if not image_bytes:
+            raise ValueError("face_data ne contient pas de donnees image.")
+        return image_bytes, content_type
 
     def _build_http_host_payload(self):
         webhook_url = (getattr(settings, 'HIK_WEBHOOK_URL', '') or '').strip()
@@ -184,6 +89,32 @@ class DeviceViewSet(viewsets.ModelViewSet):
                 'enable': True,
             }
         }
+
+    @staticmethod
+    def _build_manual_local_time(value: str | None, gmt_offset: str | None) -> str:
+        raw_dt = str(value or "").strip()
+        offset = str(gmt_offset or "").strip() or "+00:00"
+        if len(offset) != 6 or offset[0] not in {"+", "-"} or offset[3] != ":":
+            raise ValueError("gmt_offset doit etre au format +HH:MM ou -HH:MM.")
+
+        try:
+            int(offset[1:3])
+            int(offset[4:6])
+        except ValueError as exc:
+            raise ValueError("gmt_offset doit etre au format +HH:MM ou -HH:MM.") from exc
+
+        if raw_dt:
+            normalized_dt = raw_dt.replace("Z", "+00:00")
+            try:
+                parsed = datetime.fromisoformat(normalized_dt)
+            except ValueError as exc:
+                raise ValueError("local_time doit etre un datetime ISO-8601 valide.") from exc
+        else:
+            parsed = datetime.now(dt_timezone.utc)
+
+        if parsed.tzinfo is not None:
+            parsed = parsed.replace(tzinfo=None)
+        return f"{parsed.strftime('%Y-%m-%dT%H:%M:%S')}{offset}"
 
     queryset = Device.objects.none()
     serializer_class = DeviceSerializer
@@ -212,6 +143,33 @@ class DeviceViewSet(viewsets.ModelViewSet):
         gateway_client = get_shared_gateway_client(tenant_code=tenant_code)
         gateway_client.delete_device(dev_index=device.dev_index)
 
+    def _reboot_device_on_gateway(self, device: Device):
+        if not device.dev_index:
+            return
+        tenant_code = device.tenant.code if device.tenant else None
+        gateway_client = get_shared_gateway_client(tenant_code=tenant_code)
+        return gateway_client.reboot_device(dev_index=device.dev_index)
+
+    def _set_device_time_on_gateway(
+        self,
+        *,
+        device: Device,
+        time_payload: dict,
+        time_zone: str | None = None,
+    ) -> tuple[dict, dict | None]:
+        if not device.dev_index:
+            return {}, None
+        tenant_code = device.tenant.code if device.tenant else None
+        gateway_client = get_shared_gateway_client(tenant_code=tenant_code)
+        time_response = gateway_client.set_device_time_sync(dev_index=device.dev_index, payload=time_payload)
+        timezone_response = None
+        if str(time_zone or "").strip():
+            timezone_response = gateway_client.set_device_time_zone(
+                dev_index=device.dev_index,
+                time_zone=str(time_zone).strip(),
+            )
+        return time_response, timezone_response
+
     def _push_employee_to_device(
         self,
         *,
@@ -219,6 +177,7 @@ class DeviceViewSet(viewsets.ModelViewSet):
         device: Device,
         employee: Employee,
         include_cards: bool = True,
+        include_fingerprints: bool = True,
     ) -> dict:
         if not device.dev_index:
             return {
@@ -230,7 +189,9 @@ class DeviceViewSet(viewsets.ModelViewSet):
 
         user_payload = build_user_info_payload(employee)
         pushed_cards = 0
+        pushed_fingerprints = 0
         card_errors = []
+        fingerprint_errors = []
         try:
             user_response = gateway_client.add_access_user(dev_index=device.dev_index, payload=user_payload)
         except Exception as exc:  # noqa: BLE001
@@ -258,6 +219,18 @@ class DeviceViewSet(viewsets.ModelViewSet):
                 except Exception as exc:  # noqa: BLE001
                     card_errors.append(str(exc))
 
+        if include_fingerprints:
+            for payload in build_fingerprint_cfg_payloads(employee):
+                try:
+                    gateway_client.add_access_fingerprint(dev_index=device.dev_index, payload=payload)
+                    pushed_fingerprints += 1
+                except Exception as exc:  # noqa: BLE001
+                    detail = str(exc)
+                    normalized_detail = detail.lower()
+                    if "fingerprintidalreadyexist" in normalized_detail or "fingerprintalreadyexist" in normalized_detail:
+                        continue
+                    fingerprint_errors.append(detail)
+
         status_string = str(user_response.get("statusString", "OK")).upper() if isinstance(user_response, dict) else "OK"
         sub_status = str(user_response.get("subStatusCode", "")).strip() if isinstance(user_response, dict) else ""
         user_ok = status_string in {"OK", "SUCCESS"} or sub_status in {"employeeNoAlreadyExist", ""}
@@ -269,14 +242,16 @@ class DeviceViewSet(viewsets.ModelViewSet):
                 "detail": f"Gateway user push refuse: {user_response}",
             }
 
-        if card_errors:
+        if card_errors or fingerprint_errors:
             return {
                 "status": "partial",
                 "employee_id": employee.id,
                 "employee_no": employee.employee_no,
-                "detail": "Personne ajoutee, mais au moins une carte a echoue.",
+                "detail": "Personne ajoutee, mais au moins un credential a echoue.",
                 "cards_pushed": pushed_cards,
+                "fingerprints_pushed": pushed_fingerprints,
                 "card_errors": card_errors,
+                "fingerprint_errors": fingerprint_errors,
             }
 
         return {
@@ -284,6 +259,7 @@ class DeviceViewSet(viewsets.ModelViewSet):
             "employee_id": employee.id,
             "employee_no": employee.employee_no,
             "cards_pushed": pushed_cards,
+            "fingerprints_pushed": pushed_fingerprints,
             "detail": "Personne ajoutee au lecteur.",
         }
 
@@ -329,6 +305,108 @@ class DeviceViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='delete')
     def delete(self, request, pk=None):
         return self.destroy(request, pk=pk)
+
+    @action(detail=True, methods=['post'], url_path='reboot')
+    def reboot(self, request, pk=None):
+        device = self.get_object()
+        if not self._can_manage_device(request.user, device):
+            return Response(
+                {'detail': "Vous n'avez pas la permission de redemarrer ce device."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if not str(device.dev_index or '').strip():
+            return Response(
+                {'detail': "Le device n'a pas de dev_index."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            gateway_response = self._reboot_device_on_gateway(device)
+        except Exception as exc:  # noqa: BLE001
+            return Response(
+                {'detail': f"Echec redemarrage gateway: {exc}"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return Response(
+            {
+                'status': 'accepted',
+                'detail': 'Commande de redemarrage envoyee au device.',
+                'dev_index': device.dev_index,
+                'gateway_response': gateway_response if isinstance(gateway_response, dict) else {},
+            },
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+    @action(detail=True, methods=['post'], url_path='set-time')
+    def set_time(self, request, pk=None):
+        device = self.get_object()
+        if not self._can_manage_device(request.user, device):
+            return Response(
+                {'detail': "Vous n'avez pas la permission de mettre a l'heure ce device."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if not str(device.dev_index or '').strip():
+            return Response(
+                {'detail': "Le device n'a pas de dev_index."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        mode = str(request.data.get('mode') or 'manual').strip()
+        if mode.lower() == 'ntp':
+            normalized_mode = 'NTP'
+            time_payload = {'Time': {'timeMode': normalized_mode}}
+        elif mode.lower() == 'manual':
+            try:
+                local_time = self._build_manual_local_time(
+                    request.data.get('local_time'),
+                    request.data.get('gmt_offset'),
+                )
+            except ValueError as exc:
+                return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            normalized_mode = 'manual'
+            time_payload = {'Time': {'timeMode': normalized_mode, 'localTime': local_time}}
+        else:
+            return Response(
+                {'detail': "mode doit etre 'manual' ou 'NTP'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        time_zone = request.data.get('time_zone')
+        if time_zone is not None and not str(time_zone).strip():
+            return Response(
+                {'detail': "time_zone ne peut pas etre vide quand il est fourni."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            gateway_response, timezone_response = self._set_device_time_on_gateway(
+                device=device,
+                time_payload=time_payload,
+                time_zone=str(time_zone).strip() if time_zone is not None else None,
+            )
+        except Exception as exc:  # noqa: BLE001
+            return Response(
+                {'detail': f"Echec synchronisation heure device: {exc}"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        response_payload = {
+            'status': 'accepted',
+            'detail': 'Commande de synchronisation horaire envoyee au device.',
+            'dev_index': device.dev_index,
+            'applied': {
+                'mode': normalized_mode,
+                'time_payload': time_payload,
+                'time_zone': str(time_zone).strip() if time_zone is not None else None,
+            },
+            'gateway_response': gateway_response if isinstance(gateway_response, dict) else {},
+        }
+        if timezone_response is not None:
+            response_payload['gateway_time_zone_response'] = (
+                timezone_response if isinstance(timezone_response, dict) else {}
+            )
+        return Response(response_payload, status=status.HTTP_202_ACCEPTED)
 
     @action(detail=False, methods=['post'], url_path='onboard')
     def onboard(self, request):
@@ -444,35 +522,6 @@ class DeviceViewSet(viewsets.ModelViewSet):
         output = DeviceSerializer(device)
         return Response(output.data, status=status.HTTP_201_CREATED)
 
-    @action(detail=True, methods=['get'], url_path='config-page')
-    def config_page(self, request, pk=None):
-        device = self.get_object()
-        try:
-            configuration_url, source = self._build_device_config_url(request, device)
-        except ValueError as exc:
-            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-
-        if not configuration_url:
-            return Response(
-                {'detail': "Impossible de construire l'URL de configuration pour ce device."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        wants_redirect = str(request.query_params.get('redirect', '')).strip().lower() in {'1', 'true', 'yes', 'on'}
-        if wants_redirect:
-            return HttpResponseRedirect(configuration_url)
-
-        return Response(
-            {
-                'device_id': device.id,
-                'dev_index': device.dev_index,
-                'serial_number': device.serial_number,
-                'configuration_url': configuration_url,
-                'source': source,
-            },
-            status=status.HTTP_200_OK,
-        )
-
     @action(detail=True, methods=["post"], url_path="add-persons")
     def add_persons(self, request, pk=None):
         device = self.get_object()
@@ -488,12 +537,13 @@ class DeviceViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        include_cards = str(request.data.get("include_cards", True)).strip().lower() in {"1", "true", "yes", "on"}
-        stop_on_error = str(request.data.get("stop_on_error", False)).strip().lower() in {"1", "true", "yes", "on"}
+        include_cards = self._to_bool(request.data.get("include_cards", True), default=True)
+        include_fingerprints = self._to_bool(request.data.get("include_fingerprints", True), default=True)
+        stop_on_error = self._to_bool(request.data.get("stop_on_error", False), default=False)
 
         employees = list(
             Employee.objects.filter(tenant_id=device.tenant_id, id__in=employee_ids)
-            .prefetch_related("attributes", "cards")
+            .prefetch_related("attributes", "cards", "fingerprints")
             .order_by("id")
         )
         found_ids = {employee.id for employee in employees}
@@ -516,6 +566,7 @@ class DeviceViewSet(viewsets.ModelViewSet):
                 device=device,
                 employee=employee,
                 include_cards=include_cards,
+                include_fingerprints=include_fingerprints,
             )
             results.append(result)
             if result["status"] == "ok":
@@ -534,6 +585,325 @@ class DeviceViewSet(viewsets.ModelViewSet):
                 "device_id": device.id,
                 "dev_index": device.dev_index,
                 "total": len(results),
+                "success_count": success_count,
+                "partial_count": partial_count,
+                "error_count": error_count,
+                "results": results,
+            },
+            status=response_status,
+        )
+
+    @action(detail=True, methods=["post"], url_path="enroll-fingerprint")
+    def enroll_fingerprint(self, request, pk=None):
+        device = self.get_object()
+        if not device.tenant_id:
+            return Response({"detail": "Lecteur sans tenant."}, status=status.HTTP_400_BAD_REQUEST)
+        if not str(device.dev_index or "").strip():
+            return Response({"detail": "Le lecteur n'a pas de dev_index."}, status=status.HTTP_400_BAD_REQUEST)
+
+        employee_id = request.data.get("employee_id")
+        if not employee_id:
+            return Response({"detail": "employee_id est obligatoire."}, status=status.HTTP_400_BAD_REQUEST)
+
+        finger_index_raw = request.data.get("finger_index")
+        try:
+            finger_index = int(finger_index_raw)
+        except (TypeError, ValueError):
+            return Response({"detail": "finger_index doit etre un entier entre 1 et 10."}, status=status.HTTP_400_BAD_REQUEST)
+        if not 1 <= finger_index <= 10:
+            return Response({"detail": "finger_index doit etre entre 1 et 10."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            quality_threshold = int(request.data.get("quality_threshold", 0) or 0)
+        except (TypeError, ValueError):
+            return Response({"detail": "quality_threshold doit etre un entier."}, status=status.HTTP_400_BAD_REQUEST)
+
+        include_cards = self._to_bool(request.data.get("include_cards", False), default=False)
+        push_to_all_readers = self._to_bool(request.data.get("push_to_all_readers", True), default=True)
+
+        employee = (
+            Employee.objects.filter(tenant_id=device.tenant_id, id=employee_id)
+            .select_related("tenant", "department")
+            .prefetch_related("attributes", "cards", "fingerprints", "devices", "department__devices", "access_groups__readers")
+            .first()
+        )
+        if employee is None:
+            return Response({"detail": "Employe introuvable pour ce tenant."}, status=status.HTTP_404_NOT_FOUND)
+
+        gateway_client = get_shared_gateway_client(tenant_code=device.tenant.code if device.tenant else None)
+        try:
+            capture_response = gateway_client.capture_fingerprint(
+                dev_index=device.dev_index,
+                finger_no=finger_index,
+            )
+        except Exception as exc:  # noqa: BLE001
+            return Response(
+                {"detail": f"Echec de collecte empreinte: {exc}"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        capture = capture_response.get("CaptureFingerPrint", {}) if isinstance(capture_response, dict) else {}
+        finger_data = str(capture.get("fingerData") or "").strip() if isinstance(capture, dict) else ""
+        if not finger_data:
+            return Response(
+                {
+                    "detail": "Le lecteur n'a pas retourne de donnees d'empreinte.",
+                    "capture_response": capture_response,
+                },
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        finger_quality = None
+        if isinstance(capture, dict):
+            try:
+                finger_quality = int(capture.get("fingerPrintQuality"))
+            except (TypeError, ValueError):
+                finger_quality = None
+
+        if quality_threshold > 0 and finger_quality is not None and finger_quality < quality_threshold:
+            return Response(
+                {
+                    "detail": "Qualite empreinte insuffisante.",
+                    "finger_quality": finger_quality,
+                    "quality_threshold": quality_threshold,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        EmployeeFingerprint.objects.update_or_create(
+            employee=employee,
+            finger_index=finger_index,
+            defaults={"template": finger_data},
+        )
+
+        # Reload prefetched credentials for immediate push.
+        employee = (
+            Employee.objects.filter(id=employee.id)
+            .select_related("tenant", "department")
+            .prefetch_related("attributes", "cards", "fingerprints", "devices", "department__devices", "access_groups__readers")
+            .first()
+        )
+        if employee is None:
+            return Response({"detail": "Employe introuvable apres sauvegarde."}, status=status.HTTP_404_NOT_FOUND)
+
+        if push_to_all_readers:
+            target_readers = list(employee.get_effective_devices(include_department_ancestors=True))
+            if all(reader.id != device.id for reader in target_readers):
+                target_readers.append(device)
+        else:
+            target_readers = [device]
+
+        deduped_readers = []
+        seen_reader_ids = set()
+        for reader in target_readers:
+            if reader.id in seen_reader_ids:
+                continue
+            seen_reader_ids.add(reader.id)
+            deduped_readers.append(reader)
+
+        results = []
+        success_count = 0
+        partial_count = 0
+        error_count = 0
+
+        for reader in deduped_readers:
+            result = self._push_employee_to_device(
+                gateway_client=gateway_client,
+                device=reader,
+                employee=employee,
+                include_cards=include_cards,
+                include_fingerprints=True,
+            )
+            results.append(
+                {
+                    "reader_id": reader.id,
+                    "dev_index": reader.dev_index,
+                    **result,
+                }
+            )
+            if result["status"] == "ok":
+                success_count += 1
+            elif result["status"] == "partial":
+                partial_count += 1
+            else:
+                error_count += 1
+
+        response_status = status.HTTP_200_OK if error_count == 0 else status.HTTP_207_MULTI_STATUS
+        return Response(
+            {
+                "status": "ok" if error_count == 0 else "partial",
+                "employee_id": employee.id,
+                "employee_no": employee.employee_no,
+                "finger_index": finger_index,
+                "finger_quality": finger_quality,
+                "finger_template": finger_data,
+                "captured_on_reader": {
+                    "device_id": device.id,
+                    "dev_index": device.dev_index,
+                },
+                "target_readers_count": len(results),
+                "success_count": success_count,
+                "partial_count": partial_count,
+                "error_count": error_count,
+                "results": results,
+            },
+            status=response_status,
+        )
+
+    @action(detail=True, methods=["post"], url_path="enroll-face")
+    def enroll_face(self, request, pk=None):
+        device = self.get_object()
+        if not device.tenant_id:
+            return Response({"detail": "Lecteur sans tenant."}, status=status.HTTP_400_BAD_REQUEST)
+        if not str(device.dev_index or "").strip():
+            return Response({"detail": "Le lecteur n'a pas de dev_index."}, status=status.HTTP_400_BAD_REQUEST)
+
+        employee_id = request.data.get("employee_id")
+        if not employee_id:
+            return Response({"detail": "employee_id est obligatoire."}, status=status.HTTP_400_BAD_REQUEST)
+
+        include_cards = self._to_bool(request.data.get("include_cards", False), default=False)
+        include_fingerprints = self._to_bool(request.data.get("include_fingerprints", False), default=False)
+        push_to_all_readers = self._to_bool(request.data.get("push_to_all_readers", True), default=True)
+
+        face_lib_type = str(request.data.get("face_lib_type") or "blackFD").strip() or "blackFD"
+        if face_lib_type not in {"infraredFD", "blackFD", "staticFD"}:
+            return Response(
+                {"detail": "face_lib_type invalide. Valeurs autorisees: infraredFD, blackFD, staticFD."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        employee = (
+            Employee.objects.filter(tenant_id=device.tenant_id, id=employee_id)
+            .select_related("tenant", "department", "face")
+            .prefetch_related("attributes", "cards", "fingerprints", "devices", "department__devices", "access_groups__readers")
+            .first()
+        )
+        if employee is None:
+            return Response({"detail": "Employe introuvable pour ce tenant."}, status=status.HTTP_404_NOT_FOUND)
+
+        requested_face_data = request.data.get("face_data")
+        if requested_face_data is not None and str(requested_face_data).strip():
+            EmployeeFace.objects.update_or_create(
+                employee=employee,
+                defaults={"face_data": str(requested_face_data).strip()},
+            )
+
+        employee = (
+            Employee.objects.filter(id=employee.id)
+            .select_related("tenant", "department", "face")
+            .prefetch_related("attributes", "cards", "fingerprints", "devices", "department__devices", "access_groups__readers")
+            .first()
+        )
+        if employee is None:
+            return Response({"detail": "Employe introuvable apres sauvegarde."}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            face_data = str(employee.face.face_data or "").strip()
+        except EmployeeFace.DoesNotExist:
+            face_data = ""
+        if not face_data:
+            return Response(
+                {"detail": "Aucune photo visage disponible. Importez une photo ou envoyez face_data."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            face_image, face_content_type = self._decode_face_data(face_data)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        user_payload = build_user_info_payload(employee)
+        user_info = user_payload.get("UserInfo", {}) if isinstance(user_payload, dict) else {}
+        employee_no = str(user_info.get("employeeNo") or "").strip()
+        if not employee_no:
+            return Response(
+                {"detail": "Impossible de resoudre employeeNo pour l'enrolement visage."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if push_to_all_readers:
+            target_readers = list(employee.get_effective_devices(include_department_ancestors=True))
+            if all(reader.id != device.id for reader in target_readers):
+                target_readers.append(device)
+        else:
+            target_readers = [device]
+
+        deduped_readers = []
+        seen_reader_ids = set()
+        for reader in target_readers:
+            if reader.id in seen_reader_ids:
+                continue
+            seen_reader_ids.add(reader.id)
+            deduped_readers.append(reader)
+
+        gateway_client = get_shared_gateway_client(tenant_code=device.tenant.code if device.tenant else None)
+
+        results = []
+        success_count = 0
+        partial_count = 0
+        error_count = 0
+
+        for reader in deduped_readers:
+            person_result = self._push_employee_to_device(
+                gateway_client=gateway_client,
+                device=reader,
+                employee=employee,
+                include_cards=include_cards,
+                include_fingerprints=include_fingerprints,
+            )
+
+            face_response = None
+            face_error = None
+            if person_result.get("status") == "error":
+                face_error = person_result.get("detail") or "Impossible de preparer la personne sur le lecteur."
+                result_status = "error"
+            else:
+                try:
+                    face_response = gateway_client.add_access_face(
+                        dev_index=reader.dev_index,
+                        employee_no=employee_no,
+                        face_image=face_image,
+                        face_lib_type=face_lib_type,
+                        content_type=face_content_type,
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    face_error = str(exc)
+                    result_status = "error"
+                else:
+                    result_status = "partial" if person_result.get("status") == "partial" else "ok"
+
+            if result_status == "ok":
+                success_count += 1
+            elif result_status == "partial":
+                partial_count += 1
+            else:
+                error_count += 1
+
+            result_payload = {
+                "reader_id": reader.id,
+                "dev_index": reader.dev_index,
+                "status": result_status,
+                "person_push": person_result,
+            }
+            if face_response is not None:
+                result_payload["face_response"] = face_response
+            if face_error:
+                result_payload["detail"] = face_error
+            results.append(result_payload)
+
+        response_status = status.HTTP_200_OK if error_count == 0 else status.HTTP_207_MULTI_STATUS
+        return Response(
+            {
+                "status": "ok" if error_count == 0 else "partial",
+                "employee_id": employee.id,
+                "employee_no": employee.employee_no,
+                "face_lib_type": face_lib_type,
+                "captured_on_reader": {
+                    "device_id": device.id,
+                    "dev_index": device.dev_index,
+                },
+                "target_readers_count": len(results),
                 "success_count": success_count,
                 "partial_count": partial_count,
                 "error_count": error_count,

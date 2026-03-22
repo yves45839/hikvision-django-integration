@@ -1,3 +1,4 @@
+import base64
 from unittest.mock import Mock, patch
 
 from django.contrib.auth import get_user_model
@@ -5,7 +6,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from devices.models import Device, DeviceOnboardingJob, DeviceOrganizationBinding
-from employees.models import Organization, OrganizationMembership, OrganizationRole
+from employees.models import Employee, EmployeeFace, Organization, OrganizationMembership, OrganizationRole
 from tenants.models import Tenant, TenantMembership, TenantRole
 
 
@@ -207,89 +208,6 @@ class DeviceOwnershipTests(APITestCase):
         self.assertEqual(response.data['dev_index'], 'uuid-from-list')
 
     @patch('devices.views.get_shared_gateway_client')
-    def test_config_page_returns_gateway_configuration_url(self, mocked_client):
-        device = Device.objects.create(
-            owner=self.user1,
-            tenant=self.tenant_a,
-            dev_index='IDX-CFG',
-            serial_number='SN-CFG-001',
-        )
-        gateway = Mock()
-        gateway.device_list_all.return_value = {
-            'SearchResult': {
-                'MatchList': [
-                    {
-                        'Device': {
-                            'devIndex': 'IDX-CFG',
-                            'EhomeParams': {'EhomeID': 'SN-CFG-001'},
-                            'ipAddress': '192.168.1.120',
-                            'httpPort': 8080,
-                        }
-                    }
-                ]
-            }
-        }
-        mocked_client.return_value = gateway
-
-        self.client.force_authenticate(self.user1)
-        response = self.client.get(f'/api/devices/{device.id}/config-page/')
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['configuration_url'], 'http://192.168.1.120:8080/')
-        self.assertEqual(response.data['source'], 'gateway')
-
-    @patch('devices.views.get_shared_gateway_client')
-    def test_config_page_redirects_to_device_configuration(self, mocked_client):
-        device = Device.objects.create(
-            owner=self.user1,
-            tenant=self.tenant_a,
-            dev_index='IDX-CFG-REDIR',
-            serial_number='SN-CFG-REDIR',
-        )
-        gateway = Mock()
-        gateway.device_list_all.return_value = {
-            'SearchResult': {
-                'MatchList': [
-                    {
-                        'Device': {
-                            'devIndex': 'IDX-CFG-REDIR',
-                            'EhomeParams': {'EhomeID': 'SN-CFG-REDIR'},
-                            'ipAddress': '192.168.1.130',
-                        }
-                    }
-                ]
-            }
-        }
-        mocked_client.return_value = gateway
-
-        self.client.force_authenticate(self.user1)
-        response = self.client.get(f'/api/devices/{device.id}/config-page/?redirect=1', follow=False)
-
-        self.assertEqual(response.status_code, status.HTTP_302_FOUND)
-        self.assertEqual(response['Location'], 'http://192.168.1.130/')
-
-    @patch('devices.views.get_shared_gateway_client')
-    def test_config_page_uses_manual_host_query_param(self, mocked_client):
-        device = Device.objects.create(
-            owner=self.user1,
-            tenant=self.tenant_a,
-            dev_index='IDX-CFG-MANUAL',
-            serial_number='SN-CFG-MANUAL',
-        )
-        gateway = Mock()
-        gateway.device_list_all.return_value = {'SearchResult': {'MatchList': []}}
-        mocked_client.return_value = gateway
-
-        self.client.force_authenticate(self.user1)
-        response = self.client.get(
-            f'/api/devices/{device.id}/config-page/?host=192.168.1.88&scheme=https&port=443&path=/doc/page/config'
-        )
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['configuration_url'], 'https://192.168.1.88:443/doc/page/config')
-        self.assertEqual(response.data['source'], 'request')
-
-    @patch('devices.views.get_shared_gateway_client')
     def test_owner_can_delete_device_and_calls_gateway(self, mocked_client):
         device = Device.objects.create(
             owner=self.user1,
@@ -359,6 +277,181 @@ class DeviceOwnershipTests(APITestCase):
         self.assertFalse(Device.objects.filter(id=device.id).exists())
         gateway.delete_device.assert_called_once_with(dev_index='IDX-DEL-004')
 
+    @patch('devices.views.get_shared_gateway_client')
+    def test_owner_can_reboot_device_and_calls_gateway(self, mocked_client):
+        device = Device.objects.create(
+            owner=self.user1,
+            tenant=self.tenant_a,
+            dev_index='IDX-REB-001',
+            serial_number='SN-REB-001',
+        )
+        gateway = Mock()
+        gateway.reboot_device.return_value = {'statusCode': 1, 'statusString': 'OK'}
+        mocked_client.return_value = gateway
+
+        self.client.force_authenticate(self.user1)
+        response = self.client.post(f'/api/devices/{device.id}/reboot/', format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertEqual(response.data['status'], 'accepted')
+        gateway.reboot_device.assert_called_once_with(dev_index='IDX-REB-001')
+
+    @patch('devices.views.get_shared_gateway_client')
+    def test_non_owner_cannot_reboot_device(self, mocked_client):
+        device = Device.objects.create(
+            owner=self.user1,
+            tenant=self.tenant_a,
+            dev_index='IDX-REB-002',
+            serial_number='SN-REB-002',
+        )
+
+        self.client.force_authenticate(self.user2)
+        response = self.client.post(f'/api/devices/{device.id}/reboot/', format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        mocked_client.assert_not_called()
+
+    @patch('devices.views.get_shared_gateway_client')
+    def test_reboot_returns_502_when_gateway_fails(self, mocked_client):
+        device = Device.objects.create(
+            owner=self.user1,
+            tenant=self.tenant_a,
+            dev_index='IDX-REB-003',
+            serial_number='SN-REB-003',
+        )
+        gateway = Mock()
+        gateway.reboot_device.side_effect = RuntimeError('gateway down')
+        mocked_client.return_value = gateway
+
+        self.client.force_authenticate(self.user1)
+        response = self.client.post(f'/api/devices/{device.id}/reboot/', format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_502_BAD_GATEWAY)
+        gateway.reboot_device.assert_called_once_with(dev_index='IDX-REB-003')
+
+    @patch('devices.views.get_shared_gateway_client')
+    def test_owner_can_set_manual_time_with_gmt_offset(self, mocked_client):
+        device = Device.objects.create(
+            owner=self.user1,
+            tenant=self.tenant_a,
+            dev_index='IDX-TIME-001',
+            serial_number='SN-TIME-001',
+        )
+        gateway = Mock()
+        gateway.set_device_time_sync.return_value = {'statusCode': 1, 'statusString': 'OK'}
+        gateway.set_device_time_zone.return_value = {'statusCode': 1, 'statusString': 'OK'}
+        mocked_client.return_value = gateway
+
+        self.client.force_authenticate(self.user1)
+        response = self.client.post(
+            f'/api/devices/{device.id}/set-time/',
+            {
+                'mode': 'manual',
+                'local_time': '2026-03-22T09:15:30',
+                'gmt_offset': '+00:00',
+                'time_zone': 'GMT+00:00:00',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        gateway.set_device_time_sync.assert_called_once_with(
+            dev_index='IDX-TIME-001',
+            payload={'Time': {'timeMode': 'manual', 'localTime': '2026-03-22T09:15:30+00:00'}},
+        )
+        gateway.set_device_time_zone.assert_called_once_with(
+            dev_index='IDX-TIME-001',
+            time_zone='GMT+00:00:00',
+        )
+
+    @patch('devices.views.get_shared_gateway_client')
+    def test_owner_can_set_ntp_time_mode(self, mocked_client):
+        device = Device.objects.create(
+            owner=self.user1,
+            tenant=self.tenant_a,
+            dev_index='IDX-TIME-002',
+            serial_number='SN-TIME-002',
+        )
+        gateway = Mock()
+        gateway.set_device_time_sync.return_value = {'statusCode': 1, 'statusString': 'OK'}
+        mocked_client.return_value = gateway
+
+        self.client.force_authenticate(self.user1)
+        response = self.client.post(
+            f'/api/devices/{device.id}/set-time/',
+            {'mode': 'NTP'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        gateway.set_device_time_sync.assert_called_once_with(
+            dev_index='IDX-TIME-002',
+            payload={'Time': {'timeMode': 'NTP'}},
+        )
+        gateway.set_device_time_zone.assert_not_called()
+
+    @patch('devices.views.get_shared_gateway_client')
+    def test_set_time_rejects_invalid_offset(self, mocked_client):
+        device = Device.objects.create(
+            owner=self.user1,
+            tenant=self.tenant_a,
+            dev_index='IDX-TIME-003',
+            serial_number='SN-TIME-003',
+        )
+        self.client.force_authenticate(self.user1)
+        response = self.client.post(
+            f'/api/devices/{device.id}/set-time/',
+            {'mode': 'manual', 'gmt_offset': 'UTC+0'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        mocked_client.assert_not_called()
+
+    @patch('devices.views.get_shared_gateway_client')
+    def test_non_owner_cannot_set_time(self, mocked_client):
+        device = Device.objects.create(
+            owner=self.user1,
+            tenant=self.tenant_a,
+            dev_index='IDX-TIME-004',
+            serial_number='SN-TIME-004',
+        )
+
+        self.client.force_authenticate(self.user2)
+        response = self.client.post(
+            f'/api/devices/{device.id}/set-time/',
+            {'mode': 'NTP'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        mocked_client.assert_not_called()
+
+    @patch('devices.views.get_shared_gateway_client')
+    def test_set_time_returns_502_when_gateway_fails(self, mocked_client):
+        device = Device.objects.create(
+            owner=self.user1,
+            tenant=self.tenant_a,
+            dev_index='IDX-TIME-005',
+            serial_number='SN-TIME-005',
+        )
+        gateway = Mock()
+        gateway.set_device_time_sync.side_effect = RuntimeError('gateway down')
+        mocked_client.return_value = gateway
+
+        self.client.force_authenticate(self.user1)
+        response = self.client.post(
+            f'/api/devices/{device.id}/set-time/',
+            {'mode': 'NTP'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_502_BAD_GATEWAY)
+        gateway.set_device_time_sync.assert_called_once_with(
+            dev_index='IDX-TIME-005',
+            payload={'Time': {'timeMode': 'NTP'}},
+        )
+
     def test_owner_can_patch_device_name(self):
         device = Device.objects.create(
             owner=self.user1,
@@ -390,6 +483,181 @@ class DeviceOwnershipTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         device.refresh_from_db()
         self.assertEqual(device.name, 'Nom initial')
+
+    @patch('devices.views.get_shared_gateway_client')
+    def test_add_persons_pushes_cards_and_fingerprints(self, mocked_client):
+        device = Device.objects.create(
+            owner=self.user1,
+            tenant=self.tenant_a,
+            dev_index='IDX-ADD-PERSON',
+            serial_number='SN-ADD-PERSON',
+        )
+        employee = Employee.objects.create(
+            tenant=self.tenant_a,
+            employee_no='E-ADD-1',
+            name='Person To Push',
+        )
+        employee.cards.create(card_no='CARD-ADD-1', card_type='normalCard')
+        employee.fingerprints.create(finger_index=1, template='fp-add-1')
+
+        gateway = Mock()
+        gateway.add_access_user.return_value = {'status': 'ok'}
+        gateway.add_access_card.return_value = {'status': 'ok'}
+        gateway.add_access_fingerprint.return_value = {'status': 'ok'}
+        mocked_client.return_value = gateway
+
+        self.client.force_authenticate(self.user1)
+        response = self.client.post(
+            f'/api/devices/{device.id}/add-persons/',
+            {
+                'employee_ids': [employee.id],
+                'include_cards': True,
+                'include_fingerprints': True,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload['status'], 'ok')
+        self.assertEqual(payload['success_count'], 1)
+        self.assertEqual(gateway.add_access_user.call_count, 1)
+        self.assertEqual(gateway.add_access_card.call_count, 1)
+        self.assertEqual(gateway.add_access_fingerprint.call_count, 1)
+
+    @patch('devices.views.get_shared_gateway_client')
+    def test_enroll_fingerprint_collects_and_syncs(self, mocked_client):
+        device = Device.objects.create(
+            owner=self.user1,
+            tenant=self.tenant_a,
+            dev_index='IDX-ENROLL-FP',
+            serial_number='SN-ENROLL-FP',
+        )
+        employee = Employee.objects.create(
+            tenant=self.tenant_a,
+            employee_no='E-ENROLL-1',
+            name='Enroll Person',
+        )
+
+        gateway = Mock()
+        gateway.capture_fingerprint.return_value = {
+            'CaptureFingerPrint': {
+                'fingerData': 'fp-captured-1',
+                'fingerNo': 2,
+                'fingerPrintQuality': 88,
+            }
+        }
+        gateway.add_access_user.return_value = {'status': 'ok'}
+        gateway.add_access_fingerprint.return_value = {'status': 'ok'}
+        mocked_client.return_value = gateway
+
+        self.client.force_authenticate(self.user1)
+        response = self.client.post(
+            f'/api/devices/{device.id}/enroll-fingerprint/',
+            {
+                'employee_id': employee.id,
+                'finger_index': 2,
+                'push_to_all_readers': False,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload['status'], 'ok')
+        self.assertEqual(payload['finger_index'], 2)
+        self.assertEqual(payload['finger_quality'], 88)
+        self.assertTrue(employee.fingerprints.filter(finger_index=2, template='fp-captured-1').exists())
+        gateway.capture_fingerprint.assert_called_once_with(dev_index='IDX-ENROLL-FP', finger_no=2)
+        self.assertEqual(gateway.add_access_user.call_count, 1)
+        self.assertEqual(gateway.add_access_fingerprint.call_count, 1)
+
+    @patch('devices.views.get_shared_gateway_client')
+    def test_enroll_face_uses_stored_photo_and_syncs(self, mocked_client):
+        device = Device.objects.create(
+            owner=self.user1,
+            tenant=self.tenant_a,
+            dev_index='IDX-ENROLL-FACE',
+            serial_number='SN-ENROLL-FACE',
+        )
+        employee = Employee.objects.create(
+            tenant=self.tenant_a,
+            employee_no='EENROLLFACE1',
+            name='Face Person',
+        )
+        face_binary = b'face-image-binary'
+        EmployeeFace.objects.create(
+            employee=employee,
+            face_data=base64.b64encode(face_binary).decode('ascii'),
+        )
+
+        gateway = Mock()
+        gateway.add_access_user.return_value = {'status': 'ok'}
+        gateway.add_access_face.return_value = {'status': 'ok'}
+        mocked_client.return_value = gateway
+
+        self.client.force_authenticate(self.user1)
+        response = self.client.post(
+            f'/api/devices/{device.id}/enroll-face/',
+            {
+                'employee_id': employee.id,
+                'push_to_all_readers': False,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload['status'], 'ok')
+        self.assertEqual(payload['success_count'], 1)
+        self.assertEqual(gateway.add_access_user.call_count, 1)
+        self.assertEqual(gateway.add_access_face.call_count, 1)
+        add_face_kwargs = gateway.add_access_face.call_args.kwargs
+        self.assertEqual(add_face_kwargs['dev_index'], 'IDX-ENROLL-FACE')
+        self.assertEqual(add_face_kwargs['employee_no'], 'EENROLLFACE1')
+        self.assertEqual(add_face_kwargs['face_image'], face_binary)
+        self.assertEqual(add_face_kwargs['content_type'], 'image/jpeg')
+        self.assertEqual(add_face_kwargs['face_lib_type'], 'blackFD')
+
+    @patch('devices.views.get_shared_gateway_client')
+    def test_enroll_face_accepts_request_face_data_and_persists(self, mocked_client):
+        device = Device.objects.create(
+            owner=self.user1,
+            tenant=self.tenant_a,
+            dev_index='IDX-ENROLL-FACE-REQ',
+            serial_number='SN-ENROLL-FACE-REQ',
+        )
+        employee = Employee.objects.create(
+            tenant=self.tenant_a,
+            employee_no='EENROLLFACE2',
+            name='Face Person 2',
+        )
+        face_binary = b'face-image-png'
+        face_b64 = base64.b64encode(face_binary).decode('ascii')
+        face_data_uri = f'data:image/png;base64,{face_b64}'
+
+        gateway = Mock()
+        gateway.add_access_user.return_value = {'status': 'ok'}
+        gateway.add_access_face.return_value = {'status': 'ok'}
+        mocked_client.return_value = gateway
+
+        self.client.force_authenticate(self.user1)
+        response = self.client.post(
+            f'/api/devices/{device.id}/enroll-face/',
+            {
+                'employee_id': employee.id,
+                'face_data': face_data_uri,
+                'push_to_all_readers': False,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        employee.refresh_from_db()
+        self.assertEqual(employee.face.face_data, face_data_uri)
+        add_face_kwargs = gateway.add_access_face.call_args.kwargs
+        self.assertEqual(add_face_kwargs['face_image'], face_binary)
+        self.assertEqual(add_face_kwargs['content_type'], 'image/png')
 
 
 class DeviceOnboardingJobTests(APITestCase):

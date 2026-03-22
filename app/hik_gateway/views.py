@@ -3,13 +3,16 @@ from __future__ import annotations
 import json
 import logging
 import time as pytime
+import xml.etree.ElementTree as ET
 from decimal import Decimal, InvalidOperation
 from datetime import date, datetime, time, timedelta
 from datetime import timezone as dt_timezone
 from io import BytesIO
+from threading import Lock, Thread
 
 from django.conf import settings
 from django.core.cache import cache
+from django.db import close_old_connections
 from django.db.models import Q
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render
@@ -30,7 +33,10 @@ from hik_gateway.services.device_payload import extract_devices, normalize_devic
 from hik_gateway.services.device_dispatch import dispatch_hik_devices_to_core_devices
 from hik_gateway.services.device_sync import sync_all_gateways
 from hik_gateway.services.gateway_connection import get_shared_gateway_client
-from hik_gateway.services.catchup import catchup_all_devices
+from hik_gateway.services.catchup import (
+    catchup_all_devices,
+    catchup_tenant_devices_fast,
+)
 from hik_gateway.services.webhook_ingest import ingest_event
 from employees.models import Employee
 from employees.schedule_resolver import ScheduleResolver
@@ -38,6 +44,8 @@ from tenants.models import Tenant
 
 
 logger = logging.getLogger(__name__)
+_AUTO_CATCHUP_LOCK = Lock()
+_AUTO_CATCHUP_IN_FLIGHT: set[str] = set()
 
 
 DEFAULT_DEVICE_LIST_PAYLOAD = {
@@ -140,6 +148,56 @@ def _is_allowed_token(request: HttpRequest) -> bool:
     return provided == expected
 
 
+def _strip_xml_ns(tag: str) -> str:
+    return tag.split("}", 1)[-1] if "}" in tag else tag
+
+
+def _xml_element_to_dict(element: ET.Element) -> dict:
+    payload: dict = {}
+    for child in element:
+        key = _strip_xml_ns(child.tag)
+        if list(child):
+            value = _xml_element_to_dict(child)
+        else:
+            value = (child.text or "").strip()
+        if key in payload:
+            if not isinstance(payload[key], list):
+                payload[key] = [payload[key]]
+            payload[key].append(value)
+        else:
+            payload[key] = value
+    return payload
+
+
+def _parse_webhook_payload(raw_body: str) -> dict | None:
+    try:
+        parsed = json.loads(raw_body or "{}")
+        if isinstance(parsed, dict):
+            return parsed
+    except json.JSONDecodeError:
+        pass
+
+    # Some Hikvision firmwares prepend plain-text header lines before JSON.
+    json_start = raw_body.find("{")
+    json_end = raw_body.rfind("}")
+    if json_start != -1 and json_end > json_start:
+        candidate = raw_body[json_start:json_end + 1]
+        try:
+            parsed = json.loads(candidate)
+            if isinstance(parsed, dict):
+                return parsed
+        except json.JSONDecodeError:
+            pass
+
+    try:
+        root = ET.fromstring(raw_body or "")
+    except ET.ParseError:
+        return None
+
+    root_name = _strip_xml_ns(root.tag)
+    return {root_name: _xml_element_to_dict(root)}
+
+
 @csrf_exempt
 @require_POST
 def hik_event_webhook(request: HttpRequest) -> JsonResponse:
@@ -150,10 +208,10 @@ def hik_event_webhook(request: HttpRequest) -> JsonResponse:
     raw_body = request.body.decode("utf-8", errors="replace")
     logger.info("Hikvision webhook payload received", extra={"client_ip": ip, "raw_body": raw_body})
 
-    try:
-        payload = json.loads(raw_body or "{}")
-    except json.JSONDecodeError:
-        return JsonResponse({"detail": "Invalid JSON"}, status=400)
+    payload = _parse_webhook_payload(raw_body)
+    if payload is None:
+        logger.warning("Unsupported webhook payload format from %s: %s", ip, raw_body[:500])
+        return JsonResponse({"detail": "Invalid payload format", "preview": raw_body[:200]}, status=400)
 
     tenant = _resolve_tenant(request, payload)
     if request.headers.get("X-TENANT-CODE") and tenant is None:
@@ -161,6 +219,24 @@ def hik_event_webhook(request: HttpRequest) -> JsonResponse:
 
     raw_event, attendance = ingest_event(payload, source=AttendanceLog.SOURCE_REALTIME, tenant=tenant)
     if raw_event is None:
+        if getattr(settings, "DEBUG", False):
+            sample_key = "hik:webhook:ignored:sample"
+            if cache.add(sample_key, 1, timeout=20):
+                root = payload.get("EventNotificationAlert", payload) if isinstance(payload, dict) else {}
+                nested = (
+                    root.get("AccessControllerEvent")
+                    or root.get("AcsEvent")
+                    or root.get("AcsEventInfo")
+                    or {}
+                )
+                logger.warning(
+                    "Ignored Hikvision webhook payload event_type=%s dev_index=%s keys=%s nested_keys=%s preview=%s",
+                    root.get("eventType") if isinstance(root, dict) else None,
+                    root.get("devIndex") if isinstance(root, dict) else None,
+                    sorted(root.keys())[:20] if isinstance(root, dict) else [],
+                    sorted(nested.keys())[:20] if isinstance(nested, dict) else [],
+                    _safe_json_preview(root),
+                )
         return JsonResponse({"status": "ignored"}, status=202)
 
     return JsonResponse(
@@ -179,6 +255,34 @@ def _parse_csv_query_list(value: str) -> list[str]:
 
 def _to_bool(value: str | None) -> bool:
     return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _start_tenant_auto_catchup(*, tenant_code: str, max_results: int = 100) -> bool:
+    """Run tenant catchup in a daemon thread so polling responses stay fast."""
+
+    tenant_key = tenant_code.lower()
+    with _AUTO_CATCHUP_LOCK:
+        if tenant_key in _AUTO_CATCHUP_IN_FLIGHT:
+            return False
+        _AUTO_CATCHUP_IN_FLIGHT.add(tenant_key)
+
+    def _run() -> None:
+        close_old_connections()
+        try:
+            catchup_tenant_devices_fast(tenant_code=tenant_code, max_results=max_results)
+        except Exception:  # noqa: BLE001
+            logger.exception("Automatic catchup failed", extra={"tenant_code": tenant_code})
+        finally:
+            close_old_connections()
+            with _AUTO_CATCHUP_LOCK:
+                _AUTO_CATCHUP_IN_FLIGHT.discard(tenant_key)
+
+    Thread(
+        target=_run,
+        name=f"hik-auto-catchup-{tenant_key}",
+        daemon=True,
+    ).start()
+    return True
 
 
 def _is_admin_request(request: HttpRequest) -> bool:
@@ -1435,6 +1539,10 @@ def hik_events_api(request: HttpRequest) -> Response:
     source = (request.GET.get("source") or "").strip().lower()
     dev_index = (request.GET.get("dev_index") or "").strip()
     person_id = (request.GET.get("person_id") or "").strip()
+    include_system = _to_bool(request.GET.get("include_system", "0"))
+    auto_catchup = _to_bool(request.GET.get("auto_catchup", "1"))
+    since_id_raw = (request.GET.get("since_id") or "").strip()
+    since_id: int | None = None
 
     try:
         limit = int(request.GET.get("limit", 100))
@@ -1445,11 +1553,33 @@ def hik_events_api(request: HttpRequest) -> Response:
         return Response({"detail": "limit must be > 0"}, status=status.HTTP_400_BAD_REQUEST)
     limit = min(limit, 500)
 
+    if since_id_raw:
+        try:
+            since_id = int(since_id_raw)
+        except ValueError:
+            return Response({"detail": "since_id must be an integer"}, status=status.HTTP_400_BAD_REQUEST)
+        if since_id <= 0:
+            return Response({"detail": "since_id must be > 0"}, status=status.HTTP_400_BAD_REQUEST)
+
     if not tenant_code and not _is_admin_request(request):
         return Response(
             {"detail": "Ajoute ?tenant=<code_tenant> (ou connecte-toi en administrateur pour voir tous les événements)."},
             status=status.HTTP_403_FORBIDDEN,
         )
+
+    try:
+        catchup_cooldown_seconds = max(
+            2,
+            int(getattr(settings, "HIK_EVENTS_AUTO_CATCHUP_THROTTLE_SECONDS", 8)),
+        )
+    except (TypeError, ValueError):
+        catchup_cooldown_seconds = 8
+
+    should_trigger_auto_catchup = False
+    if tenant_code and auto_catchup:
+        cache_key = f"hik-events-auto-catchup:{tenant_code.lower()}"
+        if cache.add(cache_key, "1", timeout=catchup_cooldown_seconds):
+            should_trigger_auto_catchup = True
 
     queryset = AttendanceLog.objects.select_related("device", "tenant", "raw_event").order_by("-timestamp", "-id")
     if tenant_code:
@@ -1460,6 +1590,12 @@ def hik_events_api(request: HttpRequest) -> Response:
         queryset = queryset.filter(device__dev_index=dev_index)
     if person_id:
         queryset = queryset.filter(person_id=person_id)
+    if since_id is not None:
+        queryset = queryset.filter(id__gt=since_id)
+    if not include_system:
+        queryset = queryset.exclude(
+            Q(person_id="") & Q(normalized_action=AttendanceLog.ACTION_UNKNOWN)
+        )
 
     logs = list(queryset[:limit])
     tenant_ids = {log.tenant_id for log in logs}
@@ -1535,19 +1671,24 @@ def hik_events_api(request: HttpRequest) -> Response:
         for log in logs
     ]
 
-    return Response(
-        {
-            "count": len(results),
-            "results": results,
-            "filters": {
-                "tenant": tenant_code or None,
-                "source": source or None,
-                "dev_index": dev_index or None,
-                "person_id": person_id or None,
-                "limit": limit,
-            },
-        }
-    )
+    payload = {
+        "count": len(results),
+        "results": results,
+        "filters": {
+            "tenant": tenant_code or None,
+            "source": source or None,
+            "dev_index": dev_index or None,
+            "person_id": person_id or None,
+            "include_system": include_system,
+            "since_id": since_id,
+            "limit": limit,
+        },
+    }
+
+    if should_trigger_auto_catchup and tenant_code:
+        _start_tenant_auto_catchup(tenant_code=tenant_code, max_results=30)
+
+    return Response(payload)
 
 
 @api_view(["GET", "POST"])
@@ -1791,6 +1932,7 @@ def hik_attendance_reports_api(request: HttpRequest) -> Response:
     period = (request.GET.get("period") or "daily").strip().lower()
     export_format = (request.GET.get("export") or "json").strip().lower()
     person_id = (request.GET.get("person_id") or "").strip()
+    auto_catchup = _to_bool(request.GET.get("auto_catchup", "1"))
     person_ids = _parse_csv_query_list(request.GET.get("person_ids", ""))
     if person_id:
         person_ids.append(person_id)
@@ -1971,10 +2113,16 @@ def hik_attendance_reports_api(request: HttpRequest) -> Response:
                 "unknown_events": 0,
                 "first_checkin": None,
                 "last_checkout": None,
+                "first_activity": None,
+                "last_activity": None,
                 "matched_shift": None,
             },
         )
         observed_bucket["total_logs"] += 1
+        if observed_bucket["first_activity"] is None or local_timestamp < observed_bucket["first_activity"]:
+            observed_bucket["first_activity"] = local_timestamp
+        if observed_bucket["last_activity"] is None or local_timestamp > observed_bucket["last_activity"]:
+            observed_bucket["last_activity"] = local_timestamp
         if matched_shift_payload is not None and observed_bucket["matched_shift"] is None:
             observed_bucket["matched_shift"] = matched_shift_payload
 
@@ -2190,6 +2338,8 @@ def hik_attendance_reports_api(request: HttpRequest) -> Response:
                     "unknown_events": 0,
                     "first_checkin": None,
                     "last_checkout": None,
+                    "first_activity": None,
+                    "last_activity": None,
                 },
             )
             correction = correction_by_key.get((employee.tenant_id, employee.employee_no, date_key))
@@ -2208,6 +2358,23 @@ def hik_attendance_reports_api(request: HttpRequest) -> Response:
                 )
             actual_checkin_at = observed.get("first_checkin")
             actual_checkout_at = observed.get("last_checkout")
+            first_activity_at = observed.get("first_activity")
+            last_activity_at = observed.get("last_activity")
+
+            # Some sites use a single reader (no explicit OUT event). In reports,
+            # use first/last observed access as arrival/departure fallback.
+            if actual_checkin_at is None and first_activity_at is not None:
+                has_checkin = True
+                actual_checkin_at = first_activity_at
+            if actual_checkout_at is None and last_activity_at is not None:
+                if actual_checkin_at is not None:
+                    if last_activity_at > actual_checkin_at:
+                        has_checkout = True
+                        actual_checkout_at = last_activity_at
+                elif int(observed.get("total_logs") or 0) >= 2:
+                    has_checkout = True
+                    actual_checkout_at = last_activity_at
+
             if correction is not None:
                 if correction.arrival_time is not None:
                     has_checkin = True

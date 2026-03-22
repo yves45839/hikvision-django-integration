@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 from urllib.parse import urljoin
 
@@ -43,9 +44,65 @@ class HikGatewayClient:
             )
         return response.json() if response.content else {}
 
+    def _post_multipart(
+        self,
+        path: str,
+        *,
+        files: dict[str, Any],
+        params: dict[str, Any] | None = None,
+        timeout: int | None = None,
+    ) -> dict[str, Any]:
+        url = urljoin(self.base_url, path.lstrip("/"))
+        response = requests.post(
+            url,
+            files=files,
+            params=params or {},
+            auth=self.auth,
+            timeout=timeout or self.timeout,
+        )
+        ok = getattr(response, "ok", None)
+        if ok is None:
+            status_code = int(getattr(response, "status_code", 200) or 200)
+            ok = 200 <= status_code < 400
+
+        if not ok:
+            body = (response.text or "").strip()
+            body = body[:1000]
+            raise requests.HTTPError(
+                f"{getattr(response, 'status_code', 'unknown')} "
+                f"{getattr(response, 'reason', '')} for url: {getattr(response, 'url', url)}; body={body}",
+                response=response,
+            )
+        return response.json() if response.content else {}
+
     def _put(self, path: str, payload: dict[str, Any], params: dict[str, Any] | None = None) -> dict[str, Any]:
         url = urljoin(self.base_url, path.lstrip("/"))
         response = requests.put(url, json=payload, params=params or {}, auth=self.auth, timeout=self.timeout)
+        ok = getattr(response, "ok", None)
+        if ok is None:
+            status_code = int(getattr(response, "status_code", 200) or 200)
+            ok = 200 <= status_code < 400
+
+        if not ok:
+            body = (response.text or "").strip()
+            body = body[:1000]
+            raise requests.HTTPError(
+                f"{getattr(response, 'status_code', 'unknown')} "
+                f"{getattr(response, 'reason', '')} for url: {getattr(response, 'url', url)}; body={body}",
+                response=response,
+            )
+        return response.json() if response.content else {}
+
+    def _put_text(self, path: str, payload: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        url = urljoin(self.base_url, path.lstrip("/"))
+        response = requests.put(
+            url,
+            data=str(payload),
+            params=params or {},
+            auth=self.auth,
+            timeout=self.timeout,
+            headers={"Content-Type": "text/plain; charset=utf-8"},
+        )
         ok = getattr(response, "ok", None)
         if ok is None:
             status_code = int(getattr(response, "status_code", 200) or 200)
@@ -207,6 +264,27 @@ class HikGatewayClient:
             params={"format": "json", "devIndex": dev_index},
         )
 
+    def reboot_device(self, dev_index: str) -> dict[str, Any]:
+        return self._put(
+            "/ISAPI/System/reboot",
+            payload={},
+            params={"format": "json", "devIndex": dev_index},
+        )
+
+    def set_device_time_sync(self, dev_index: str, payload: dict[str, Any]) -> dict[str, Any]:
+        return self._put(
+            "/ISAPI/System/time",
+            payload=payload,
+            params={"format": "json", "devIndex": dev_index},
+        )
+
+    def set_device_time_zone(self, dev_index: str, time_zone: str) -> dict[str, Any]:
+        return self._put_text(
+            "/ISAPI/System/time/timeZone",
+            payload=str(time_zone),
+            params={"devIndex": dev_index},
+        )
+
     def add_access_user(self, dev_index: str, payload: dict[str, Any]) -> dict[str, Any]:
         return self._post(
             "/ISAPI/AccessControl/UserInfo/Record",
@@ -336,5 +414,134 @@ class HikGatewayClient:
                 "numOfMatches": len(cards),
                 "totalMatches": total_matches or len(cards),
                 "CardInfo": cards,
+            }
+        }
+
+    def add_access_fingerprint(self, dev_index: str, payload: dict[str, Any]) -> dict[str, Any]:
+        return self._post(
+            "/ISAPI/AccessControl/FingerPrintDownload",
+            payload=payload,
+            params={"format": "json", "devIndex": dev_index},
+        )
+
+    def add_access_face(
+        self,
+        dev_index: str,
+        *,
+        employee_no: str,
+        face_image: bytes,
+        face_lib_type: str = "blackFD",
+        content_type: str = "image/jpeg",
+        filename: str = "face.jpg",
+    ) -> dict[str, Any]:
+        face_info = {
+            "FaceInfo": {
+                "employeeNo": str(employee_no or "").strip(),
+                "faceLibType": str(face_lib_type or "blackFD").strip() or "blackFD",
+            }
+        }
+        files = {
+            "FaceDataRecord": (None, json.dumps(face_info), "application/json"),
+            "FaceImage": (filename, face_image, content_type or "image/jpeg"),
+        }
+        return self._post_multipart(
+            "/ISAPI/Intelligent/FDLib/FaceDataRecord",
+            files=files,
+            params={"format": "json", "devIndex": dev_index},
+        )
+
+    def capture_fingerprint(
+        self,
+        dev_index: str,
+        *,
+        finger_no: int,
+    ) -> dict[str, Any]:
+        payload = {
+            "CaptureFingerPrintCond": {
+                "fingerNo": int(finger_no),
+            }
+        }
+        return self._post(
+            "/ISAPI/AccessControl/CaptureFingerPrint",
+            payload=payload,
+            params={"format": "json", "devIndex": dev_index},
+        )
+
+    def search_access_fingerprints(self, dev_index: str, payload: dict[str, Any]) -> dict[str, Any]:
+        return self._post(
+            "/ISAPI/AccessControl/FingerPrintUpload",
+            payload=payload,
+            params={"format": "json", "devIndex": dev_index},
+        )
+
+    def search_access_fingerprints_all(
+        self,
+        dev_index: str,
+        *,
+        employee_no: str,
+        search_id: str = "1",
+        max_attempts: int = 16,
+    ) -> dict[str, Any]:
+        normalized_employee_no = str(employee_no or "").strip()
+        if not normalized_employee_no:
+            return {
+                "FingerPrintInfo": {
+                    "searchID": str(search_id),
+                    "status": "NoFP",
+                    "FingerPrintList": [],
+                }
+            }
+
+        found: list[dict[str, Any]] = []
+        dedupe_keys: set[tuple[Any, ...]] = set()
+        status_value = "NoFP"
+
+        for _ in range(max(1, int(max_attempts or 1))):
+            payload = self.search_access_fingerprints(
+                dev_index=dev_index,
+                payload={
+                    "FingerPrintCond": {
+                        "searchID": str(search_id),
+                        "employeeNo": normalized_employee_no,
+                    }
+                },
+            )
+            info = payload.get("FingerPrintInfo", {}) if isinstance(payload, dict) else {}
+            if not isinstance(info, dict):
+                break
+
+            status_value = str(info.get("status") or "").strip() or status_value
+            rows = info.get("FingerPrintList", [])
+            if isinstance(rows, dict):
+                rows = [rows]
+            if not isinstance(rows, list):
+                rows = []
+
+            new_added = 0
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                key = (
+                    str(row.get("cardReaderNo") or ""),
+                    str(row.get("fingerPrintID") or ""),
+                    str(row.get("fingerData") or ""),
+                )
+                if key in dedupe_keys:
+                    continue
+                dedupe_keys.add(key)
+                found.append(row)
+                new_added += 1
+
+            normalized_status = status_value.upper().replace(" ", "")
+            if normalized_status in {"NOFP", "NOMATCH", "NO"}:
+                break
+            if not rows or new_added == 0:
+                break
+
+        return {
+            "FingerPrintInfo": {
+                "searchID": str(search_id),
+                "status": status_value,
+                "FingerPrintList": found,
             }
         }

@@ -122,6 +122,66 @@ class HikAttendancePersonLinkingTests(APITestCase):
         self.assertIsNotNone(attendance)
         self.assertEqual(attendance.normalized_action, AttendanceLog.ACTION_ACCESS_DENIED)
 
+    def test_ingest_skips_system_event_without_identity_or_attendance_status(self):
+        payload = {
+            "EventNotificationAlert": {
+                "eventType": "AccessControllerEvent",
+                "devIndex": self.device.dev_index,
+                "dateTime": "2026-03-01T08:05:00Z",
+                "AccessControllerEvent": {
+                    "serialNo": "7005",
+                    "majorEventType": 5,
+                    "subEventType": 21,
+                    "doorNo": 1,
+                },
+            }
+        }
+
+        raw_event, attendance = ingest_event(
+            payload,
+            source=AttendanceLog.SOURCE_REALTIME,
+            tenant=self.tenant,
+        )
+
+        self.assertIsNotNone(raw_event)
+        self.assertIsNone(attendance)
+        self.assertEqual(RawEvent.objects.count(), 1)
+        self.assertEqual(AttendanceLog.objects.count(), 0)
+
+    def test_ingest_accepts_legacy_acs_event_payload_with_device_id(self):
+        employee = Employee.objects.create(
+            tenant=self.tenant,
+            employee_no="E-LEGACY-001",
+            name="Legacy User",
+        )
+
+        payload = {
+            "eventType": "AcsEvent",
+            "deviceID": self.device.serial_number,
+            "dateTime": "2026-03-01T08:10:00Z",
+            "AcsEvent": {
+                "employeeNoString": "E-LEGACY-001",
+                "serialNo": "7006",
+                "major": 5,
+                "minor": 75,
+                "time": "2026-03-01T08:10:00Z",
+            },
+        }
+
+        raw_event, attendance = ingest_event(
+            payload,
+            source=AttendanceLog.SOURCE_REALTIME,
+            tenant=self.tenant,
+        )
+
+        self.assertIsNotNone(raw_event)
+        self.assertIsNotNone(attendance)
+        self.assertEqual(raw_event.dev_index, self.device.dev_index)
+        self.assertEqual(raw_event.major_event_type, 5)
+        self.assertEqual(raw_event.sub_event_type, 75)
+        self.assertEqual(attendance.employee_id, employee.id)
+        self.assertEqual(attendance.person_id, "E-LEGACY-001")
+
 
 class HikAttendanceUnknownDeviceIngestTests(APITestCase):
     def setUp(self):
@@ -372,6 +432,41 @@ class HikWebhookTenantRoutingTests(APITestCase):
             set(RawEvent.objects.values_list("tenant__code", flat=True)),
             {"tenant-a", "tenant-b"},
         )
+
+    def test_webhook_accepts_legacy_acs_event_payload(self):
+        payload = {
+            "eventType": "AcsEvent",
+            "deviceID": "SN-B",
+            "dateTime": "2026-02-01T08:06:00Z",
+            "AcsEvent": {
+                "employeeNoString": "E3001",
+                "serialNo": "104",
+                "major": "5",
+                "minor": "75",
+                "time": "2026-02-01T08:06:00Z",
+            },
+        }
+
+        response = self.client.post(
+            "/api/hik/events",
+            payload,
+            format="json",
+            HTTP_X_TENANT_CODE="tenant-b",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(RawEvent.objects.count(), 1)
+        self.assertEqual(AttendanceLog.objects.count(), 1)
+
+        raw_event = RawEvent.objects.get()
+        attendance = AttendanceLog.objects.get()
+
+        self.assertEqual(raw_event.tenant, self.tenant_b)
+        self.assertEqual(raw_event.device, self.device_b)
+        self.assertEqual(raw_event.major_event_type, 5)
+        self.assertEqual(raw_event.sub_event_type, 75)
+        self.assertEqual(attendance.tenant, self.tenant_b)
+        self.assertEqual(attendance.device, self.device_b)
 
 
 class HikCheckDeviceCommandTests(APITestCase):
@@ -794,6 +889,51 @@ class HikGatewayClientPaginationTests(APITestCase):
         self.assertEqual(len(payload["SearchResult"]["MatchList"]), 2)
         self.assertEqual(mock_post.call_count, 2)
 
+    @patch("hik_gateway.client.requests.post")
+    def test_search_access_fingerprints_all_stops_on_no_fp(self, mock_post):
+        from hik_gateway.client import HikGatewayClient
+
+        mock_post.side_effect = [
+            _DummyResponse(
+                {
+                    "FingerPrintInfo": {
+                        "searchID": "1",
+                        "status": "OK",
+                        "FingerPrintList": [
+                            {"cardReaderNo": 1, "fingerPrintID": 1, "fingerData": "fp-1"},
+                        ],
+                    }
+                }
+            ),
+            _DummyResponse(
+                {
+                    "FingerPrintInfo": {
+                        "searchID": "1",
+                        "status": "OK",
+                        "FingerPrintList": [
+                            {"cardReaderNo": 1, "fingerPrintID": 2, "fingerData": "fp-2"},
+                        ],
+                    }
+                }
+            ),
+            _DummyResponse(
+                {
+                    "FingerPrintInfo": {
+                        "searchID": "1",
+                        "status": "NoFP",
+                        "FingerPrintList": [],
+                    }
+                }
+            ),
+        ]
+
+        client = HikGatewayClient("https://gw.local", "admin", "pass")
+        payload = client.search_access_fingerprints_all(dev_index="IDX-1", employee_no="E1001")
+
+        self.assertEqual(payload["FingerPrintInfo"]["status"], "NoFP")
+        self.assertEqual(len(payload["FingerPrintInfo"]["FingerPrintList"]), 2)
+        self.assertEqual(mock_post.call_count, 3)
+
 
 class HikDeviceDispatchTests(APITestCase):
     def setUp(self):
@@ -1098,6 +1238,59 @@ class HikGatewayAdminApiTests(APITestCase):
         self.assertEqual(payload["count"], 1)
         self.assertEqual(payload["results"][0]["person_id"], "E1001")
         self.assertEqual(payload["results"][0]["device"]["dev_index"], self.device.dev_index)
+
+    def test_events_endpoint_supports_since_id_incremental_fetch(self):
+        self.client.force_authenticate(user=self.user)
+
+        older = self._create_attendance_log(person_id="E1001", timestamp="2026-02-01T08:00:00Z", serial_no=100)
+        newer = self._create_attendance_log(person_id="E1002", timestamp="2026-02-01T08:01:00Z", serial_no=101)
+
+        response = self.client.get(
+            "/api/hikgateway/events/",
+            {"tenant": self.tenant.code, "since_id": older.id},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload["count"], 1)
+        self.assertEqual(payload["results"][0]["id"], newer.id)
+        self.assertEqual(payload["filters"]["since_id"], older.id)
+
+    def test_events_endpoint_hides_system_unknown_rows_by_default(self):
+        self.client.force_authenticate(user=self.user)
+        hidden = self._create_attendance_log(
+            person_id="",
+            timestamp="2026-02-01T08:00:00Z",
+            serial_no=201,
+            attendance_type="fallback",
+            attendance_status="",
+            direction="UNKNOWN",
+        )
+        visible = self._create_attendance_log(
+            person_id="E3001",
+            timestamp="2026-02-01T08:01:00Z",
+            serial_no=202,
+        )
+
+        response_default = self.client.get(
+            "/api/hikgateway/events/",
+            {"tenant": self.tenant.code},
+        )
+        self.assertEqual(response_default.status_code, status.HTTP_200_OK)
+        payload_default = response_default.json()
+        self.assertEqual(payload_default["count"], 1)
+        self.assertEqual(payload_default["results"][0]["id"], visible.id)
+        self.assertFalse(payload_default["filters"]["include_system"])
+
+        response_with_system = self.client.get(
+            "/api/hikgateway/events/",
+            {"tenant": self.tenant.code, "include_system": "1"},
+        )
+        self.assertEqual(response_with_system.status_code, status.HTTP_200_OK)
+        payload_with_system = response_with_system.json()
+        returned_ids = {item["id"] for item in payload_with_system["results"]}
+        self.assertSetEqual(returned_ids, {hidden.id, visible.id})
+        self.assertTrue(payload_with_system["filters"]["include_system"])
 
     def test_attendance_reports_endpoint_requires_tenant_for_non_admin(self):
         self.client.force_authenticate(user=self.user)
@@ -1521,6 +1714,72 @@ class HikGatewayAdminApiTests(APITestCase):
         self.assertEqual(details[0]["actual_checkout_at"], "2026-02-14T16:45:00Z")
         self.assertEqual(details[0]["arrival_delta_minutes"], 7)
         self.assertEqual(details[0]["departure_delta_minutes"], -15)
+
+    def test_attendance_reports_fallback_to_last_access_when_checkout_is_missing(self):
+        self.client.force_authenticate(user=self.user)
+        organization = Organization.objects.create(tenant=self.tenant, name="Ops Fallback", code="ops-fallback")
+        department = Department.objects.create(
+            tenant=self.tenant,
+            organization=organization,
+            name="Single Reader",
+            code="single-reader",
+        )
+        shift = WorkShift.objects.create(
+            tenant=self.tenant,
+            name="Single Reader Shift",
+            code="single-reader-shift",
+            start_time="08:00",
+            end_time="17:00",
+        )
+        employee = Employee.objects.create(
+            tenant=self.tenant,
+            department=department,
+            employee_no="E6001-SR",
+            name="Single Reader User",
+            work_shift=shift,
+        )
+
+        first_access = self._create_attendance_log(
+            person_id=employee.employee_no,
+            timestamp="2026-02-14T08:05:00Z",
+            serial_no=164,
+            attendance_type="checkin",
+            attendance_status="checkin",
+            direction="IN",
+        )
+        first_access.employee = employee
+        first_access.save(update_fields=["employee"])
+
+        last_access = self._create_attendance_log(
+            person_id=employee.employee_no,
+            timestamp="2026-02-14T17:12:00Z",
+            serial_no=165,
+            attendance_type="checkin",
+            attendance_status="checkin",
+            direction="IN",
+        )
+        last_access.employee = employee
+        last_access.save(update_fields=["employee"])
+
+        response = self.client.get(
+            "/api/hikgateway/reports/attendance/",
+            {
+                "tenant": self.tenant.code,
+                "period": "daily",
+                "date": "2026-02-14",
+                "person_id": employee.employee_no,
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        details = payload["compliance"]["employees"][0]["details"]
+        self.assertEqual(len(details), 1)
+        self.assertEqual(details[0]["actual_checkin_at"], "2026-02-14T08:05:00Z")
+        self.assertEqual(details[0]["actual_checkout_at"], "2026-02-14T17:12:00Z")
+        self.assertEqual(details[0]["arrival_delta_minutes"], 5)
+        self.assertEqual(details[0]["departure_delta_minutes"], 12)
+        self.assertEqual(details[0]["status"], "partial")
 
     def test_attendance_reports_assigns_overnight_checkout_to_shift_start_day(self):
         self.client.force_authenticate(user=self.user)
@@ -2134,6 +2393,152 @@ class HikCatchupServiceTests(APITestCase):
         processed = catchup_device(self.device, max_results=50)
 
         self.assertEqual(processed, 2)
+
+    @patch("hik_gateway.services.catchup.ingest_acs_event")
+    @patch("hik_gateway.services.catchup.get_shared_gateway_client")
+    def test_catchup_uses_num_of_matches_for_pagination_step(self, mock_get_client, mock_ingest):
+        from hik_gateway.services.catchup import catchup_device
+        from types import SimpleNamespace
+
+        mock_client = mock_get_client.return_value
+        mock_client.acs_event_search.side_effect = [
+            {
+                "AcsEvent": {
+                    "totalMatches": 6,
+                    "numOfMatches": 5,
+                    "InfoList": [
+                        {"serialNo": 1, "time": "2026-03-22T00:09:00Z"},
+                        {"serialNo": 2, "time": "2026-03-22T00:09:01Z"},
+                        {"serialNo": 3, "time": "2026-03-22T00:09:02Z"},
+                        {"serialNo": 4, "time": "2026-03-22T00:09:03Z"},
+                        {"serialNo": 5, "time": "2026-03-22T00:09:04Z"},
+                    ],
+                }
+            },
+            {
+                "AcsEvent": {
+                    "totalMatches": 6,
+                    "numOfMatches": 1,
+                    "InfoList": [{"serialNo": 6, "time": "2026-03-22T00:09:05Z"}],
+                }
+            },
+        ]
+        mock_ingest.side_effect = [
+            (SimpleNamespace(serial_no=1, event_datetime=datetime(2026, 3, 22, 0, 9, tzinfo=dt_timezone.utc)), None),
+            (SimpleNamespace(serial_no=2, event_datetime=datetime(2026, 3, 22, 0, 9, 1, tzinfo=dt_timezone.utc)), None),
+            (SimpleNamespace(serial_no=3, event_datetime=datetime(2026, 3, 22, 0, 9, 2, tzinfo=dt_timezone.utc)), None),
+            (SimpleNamespace(serial_no=4, event_datetime=datetime(2026, 3, 22, 0, 9, 3, tzinfo=dt_timezone.utc)), None),
+            (SimpleNamespace(serial_no=5, event_datetime=datetime(2026, 3, 22, 0, 9, 4, tzinfo=dt_timezone.utc)), None),
+            (SimpleNamespace(serial_no=6, event_datetime=datetime(2026, 3, 22, 0, 9, 5, tzinfo=dt_timezone.utc)), None),
+        ]
+
+        processed = catchup_device(self.device, max_results=5)
+
+        self.assertEqual(processed, 6)
+        first_call_payload = mock_client.acs_event_search.call_args_list[0].args[1]
+        second_call_payload = mock_client.acs_event_search.call_args_list[1].args[1]
+        self.assertEqual(first_call_payload["AcsEventCond"]["searchResultPosition"], 0)
+        self.assertEqual(second_call_payload["AcsEventCond"]["searchResultPosition"], 5)
+
+    @patch("hik_gateway.services.catchup.ingest_acs_event")
+    @patch("hik_gateway.services.catchup.get_shared_gateway_client")
+    def test_catchup_tail_resync_unblocks_when_window_does_not_advance(self, mock_get_client, mock_ingest):
+        from hik_gateway.models import DeviceCursor
+        from hik_gateway.services.catchup import catchup_device
+        from types import SimpleNamespace
+
+        DeviceCursor.objects.update_or_create(
+            device=self.device,
+            defaults={
+                "tenant": self.tenant,
+                "last_event_time": datetime(2026, 3, 22, 0, 9, 32, tzinfo=dt_timezone.utc),
+                "last_serial_no": 80,
+            },
+        )
+
+        mock_client = mock_get_client.return_value
+        mock_client.acs_event_search.side_effect = [
+            {
+                "AcsEvent": {
+                    "totalMatches": 1,
+                    "numOfMatches": 1,
+                    "InfoList": [{"serialNo": 80, "time": "2026-03-22T00:09:32Z"}],
+                }
+            },
+            {
+                "AcsEvent": {
+                    "totalMatches": 106,
+                    "numOfMatches": 5,
+                    "InfoList": [{"serialNo": 1, "time": "2026-03-04T15:36:28+08:00"}],
+                }
+            },
+            {
+                "AcsEvent": {
+                    "totalMatches": 106,
+                    "numOfMatches": 1,
+                    "InfoList": [{"serialNo": 106, "time": "2026-03-22T13:41:52+08:00"}],
+                }
+            },
+        ]
+        mock_ingest.side_effect = [
+            (SimpleNamespace(serial_no=80, event_datetime=datetime(2026, 3, 22, 0, 9, 32, tzinfo=dt_timezone.utc)), None),
+            (SimpleNamespace(serial_no=106, event_datetime=datetime(2026, 3, 22, 5, 41, 52, tzinfo=dt_timezone.utc)), None),
+        ]
+
+        processed = catchup_device(self.device, max_results=5)
+        cursor = DeviceCursor.objects.get(device=self.device)
+
+        self.assertEqual(processed, 2)
+        self.assertEqual(cursor.last_serial_no, 106)
+        self.assertEqual(cursor.last_event_time, datetime(2026, 3, 22, 5, 41, 52, tzinfo=dt_timezone.utc))
+
+    @patch("hik_gateway.services.catchup.ingest_acs_event")
+    @patch("hik_gateway.services.catchup.get_shared_gateway_client")
+    def test_catchup_continues_when_gateway_caps_page_size(self, mock_get_client, mock_ingest):
+        from hik_gateway.services.catchup import catchup_device
+        from types import SimpleNamespace
+
+        mock_client = mock_get_client.return_value
+        mock_client.acs_event_search.side_effect = [
+            {
+                "AcsEvent": {
+                    "totalMatches": 106,
+                    "numOfMatches": 30,
+                    "InfoList": [{"serialNo": 1, "time": "2026-03-22T00:00:01Z"}] * 30,
+                }
+            },
+            {
+                "AcsEvent": {
+                    "totalMatches": 106,
+                    "numOfMatches": 30,
+                    "InfoList": [{"serialNo": 31, "time": "2026-03-22T00:30:01Z"}] * 30,
+                }
+            },
+            {
+                "AcsEvent": {
+                    "totalMatches": 106,
+                    "numOfMatches": 30,
+                    "InfoList": [{"serialNo": 61, "time": "2026-03-22T01:00:01Z"}] * 30,
+                }
+            },
+            {
+                "AcsEvent": {
+                    "totalMatches": 106,
+                    "numOfMatches": 16,
+                    "InfoList": [{"serialNo": 91, "time": "2026-03-22T01:30:01Z"}] * 16,
+                }
+            },
+        ]
+        mock_ingest.return_value = (
+            SimpleNamespace(serial_no=999, event_datetime=datetime(2026, 3, 22, 1, 30, 1, tzinfo=dt_timezone.utc)),
+            None,
+        )
+
+        processed = catchup_device(self.device, max_results=100)
+
+        self.assertEqual(processed, 106)
+        call_positions = [call.args[1]["AcsEventCond"]["searchResultPosition"] for call in mock_client.acs_event_search.call_args_list[:4]]
+        self.assertEqual(call_positions, [0, 30, 60, 90])
 
     @patch("hik_gateway.services.catchup.ingest_acs_event")
     @patch("hik_gateway.services.catchup.get_shared_gateway_client")

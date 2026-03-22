@@ -114,3 +114,35 @@ def build_card_info_payloads(employee: Employee) -> list[dict]:
             }
         }
     ]
+
+
+def build_fingerprint_cfg_payloads(employee: Employee, *, enable_card_readers: list[int] | None = None) -> list[dict]:
+    attrs = {_normalize_attr_name(item.name): item.value for item in employee.attributes.all()}
+    employee_no = _normalize_hik_identifier(attrs.get("gateway_employee_no", employee.employee_no))
+    payloads = []
+    for fingerprint in employee.fingerprints.all():
+        finger_data = str(fingerprint.template or "").strip()
+        if not finger_data:
+            continue
+
+        cfg = {
+            "employeeNo": employee_no,
+            "fingerPrintID": int(fingerprint.finger_index),
+            "fingerType": "normalFP",
+            "fingerData": finger_data,
+        }
+        if enable_card_readers:
+            reader_numbers = []
+            for reader_no in enable_card_readers:
+                try:
+                    value = int(reader_no)
+                except (TypeError, ValueError):
+                    continue
+                if value > 0:
+                    reader_numbers.append(value)
+            if reader_numbers:
+                cfg["enableCardReader"] = reader_numbers
+
+        payloads.append({"FingerPrintCfg": cfg})
+
+    return payloads

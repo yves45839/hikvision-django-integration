@@ -2,7 +2,7 @@
     "info":  {
                  "_postman_id":  "c2696669-2b73-428e-8889-5a1c985943c3",
                  "name":  "Hikvision Devices API",
-                 "description":  "Jeu Postman pour les endpoints devices (CRUD, onboard, config-page).",
+                 "description":  "Jeu Postman pour les endpoints devices (CRUD, onboard).",
                  "schema":  "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
              },
     "event":  [
@@ -74,22 +74,6 @@
                      {
                          "key":  "devicePassword",
                          "value":  "12345"
-                     },
-                     {
-                         "key":  "configScheme",
-                         "value":  "http"
-                     },
-                     {
-                         "key":  "configHost",
-                         "value":  "213.156.133.202"
-                     },
-                     {
-                         "key":  "configPort",
-                         "value":  "88"
-                     },
-                     {
-                         "key":  "configPath",
-                         "value":  "/home/deviceManagement/accessControl?devIndex={{deviceDevIndex}}"
                      }
                  ],
     "item":  [
@@ -323,84 +307,6 @@
                                                                                "{{deviceId}}",
                                                                                ""
                                                                            ]
-                                                              }
-                                                  }
-                                  },
-                                  {
-                                      "name":  "Config page (URL JSON)",
-                                      "request":  {
-                                                      "method":  "GET",
-                                                      "url":  {
-                                                                  "raw":  "{{baseUrl}}/api/devices/{{deviceId}}/config-page/?host={{configHost}}\u0026scheme={{configScheme}}\u0026port={{configPort}}\u0026path={{configPath}}",
-                                                                  "host":  [
-                                                                               "{{baseUrl}}"
-                                                                           ],
-                                                                  "path":  [
-                                                                               "api",
-                                                                               "devices",
-                                                                               "{{deviceId}}",
-                                                                               "config-page",
-                                                                               ""
-                                                                           ],
-                                                                  "query":  [
-                                                                                {
-                                                                                    "key":  "host",
-                                                                                    "value":  "{{configHost}}"
-                                                                                },
-                                                                                {
-                                                                                    "key":  "scheme",
-                                                                                    "value":  "{{configScheme}}"
-                                                                                },
-                                                                                {
-                                                                                    "key":  "port",
-                                                                                    "value":  "{{configPort}}"
-                                                                                },
-                                                                                {
-                                                                                    "key":  "path",
-                                                                                    "value":  "{{configPath}}"
-                                                                                }
-                                                                            ]
-                                                              }
-                                                  }
-                                  },
-                                  {
-                                      "name":  "Config page (redirect)",
-                                      "request":  {
-                                                      "method":  "GET",
-                                                      "url":  {
-                                                                  "raw":  "{{baseUrl}}/api/devices/{{deviceId}}/config-page/?redirect=1\u0026host={{configHost}}\u0026scheme={{configScheme}}\u0026port={{configPort}}\u0026path={{configPath}}",
-                                                                  "host":  [
-                                                                               "{{baseUrl}}"
-                                                                           ],
-                                                                  "path":  [
-                                                                               "api",
-                                                                               "devices",
-                                                                               "{{deviceId}}",
-                                                                               "config-page",
-                                                                               ""
-                                                                           ],
-                                                                  "query":  [
-                                                                                {
-                                                                                    "key":  "redirect",
-                                                                                    "value":  "1"
-                                                                                },
-                                                                                {
-                                                                                    "key":  "host",
-                                                                                    "value":  "{{configHost}}"
-                                                                                },
-                                                                                {
-                                                                                    "key":  "scheme",
-                                                                                    "value":  "{{configScheme}}"
-                                                                                },
-                                                                                {
-                                                                                    "key":  "port",
-                                                                                    "value":  "{{configPort}}"
-                                                                                },
-                                                                                {
-                                                                                    "key":  "path",
-                                                                                    "value":  "{{configPath}}"
-                                                                                }
-                                                                            ]
                                                               }
                                                   }
                                   }

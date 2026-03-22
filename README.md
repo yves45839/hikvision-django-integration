@@ -185,8 +185,8 @@ POST /api/auth/refresh/
 ### Actions devices
 
 - `POST /api/devices/onboard/`
-- `GET /api/devices/{id}/config-page/`
 - `POST /api/devices/{id}/add-persons/`
+- `POST /api/devices/{id}/enroll-fingerprint/`
 - `POST /api/device-onboarding-jobs/`
 - `GET /api/device-onboarding-jobs/`
 - `GET /api/device-onboarding-jobs/{id}/`
@@ -212,7 +212,19 @@ Exemple d'ajout de personnes sur un lecteur :
 {
   "employee_ids": [12, 18, 19],
   "include_cards": true,
+  "include_fingerprints": true,
   "stop_on_error": false
+}
+```
+
+Exemple d'enrolement d'empreinte sur un lecteur:
+
+```json
+{
+  "employee_id": 12,
+  "finger_index": 2,
+  "push_to_all_readers": true,
+  "include_cards": false
 }
 ```
 

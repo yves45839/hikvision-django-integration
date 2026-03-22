@@ -24,6 +24,7 @@ from employees.models import (
     Department,
     Employee,
     EmployeeCard,
+    EmployeeFingerprint,
     Organization,
     OrganizationMembership,
     Planning,
@@ -40,7 +41,7 @@ from employees.serializers import (
     PlanningSerializer,
     WorkShiftSerializer,
 )
-from employees.services import build_card_info_payloads, build_user_info_payload
+from employees.services import build_card_info_payloads, build_fingerprint_cfg_payloads, build_user_info_payload
 from hik_gateway.services.gateway_connection import get_shared_gateway_client
 from tenants.models import Tenant, TenantMembership, TenantRole
 from tenants.services import has_tenant_role
@@ -115,7 +116,7 @@ def _auto_sync_employees_by_ids(employee_ids: list[int], *, push_now: bool = Tru
     employees = list(
         Employee.objects.filter(id__in=normalized_ids)
         .select_related("tenant", "department")
-        .prefetch_related("devices", "department__devices", "cards", "attributes", "access_groups__readers")
+        .prefetch_related("devices", "department__devices", "cards", "fingerprints", "attributes", "access_groups__readers")
         .order_by("id")
     )
 
@@ -643,6 +644,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         client = get_shared_gateway_client(tenant_code=employee.tenant.code)
         user_payload = build_user_info_payload(employee)
         card_payloads = build_card_info_payloads(employee)
+        fingerprint_payloads = build_fingerprint_cfg_payloads(employee)
 
         pushed = []
         errors = []
@@ -688,11 +690,41 @@ class EmployeeViewSet(viewsets.ModelViewSet):
                         }
                     )
 
+            fingerprint_response = []
+            fingerprint_errors = []
+            for fingerprint_payload in fingerprint_payloads:
+                try:
+                    fingerprint_response.append(
+                        client.add_access_fingerprint(dev_index=dev_index, payload=fingerprint_payload)
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    detail = str(exc)
+                    normalized_detail = detail.lower()
+                    if "fingerprintidalreadyexist" in normalized_detail or "fingerprintalreadyexist" in normalized_detail:
+                        fingerprint_response.append(
+                            {
+                                "status": "already_exists",
+                                "subStatusCode": "fingerPrintIDAlreadyExist",
+                            }
+                        )
+                        continue
+                    fingerprint_errors.append(
+                        {
+                            "detail": detail,
+                            "finger_index": (
+                                fingerprint_payload.get("FingerPrintCfg", {}).get("fingerPrintID")
+                                if isinstance(fingerprint_payload, dict)
+                                else None
+                            ),
+                        }
+                    )
+
             pushed.append(
                 {
                     "dev_index": dev_index,
                     "user_response": user_response,
                     "card_response": card_response,
+                    "fingerprint_response": fingerprint_response,
                 }
             )
             if card_errors:
@@ -701,6 +733,14 @@ class EmployeeViewSet(viewsets.ModelViewSet):
                         "dev_index": dev_index,
                         "detail": "One or more card pushes failed.",
                         "card_errors": card_errors,
+                    }
+                )
+            if fingerprint_errors:
+                errors.append(
+                    {
+                        "dev_index": dev_index,
+                        "detail": "One or more fingerprint pushes failed.",
+                        "fingerprint_errors": fingerprint_errors,
                     }
                 )
 
@@ -1346,7 +1386,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
         queryset = (
             Employee.objects.filter(tenant=tenant, needs_gateway_push=True)
-            .prefetch_related("devices", "department__devices", "cards", "attributes", "access_groups__readers")
+            .prefetch_related("devices", "department__devices", "cards", "fingerprints", "attributes", "access_groups__readers")
             .order_by("updated_at", "id")
         )
         if employee_ids:
@@ -1408,6 +1448,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
         link_device = self._to_bool(request.data.get("link_device", True), default=True)
         max_results = int(request.data.get("max_results", 50))
+        include_fingerprints = self._to_bool(request.data.get("include_fingerprints", True), default=True)
 
         dev_indexes_input = request.data.get("dev_indexes")
         device_ids_input = request.data.get("device_ids")
@@ -1488,6 +1529,30 @@ class EmployeeViewSet(viewsets.ModelViewSet):
                         continue
                     card_map.setdefault(card_employee_no, []).append(card_row)
 
+                fingerprint_map: dict[str, list[dict]] = {}
+                fingerprint_lookup_errors: dict[str, str] = {}
+                if include_fingerprints:
+                    for row in users:
+                        if not isinstance(row, dict):
+                            continue
+                        employee_no = str(row.get("employeeNo") or "").strip()
+                        if not employee_no:
+                            continue
+                        try:
+                            fp_payload = client.search_access_fingerprints_all(
+                                dev_index=dev_index,
+                                employee_no=employee_no,
+                            )
+                            fp_info = fp_payload.get("FingerPrintInfo", {}) if isinstance(fp_payload, dict) else {}
+                            fp_rows = fp_info.get("FingerPrintList", []) if isinstance(fp_info, dict) else []
+                            if isinstance(fp_rows, dict):
+                                fp_rows = [fp_rows]
+                            if not isinstance(fp_rows, list):
+                                fp_rows = []
+                            fingerprint_map[employee_no] = [item for item in fp_rows if isinstance(item, dict)]
+                        except Exception as exc:  # noqa: BLE001
+                            fingerprint_lookup_errors[employee_no] = str(exc)
+
                 for row in users:
                     if not isinstance(row, dict):
                         continue
@@ -1566,6 +1631,24 @@ class EmployeeViewSet(viewsets.ModelViewSet):
                         )
                         card_numbers.append(card_no)
 
+                    employee_fingerprints = fingerprint_map.get(employee_no, [])
+                    fingerprint_slots: list[int] = []
+                    seen_finger_indexes: set[int] = set()
+                    for fingerprint_row in employee_fingerprints:
+                        finger_index = self._to_int_or_none(fingerprint_row.get("fingerPrintID"))
+                        if finger_index is None or not (1 <= finger_index <= 10) or finger_index in seen_finger_indexes:
+                            continue
+                        finger_data = str(fingerprint_row.get("fingerData") or "").strip()
+                        if not finger_data:
+                            continue
+                        seen_finger_indexes.add(finger_index)
+                        EmployeeFingerprint.objects.update_or_create(
+                            employee=employee,
+                            finger_index=finger_index,
+                            defaults={"template": finger_data},
+                        )
+                        fingerprint_slots.append(finger_index)
+
                     if link_device and dev_index in device_by_index:
                         employee.devices.add(device_by_index[dev_index])
 
@@ -1577,9 +1660,12 @@ class EmployeeViewSet(viewsets.ModelViewSet):
                         "created": was_created,
                         "gateway_user_info": row,
                         "card_numbers": card_numbers,
+                        "fingerprint_slots": sorted(fingerprint_slots),
                     }
                     if card_lookup_error:
                         imported_row["card_lookup_error"] = card_lookup_error
+                    if employee_no in fingerprint_lookup_errors:
+                        imported_row["fingerprint_lookup_error"] = fingerprint_lookup_errors[employee_no]
                     imported.append(imported_row)
             except Exception as exc:  # noqa: BLE001
                 errors.append({"dev_index": dev_index, "detail": str(exc)})
@@ -1590,6 +1676,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
                 "status": "ok" if not errors else "partial",
                 "tenant": tenant.id,
                 "dev_indexes": dev_indexes,
+                "include_fingerprints": include_fingerprints,
                 "imported_count": imported_count,
                 "created_count": created_count,
                 "updated_count": updated_count,

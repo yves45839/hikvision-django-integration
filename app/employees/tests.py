@@ -101,6 +101,7 @@ class EmployeeApiTests(APITestCase):
         mock_client = mock_get_client.return_value
         mock_client.add_access_user.return_value = {"status": "ok"}
         mock_client.add_access_card.return_value = {"status": "ok"}
+        mock_client.add_access_fingerprint.return_value = {"status": "ok"}
 
         response = self.client.post(
             "/api/employees/",
@@ -141,9 +142,10 @@ class EmployeeApiTests(APITestCase):
         self.assertTrue(hasattr(employee, "face"))
         mock_client.add_access_user.assert_called_once()
         self.assertEqual(mock_client.add_access_card.call_count, 2)
+        self.assertEqual(mock_client.add_access_fingerprint.call_count, 2)
 
     @patch("employees.views.get_shared_gateway_client")
-    def test_push_to_gateway_uses_user_and_card_endpoints(self, mock_get_client):
+    def test_push_to_gateway_uses_user_card_and_fingerprint_endpoints(self, mock_get_client):
         employee = Employee.objects.create(
             tenant=self.tenant,
             department=self.child_department,
@@ -156,10 +158,13 @@ class EmployeeApiTests(APITestCase):
         employee.devices.add(self.device)
         employee.cards.create(card_no="CARD-001", card_type="normalCard")
         employee.cards.create(card_no="CARD-002", card_type="normalCard")
+        employee.fingerprints.create(finger_index=1, template="fp-template-a")
+        employee.fingerprints.create(finger_index=2, template="fp-template-b")
 
         mock_client = mock_get_client.return_value
         mock_client.add_access_user.return_value = {"status": "ok"}
         mock_client.add_access_card.return_value = {"status": "ok"}
+        mock_client.add_access_fingerprint.return_value = {"status": "ok"}
 
         response = self.client.post(f"/api/employees/{employee.id}/push-to-gateway/", {}, format="json")
 
@@ -167,6 +172,7 @@ class EmployeeApiTests(APITestCase):
         self.assertEqual(response.json()["status"], "ok")
         mock_client.add_access_user.assert_called_once()
         self.assertEqual(mock_client.add_access_card.call_count, 2)
+        self.assertEqual(mock_client.add_access_fingerprint.call_count, 2)
 
     @patch("employees.views.get_shared_gateway_client")
     def test_push_to_gateway_still_pushes_cards_when_user_already_exists(self, mock_get_client):
@@ -380,6 +386,30 @@ class EmployeeApiTests(APITestCase):
                 ],
             }
         }
+        mock_client.search_access_fingerprints_all.side_effect = lambda **kwargs: (
+            {
+                "FingerPrintInfo": {
+                    "searchID": "1",
+                    "status": "OK",
+                    "FingerPrintList": [
+                        {
+                            "cardReaderNo": 1,
+                            "fingerPrintID": 1,
+                            "fingerType": "normalFP",
+                            "fingerData": "fp-imported-1",
+                        }
+                    ],
+                }
+            }
+            if kwargs.get("employee_no") == "IMP1001"
+            else {
+                "FingerPrintInfo": {
+                    "searchID": "1",
+                    "status": "NoFP",
+                    "FingerPrintList": [],
+                }
+            }
+        )
 
         response = self.client.post(
             "/api/employees/import-from-gateway/",
@@ -396,6 +426,7 @@ class EmployeeApiTests(APITestCase):
         self.assertIn("RightPlan", response.json()["imported"][0]["gateway_user_info"])
         imported_rows = {row["employee_no"]: row for row in response.json()["imported"]}
         self.assertIn("CARD-IMP-001", imported_rows["IMP1001"]["card_numbers"])
+        self.assertEqual(imported_rows["IMP1001"]["fingerprint_slots"], [1])
         self.assertEqual(Employee.objects.filter(tenant=self.tenant, employee_no="IMP1001").count(), 1)
         self.assertEqual(Employee.objects.filter(tenant=self.tenant, employee_no="IMP1002").count(), 1)
         imported = Employee.objects.get(tenant=self.tenant, employee_no="IMP1001")
@@ -414,6 +445,7 @@ class EmployeeApiTests(APITestCase):
         self.assertEqual(imported.identity_type, "passport")
         self.assertEqual(imported.identity_no, "AB123456")
         self.assertTrue(imported.cards.filter(card_no="CARD-IMP-001").exists())
+        self.assertTrue(imported.fingerprints.filter(finger_index=1, template="fp-imported-1").exists())
 
     def test_department_effective_planning_uses_parent(self):
         response = self.client.get(f"/api/departments/{self.child_department.id}/", format="json")
@@ -458,7 +490,13 @@ class EmployeeApiTests(APITestCase):
         self.assertIn("available_readers", payload["reader_selection_prompt"])
         self.assertGreaterEqual(len(payload["reader_selection_prompt"]["available_readers"]), 1)
 
-    def test_assign_planning_accepts_readers_and_mode(self):
+    @patch("employees.views.get_shared_gateway_client")
+    def test_assign_planning_accepts_readers_and_mode(self, mock_get_client):
+        mock_client = mock_get_client.return_value
+        mock_client.add_access_user.return_value = {"status": "ok"}
+        mock_client.add_access_card.return_value = {"status": "ok"}
+        mock_client.add_access_fingerprint.return_value = {"status": "ok"}
+
         employee = Employee.objects.create(
             tenant=self.tenant,
             department=self.child_department,
@@ -472,6 +510,7 @@ class EmployeeApiTests(APITestCase):
                 "planning": self.root_planning.id,
                 "reader_ids": [self.device.id, self.device_secondary.id],
                 "device_assignment_mode": Employee.DEVICE_ASSIGNMENT_EMPLOYEE_ONLY,
+                "push_now": False,
             },
             format="json",
         )
@@ -486,7 +525,13 @@ class EmployeeApiTests(APITestCase):
         )
         self.assertIn("reader_selection", response.json())
 
-    def test_assign_devices_replaces_employee_readers(self):
+    @patch("employees.views.get_shared_gateway_client")
+    def test_assign_devices_replaces_employee_readers(self, mock_get_client):
+        mock_client = mock_get_client.return_value
+        mock_client.add_access_user.return_value = {"status": "ok"}
+        mock_client.add_access_card.return_value = {"status": "ok"}
+        mock_client.add_access_fingerprint.return_value = {"status": "ok"}
+
         employee = Employee.objects.create(
             tenant=self.tenant,
             department=self.child_department,
@@ -503,6 +548,7 @@ class EmployeeApiTests(APITestCase):
             {
                 "devices": [self.device_secondary.id],
                 "device_assignment_mode": Employee.DEVICE_ASSIGNMENT_EMPLOYEE_ONLY,
+                "push_now": False,
             },
             format="json",
         )
@@ -515,7 +561,13 @@ class EmployeeApiTests(APITestCase):
         self.assertIsNone(employee.last_gateway_push_at)
         self.assertIn("reader_selection", response.json())
 
-    def test_assign_access_groups_replaces_employee_groups(self):
+    @patch("employees.views.get_shared_gateway_client")
+    def test_assign_access_groups_replaces_employee_groups(self, mock_get_client):
+        mock_client = mock_get_client.return_value
+        mock_client.add_access_user.return_value = {"status": "ok"}
+        mock_client.add_access_card.return_value = {"status": "ok"}
+        mock_client.add_access_fingerprint.return_value = {"status": "ok"}
+
         employee = Employee.objects.create(
             tenant=self.tenant,
             department=self.child_department,
@@ -531,6 +583,7 @@ class EmployeeApiTests(APITestCase):
             f"/api/employees/{employee.id}/assign-access-groups/",
             {
                 "access_groups": [self.access_group_secondary.id],
+                "push_now": False,
             },
             format="json",
         )

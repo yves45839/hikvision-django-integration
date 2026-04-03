@@ -5,6 +5,7 @@ from datetime import timedelta
 from datetime import timezone as dt_timezone
 
 import requests
+import logging
 from django.conf import settings
 from django.db.models import Q
 from django.utils.dateparse import parse_datetime
@@ -13,6 +14,8 @@ from django.utils import timezone
 from hik_gateway.models import Device, DeviceCursor
 from hik_gateway.services.gateway_connection import get_shared_gateway_client
 from hik_gateway.services.webhook_ingest import ingest_acs_event
+
+logger = logging.getLogger(__name__)
 
 
 INITIAL_CATCHUP_START = datetime(1970, 1, 1, tzinfo=dt_timezone.utc)
@@ -65,6 +68,13 @@ def _is_bad_json_error(exc: Exception) -> bool:
         return False
     message = str(exc).lower()
     return "badjsoncontent" in message or "wrong json content" in message
+
+
+def _is_device_offline_error(exc: Exception) -> bool:
+    if not isinstance(exc, requests.HTTPError):
+        return False
+    message = str(exc).lower()
+    return "thedeviceisoffline" in message or "device is offline" in message
 
 
 def _to_int(value) -> int | None:
@@ -308,14 +318,32 @@ def catchup_device_tail(device: Device, max_results: int = 30) -> int:
 def catchup_all_devices(max_results: int = 50) -> int:
     total = 0
     for device in Device.objects.select_related("tenant").all().iterator():
-        total += catchup_device(device, max_results=max_results)
+        try:
+            total += catchup_device(device, max_results=max_results)
+        except Exception as exc:  # noqa: BLE001
+            if _is_device_offline_error(exc):
+                logger.info(
+                    "Skipping catchup for offline device",
+                    extra={"dev_index": device.dev_index, "tenant_code": device.tenant.code},
+                )
+                continue
+            raise
     return total
 
 
 def catchup_tenant_devices(tenant_code: str, max_results: int = 50) -> int:
     total = 0
     for device in Device.objects.select_related("tenant").filter(tenant__code__iexact=tenant_code).iterator():
-        total += catchup_device(device, max_results=max_results)
+        try:
+            total += catchup_device(device, max_results=max_results)
+        except Exception as exc:  # noqa: BLE001
+            if _is_device_offline_error(exc):
+                logger.info(
+                    "Skipping catchup for offline device",
+                    extra={"dev_index": device.dev_index, "tenant_code": device.tenant.code},
+                )
+                continue
+            raise
     return total
 
 
@@ -332,5 +360,14 @@ def catchup_tenant_devices_fast(tenant_code: str, max_results: int = 30) -> int:
 
     total = 0
     for device in devices:
-        total += catchup_device_tail(device, max_results=max_results)
+        try:
+            total += catchup_device_tail(device, max_results=max_results)
+        except Exception as exc:  # noqa: BLE001
+            if _is_device_offline_error(exc):
+                logger.info(
+                    "Skipping fast catchup for offline device",
+                    extra={"dev_index": device.dev_index, "tenant_code": device.tenant.code},
+                )
+                continue
+            raise
     return total

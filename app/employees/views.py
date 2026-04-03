@@ -997,8 +997,11 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         result = self._push_employee(employee, dev_indexes=dev_indexes)
         if result["status"] == "skipped":
             return Response(
-                {"detail": "Fournis dev_indexes ou configure des pointeuses au niveau employee/departement."},
-                status=status.HTTP_400_BAD_REQUEST,
+                {
+                    **result,
+                    "detail": "Fournis dev_indexes ou configure des pointeuses au niveau employee/departement.",
+                },
+                status=status.HTTP_200_OK,
             )
         if result["status"] == "ok":
             self._mark_gateway_push_success(employee)

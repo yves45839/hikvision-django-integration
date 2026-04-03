@@ -1,5 +1,6 @@
 import base64
 import binascii
+import time as pytime
 from datetime import datetime
 from datetime import timezone as dt_timezone
 
@@ -617,6 +618,11 @@ class DeviceViewSet(viewsets.ModelViewSet):
             quality_threshold = int(request.data.get("quality_threshold", 0) or 0)
         except (TypeError, ValueError):
             return Response({"detail": "quality_threshold doit etre un entier."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            capture_retries = int(request.data.get("capture_retries", 3) or 3)
+        except (TypeError, ValueError):
+            return Response({"detail": "capture_retries doit etre un entier."}, status=status.HTTP_400_BAD_REQUEST)
+        capture_retries = max(1, min(capture_retries, 8))
 
         include_cards = self._to_bool(request.data.get("include_cards", False), default=False)
         push_to_all_readers = self._to_bool(request.data.get("push_to_all_readers", True), default=True)
@@ -631,23 +637,37 @@ class DeviceViewSet(viewsets.ModelViewSet):
             return Response({"detail": "Employe introuvable pour ce tenant."}, status=status.HTTP_404_NOT_FOUND)
 
         gateway_client = get_shared_gateway_client(tenant_code=device.tenant.code if device.tenant else None)
-        try:
-            capture_response = gateway_client.capture_fingerprint(
-                dev_index=device.dev_index,
-                finger_no=finger_index,
-            )
-        except Exception as exc:  # noqa: BLE001
-            return Response(
-                {"detail": f"Echec de collecte empreinte: {exc}"},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
+        capture_response = {}
+        capture_error = None
+        capture_attempts = 0
+        finger_data = ""
+        capture = {}
+        for attempt in range(1, capture_retries + 1):
+            capture_attempts = attempt
+            try:
+                capture_response = gateway_client.capture_fingerprint(
+                    dev_index=device.dev_index,
+                    finger_no=finger_index,
+                )
+            except Exception as exc:  # noqa: BLE001
+                capture_error = str(exc)
+            else:
+                capture = capture_response.get("CaptureFingerPrint", {}) if isinstance(capture_response, dict) else {}
+                finger_data = str(capture.get("fingerData") or "").strip() if isinstance(capture, dict) else ""
+                if finger_data:
+                    capture_error = None
+                    break
+                capture_error = "Le lecteur n'a pas retourne de donnees d'empreinte."
 
-        capture = capture_response.get("CaptureFingerPrint", {}) if isinstance(capture_response, dict) else {}
-        finger_data = str(capture.get("fingerData") or "").strip() if isinstance(capture, dict) else ""
+            if attempt < capture_retries:
+                pytime.sleep(1.0)
+
         if not finger_data:
+            detail = capture_error or "Echec de collecte empreinte."
             return Response(
                 {
-                    "detail": "Le lecteur n'a pas retourne de donnees d'empreinte.",
+                    "detail": detail,
+                    "capture_attempts": capture_attempts,
                     "capture_response": capture_response,
                 },
                 status=status.HTTP_502_BAD_GATEWAY,
@@ -737,6 +757,7 @@ class DeviceViewSet(viewsets.ModelViewSet):
                 "finger_index": finger_index,
                 "finger_quality": finger_quality,
                 "finger_template": finger_data,
+                "capture_attempts": capture_attempts,
                 "captured_on_reader": {
                     "device_id": device.id,
                     "dev_index": device.dev_index,

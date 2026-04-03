@@ -199,6 +199,21 @@ class EmployeeApiTests(APITestCase):
         pushed_rows = response.json()["pushed"]
         self.assertEqual(pushed_rows[0]["user_response"]["subStatusCode"], "employeeNoAlreadyExist")
 
+    def test_push_to_gateway_returns_200_when_no_target_reader(self):
+        employee = Employee.objects.create(
+            tenant=self.tenant,
+            employee_no="E2005",
+            name="No Reader",
+            device_assignment_mode=Employee.DEVICE_ASSIGNMENT_EMPLOYEE_ONLY,
+        )
+
+        response = self.client.post(f"/api/employees/{employee.id}/push-to-gateway/", {}, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload["status"], "skipped")
+        self.assertIn("Fournis dev_indexes", payload["detail"])
+
     def test_build_card_payload_preserves_non_numeric_card_number(self):
         employee = Employee.objects.create(
             tenant=self.tenant,

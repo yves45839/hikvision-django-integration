@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SecurePoint — Refonte UX ERP RH</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    html, body { background: #1a1a1f; }
+    .frame {
+      background: var(--bg);
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      border-radius: 12px;
+    }
+    .dc-canvas { background: oklch(0.18 0.01 250) !important; }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="shell.jsx"></script>
+  <script type="text/babel" src="screen-diagnostic.jsx"></script>
+  <script type="text/babel" src="screen-dashboard.jsx"></script>
+  <script type="text/babel" src="screen-employees.jsx"></script>
+  <script type="text/babel" src="screen-timesheet.jsx"></script>
+  <script type="text/babel" src="screen-planning.jsx"></script>
+  <script type="text/babel" src="screen-absences.jsx"></script>
+
+  <script type="text/babel" data-presets="react">
+    const { useState } = React;
+
+    function AppShell({ active, lang, setLang, children }) {
+      const [collapsed, setCollapsed] = useState(false);
+      const crumbsMap = {
+        diagnostic: lang === "en" ? ["SecurePoint", "Redesign brief"] : ["SecurePoint", "Brief de refonte"],
+        dashboard: lang === "en" ? ["SecurePoint", "Dashboard"] : ["SecurePoint", "Tableau de bord"],
+        employees: lang === "en" ? ["SecurePoint", "People", "Team"] : ["SecurePoint", "RH", "Équipe"],
+        timesheet: lang === "en" ? ["SecurePoint", "People", "Timesheets"] : ["SecurePoint", "RH", "Validation pointages"],
+        planning: lang === "en" ? ["SecurePoint", "People", "Schedule"] : ["SecurePoint", "RH", "Planning"],
+        absences: lang === "en" ? ["SecurePoint", "People", "Time off"] : ["SecurePoint", "RH", "Absences & congés"],
+      };
+      return (
+        <div className={"shell " + (collapsed ? "collapsed" : "")} style={{ height: "100%" }}>
+          <Sidebar active={active} collapsed={collapsed} />
+          <div className="main">
+            <Topbar
+              crumbs={crumbsMap[active] || []}
+              lang={lang}
+              onLang={setLang}
+              onCollapse={() => setCollapsed(!collapsed)}
+            />
+            {children}
+          </div>
+        </div>
+      );
+    }
+
+    function Frame({ active, children, lang, setLang }) {
+      return (
+        <div className="frame">
+          {active === "diagnostic" ? children : (
+            <AppShell active={active} lang={lang} setLang={setLang}>{children}</AppShell>
+          )}
+        </div>
+      );
+    }
+
+    function App() {
+      const [lang, setLang] = useState("fr");
+      window.SP_LANG = lang;
+
+      return (
+        <DesignCanvas key={lang}>
+          <DCSection
+            id="diagnostic"
+            title={lang === "en" ? "Brief & design system" : "Brief & design system"}
+            subtitle={lang === "en"
+              ? "Diagnostic of the current frontend, design principles, and how the redesign reads"
+              : "Diagnostic du frontend actuel, principes de design, et comment lire la refonte"}
+          >
+            <DCArtboard id="ab-diag" label={lang === "en" ? "Redesign brief" : "Brief de refonte"} width={1440} height={1240}>
+              <Frame active="diagnostic" lang={lang} setLang={setLang}><DiagnosticScreen lang={lang} /></Frame>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="manager-journey"
+            title={lang === "en" ? "Manager journey · 5 redesigned screens" : "Parcours manager · 5 écrans refondus"}
+            subtitle={lang === "en"
+              ? "Light theme · BambooHR-inspired · density adjusted for team-manager review"
+              : "Thème clair · inspiration BambooHR · densité adaptée à la revue manager"}
+          >
+            <DCArtboard id="ab-dash" label={lang === "en" ? "1 · Manager dashboard" : "1 · Dashboard manager"} width={1440} height={980}>
+              <Frame active="dashboard" lang={lang} setLang={setLang}><ManagerDashboard lang={lang} /></Frame>
+            </DCArtboard>
+            <DCArtboard id="ab-emp" label={lang === "en" ? "2 · Team list + profile" : "2 · Liste équipe + profil"} width={1440} height={940}>
+              <Frame active="employees" lang={lang} setLang={setLang}><EmployeesScreen lang={lang} /></Frame>
+            </DCArtboard>
+            <DCArtboard id="ab-ts" label={lang === "en" ? "3 · Timesheet validation (focus)" : "3 · Validation pointages (focus)"} width={1440} height={1080}>
+              <Frame active="timesheet" lang={lang} setLang={setLang}><TimesheetScreen lang={lang} /></Frame>
+            </DCArtboard>
+            <DCArtboard id="ab-pl" label={lang === "en" ? "4 · Weekly schedule" : "4 · Planning hebdomadaire"} width={1440} height={940}>
+              <Frame active="planning" lang={lang} setLang={setLang}><PlanningScreen lang={lang} /></Frame>
+            </DCArtboard>
+            <DCArtboard id="ab-ab" label={lang === "en" ? "5 · Time off requests" : "5 · Demandes de congés"} width={1440} height={980}>
+              <Frame active="absences" lang={lang} setLang={setLang}><AbsencesScreen lang={lang} /></Frame>
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

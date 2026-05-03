@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "mockup",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8765", "--directory", "frontend-mockup"],
+      "port": 8765
+    },
+    {
+      "name": "v0",
+      "runtimeExecutable": "C:/Users/PC MARKET/Downloads/hikvision-django-integration/v0-secure-point-dashboard-design/node_modules/.bin/next.cmd",
+      "runtimeArgs": ["dev", "C:/Users/PC MARKET/Downloads/hikvision-django-integration/v0-secure-point-dashboard-design"],
+      "port": 3000,
+      "autoPort": true
+    }
+  ]
+}

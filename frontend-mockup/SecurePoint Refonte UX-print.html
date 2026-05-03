@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SecurePoint — Refonte UX ERP RH (Print)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    html, body { background: #ffffff; margin: 0; padding: 0; }
+    .pageframe {
+      width: 1440px;
+      background: var(--bg);
+      margin: 0 auto 24px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      page-break-after: always;
+      break-after: page;
+      overflow: hidden;
+    }
+    .pageframe:last-child { page-break-after: auto; break-after: auto; }
+    .pageframe-label {
+      padding: 10px 18px;
+      font-family: "Inter Tight", sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      color: #555;
+      background: #f4f1ea;
+      border-bottom: 1px solid #e5e0d6;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .pageframe-body {
+      width: 1440px;
+      overflow: hidden;
+    }
+
+    @page {
+      size: 1500px 1400px;
+      margin: 12px;
+    }
+    @media print {
+      html, body { background: #fff; }
+      .pageframe {
+        margin: 0;
+        box-shadow: none;
+        page-break-after: always;
+        break-after: page;
+        break-inside: avoid;
+      }
+      .pageframe-label { display: none; }
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="shell.jsx"></script>
+  <script type="text/babel" src="screen-diagnostic.jsx"></script>
+  <script type="text/babel" src="screen-dashboard.jsx"></script>
+  <script type="text/babel" src="screen-employees.jsx"></script>
+  <script type="text/babel" src="screen-timesheet.jsx"></script>
+  <script type="text/babel" src="screen-planning.jsx"></script>
+  <script type="text/babel" src="screen-absences.jsx"></script>
+
+  <script type="text/babel" data-presets="react">
+    const { useState } = React;
+    window.SP_LANG = "fr";
+    const lang = "fr";
+
+    function AppShell({ active, children }) {
+      const crumbsMap = {
+        diagnostic: ["SecurePoint", "Brief de refonte"],
+        dashboard: ["SecurePoint", "Tableau de bord"],
+        employees: ["SecurePoint", "RH", "Équipe"],
+        timesheet: ["SecurePoint", "RH", "Validation pointages"],
+        planning: ["SecurePoint", "RH", "Planning"],
+        absences: ["SecurePoint", "RH", "Absences & congés"],
+      };
+      return (
+        <div className="shell" style={{ minHeight: 0 }}>
+          <Sidebar active={active} collapsed={false} />
+          <div className="main">
+            <Topbar crumbs={crumbsMap[active] || []} lang={lang} onLang={() => {}} onCollapse={() => {}} />
+            {children}
+          </div>
+        </div>
+      );
+    }
+
+    function Page({ label, height, active, children }) {
+      return (
+        <div className="pageframe" style={{ height: height + 40 }}>
+          <div className="pageframe-label">{label}</div>
+          <div className="pageframe-body" style={{ height }}>
+            {active === "diagnostic" ? children : <AppShell active={active}>{children}</AppShell>}
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      return (
+        <div>
+          <Page label="0 · Brief & design system" height={1240} active="diagnostic">
+            <DiagnosticScreen lang={lang} />
+          </Page>
+          <Page label="1 · Dashboard manager" height={980} active="dashboard">
+            <ManagerDashboard lang={lang} />
+          </Page>
+          <Page label="2 · Liste équipe + profil" height={940} active="employees">
+            <EmployeesScreen lang={lang} />
+          </Page>
+          <Page label="3 · Validation pointages (focus)" height={1080} active="timesheet">
+            <TimesheetScreen lang={lang} />
+          </Page>
+          <Page label="4 · Planning hebdomadaire" height={940} active="planning">
+            <PlanningScreen lang={lang} />
+          </Page>
+          <Page label="5 · Demandes de congés" height={980} active="absences">
+            <AbsencesScreen lang={lang} />
+          </Page>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+
+    // Auto-print after fonts + JSX ready
+    (async () => {
+      try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch (e) {}
+      await new Promise(r => setTimeout(r, 800));
+      window.print();
+    })();
+  </script>
+</body>
+</html>

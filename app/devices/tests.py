@@ -19,8 +19,11 @@ class DeviceOwnershipTests(APITestCase):
         self.user2 = User.objects.create_user(username='bob', password='pwd12345')
         self.tenant_a = Tenant.objects.create(name='Tenant A', code='TENANT-A')
         self.tenant_b = Tenant.objects.create(name='Tenant B', code='TENANT-B')
+        TenantMembership.objects.create(user=self.user1, tenant=self.tenant_a, role=TenantRole.VIEWER)
+        TenantMembership.objects.create(user=self.user2, tenant=self.tenant_b, role=TenantRole.VIEWER)
+        TenantMembership.objects.create(user=self.user2, tenant=self.tenant_a, role=TenantRole.VIEWER)
 
-    def test_list_devices_returns_all_by_default(self):
+    def test_list_devices_is_tenant_scoped_by_default(self):
         Device.objects.create(owner=self.user1, dev_index='dev-alice', serial_number='SN1234567AB', tenant=self.tenant_a)
         Device.objects.create(owner=self.user2, dev_index='dev-bob', serial_number='SN7654321CD', tenant=self.tenant_b)
 
@@ -28,7 +31,8 @@ class DeviceOwnershipTests(APITestCase):
         response = self.client.get('/api/devices/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 2)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['serial_number'], 'SN1234567AB')
 
     def test_owner_only_filters_devices(self):
         Device.objects.create(owner=self.user1, dev_index='dev-alice', serial_number='SN1234567AB', tenant=self.tenant_a)

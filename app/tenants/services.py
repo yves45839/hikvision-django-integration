@@ -16,6 +16,25 @@ def resolve_tenant(tenant_code: str) -> Tenant | None:
     return Tenant.objects.filter(code__iexact=str(tenant_code or "").strip()).first()
 
 
+def get_user_tenant_ids(user) -> list[int]:
+    if not user or not user.is_authenticated:
+        return []
+    return list(
+        TenantMembership.objects.filter(user=user)
+        .order_by("tenant_id")
+        .values_list("tenant_id", flat=True)
+    )
+
+
+def scope_queryset_to_user_tenants(queryset, user, *, tenant_field: str = "tenant_id"):
+    if user and user.is_authenticated and (user.is_superuser or user.is_staff):
+        return queryset
+    tenant_ids = get_user_tenant_ids(user)
+    if not tenant_ids:
+        return queryset.none()
+    return queryset.filter(**{f"{tenant_field}__in": tenant_ids})
+
+
 def has_tenant_role(user, tenant: Tenant, minimum_role: str = TenantRole.VIEWER) -> bool:
     if user and user.is_authenticated and (user.is_superuser or user.is_staff):
         return True

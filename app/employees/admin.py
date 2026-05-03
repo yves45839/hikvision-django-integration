@@ -7,6 +7,7 @@ from employees.models import (
     EmployeeCard,
     EmployeeFace,
     EmployeeFingerprint,
+    LeaveRequest,
     Organization,
     OrganizationInvitation,
     OrganizationMembership,
@@ -117,6 +118,13 @@ class WorkShiftAdmin(admin.ModelAdmin):
     list_display = ("id", "tenant", "name", "code", "start_time", "end_time", "created_at")
     list_filter = ("tenant",)
     search_fields = ("name", "code")
+
+
+@admin.register(LeaveRequest)
+class LeaveRequestAdmin(admin.ModelAdmin):
+    list_display = ("id", "tenant", "employee", "leave_type", "status", "start_date", "end_date", "approved_by", "created_at")
+    list_filter = ("tenant", "leave_type", "status")
+    search_fields = ("employee__employee_no", "employee__name", "reason", "rejection_reason")
 
 
 @admin.register(Department)

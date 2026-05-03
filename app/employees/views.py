@@ -25,6 +25,7 @@ from employees.models import (
     Employee,
     EmployeeCard,
     EmployeeFingerprint,
+    LeaveRequest,
     Organization,
     OrganizationMembership,
     Planning,
@@ -36,6 +37,7 @@ from employees.serializers import (
     AccessGroupSerializer,
     DepartmentSerializer,
     EmployeeSerializer,
+    LeaveRequestSerializer,
     OrganizationSerializer,
     PlanningAssignmentSerializer,
     PlanningSerializer,
@@ -44,7 +46,7 @@ from employees.serializers import (
 from employees.services import build_card_info_payloads, build_fingerprint_cfg_payloads, build_user_info_payload
 from hik_gateway.services.gateway_connection import get_shared_gateway_client
 from tenants.models import Tenant, TenantMembership, TenantRole
-from tenants.services import has_tenant_role
+from tenants.services import has_tenant_role, scope_queryset_to_user_tenants
 
 logger = logging.getLogger(__name__)
 
@@ -172,6 +174,18 @@ def _auto_sync_employees_queryset(employees_qs, *, push_now: bool = True) -> dic
     return _auto_sync_employees_by_ids(employee_ids, push_now=push_now)
 
 
+def _scope_to_request_tenants(queryset, request: HttpRequest, *, tenant_field: str = "tenant_id"):
+    return scope_queryset_to_user_tenants(queryset, request.user, tenant_field=tenant_field)
+
+
+def _require_tenant_scope(request: HttpRequest, tenant: Tenant | None, *, minimum_role: str = TenantRole.VIEWER) -> None:
+    if tenant is None:
+        raise PermissionDenied("Tenant is required for this action.")
+    if has_tenant_role(request.user, tenant, minimum_role):
+        return
+    raise PermissionDenied("Insufficient tenant scope for this action.")
+
+
 class OrganizationViewSet(viewsets.ModelViewSet):
     queryset = Organization.objects.select_related("tenant").order_by("-id")
     serializer_class = OrganizationSerializer
@@ -199,6 +213,14 @@ class OrganizationViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Insufficient role to create an organization for this tenant.")
         serializer.save()
 
+    def perform_update(self, serializer):
+        instance = serializer.instance
+        tenant = serializer.validated_data.get("tenant", instance.tenant)
+        _require_tenant_scope(self.request, tenant)
+        if serializer.validated_data.get("tenant") is not None and tenant.id != instance.tenant_id:
+            raise PermissionDenied("Changing tenant is not allowed for this resource.")
+        serializer.save()
+
 
 class PlanningViewSet(viewsets.ModelViewSet):
     queryset = (
@@ -210,11 +232,24 @@ class PlanningViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        queryset = _scope_to_request_tenants(super().get_queryset(), self.request, tenant_field="tenant_id")
         tenant_code = str(self.request.query_params.get("tenant") or "").strip()
         if tenant_code:
             queryset = queryset.filter(tenant__code__iexact=tenant_code)
         return queryset
+
+    def perform_create(self, serializer):
+        tenant = serializer.validated_data.get("tenant")
+        _require_tenant_scope(self.request, tenant)
+        serializer.save()
+
+    def perform_update(self, serializer):
+        instance = serializer.instance
+        tenant = serializer.validated_data.get("tenant", instance.tenant)
+        _require_tenant_scope(self.request, tenant)
+        if serializer.validated_data.get("tenant") is not None and tenant.id != instance.tenant_id:
+            raise PermissionDenied("Changing tenant is not allowed for this resource.")
+        serializer.save()
 
     @staticmethod
     def _build_delete_usage(planning: Planning) -> dict:
@@ -277,7 +312,7 @@ class PlanningAssignmentViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        queryset = _scope_to_request_tenants(super().get_queryset(), self.request, tenant_field="tenant_id")
         tenant_code = str(self.request.query_params.get("tenant") or "").strip()
         if tenant_code:
             queryset = queryset.filter(tenant__code__iexact=tenant_code)
@@ -288,6 +323,19 @@ class PlanningAssignmentViewSet(viewsets.ModelViewSet):
         if department_id:
             queryset = queryset.filter(department_id=department_id)
         return queryset
+
+    def perform_create(self, serializer):
+        tenant = serializer.validated_data.get("tenant")
+        _require_tenant_scope(self.request, tenant)
+        serializer.save()
+
+    def perform_update(self, serializer):
+        instance = serializer.instance
+        tenant = serializer.validated_data.get("tenant", instance.tenant)
+        _require_tenant_scope(self.request, tenant)
+        if serializer.validated_data.get("tenant") is not None and tenant.id != instance.tenant_id:
+            raise PermissionDenied("Changing tenant is not allowed for this resource.")
+        serializer.save()
 
 
 class AccessGroupViewSet(viewsets.ModelViewSet):
@@ -300,14 +348,24 @@ class AccessGroupViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        queryset = _scope_to_request_tenants(super().get_queryset(), self.request, tenant_field="tenant_id")
         tenant_code = str(self.request.query_params.get("tenant") or "").strip()
         if tenant_code:
             queryset = queryset.filter(tenant__code__iexact=tenant_code)
         return queryset
 
+    def perform_create(self, serializer):
+        tenant = serializer.validated_data.get("tenant")
+        _require_tenant_scope(self.request, tenant)
+        serializer.save()
+
     def perform_update(self, serializer):
         readers_updated = "readers" in serializer.validated_data
+        instance = serializer.instance
+        tenant = serializer.validated_data.get("tenant", instance.tenant)
+        _require_tenant_scope(self.request, tenant)
+        if serializer.validated_data.get("tenant") is not None and tenant.id != instance.tenant_id:
+            raise PermissionDenied("Changing tenant is not allowed for this resource.")
         access_group = serializer.save()
         if not readers_updated:
             return
@@ -333,11 +391,24 @@ class WorkShiftViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        queryset = _scope_to_request_tenants(super().get_queryset(), self.request, tenant_field="tenant_id")
         tenant_code = str(self.request.query_params.get("tenant") or "").strip()
         if tenant_code:
             queryset = queryset.filter(tenant__code__iexact=tenant_code)
         return queryset
+
+    def perform_create(self, serializer):
+        tenant = serializer.validated_data.get("tenant")
+        _require_tenant_scope(self.request, tenant)
+        serializer.save()
+
+    def perform_update(self, serializer):
+        instance = serializer.instance
+        tenant = serializer.validated_data.get("tenant", instance.tenant)
+        _require_tenant_scope(self.request, tenant)
+        if serializer.validated_data.get("tenant") is not None and tenant.id != instance.tenant_id:
+            raise PermissionDenied("Changing tenant is not allowed for this resource.")
+        serializer.save()
 
     @staticmethod
     def _build_delete_usage(work_shift: WorkShift) -> dict:
@@ -411,7 +482,7 @@ class DepartmentViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        queryset = _scope_to_request_tenants(super().get_queryset(), self.request, tenant_field="tenant_id")
         tenant_code = str(self.request.query_params.get("tenant") or "").strip()
         if tenant_code:
             queryset = queryset.filter(tenant__code__iexact=tenant_code)
@@ -420,8 +491,18 @@ class DepartmentViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(organization_id=organization_id)
         return queryset
 
+    def perform_create(self, serializer):
+        tenant = serializer.validated_data.get("tenant")
+        _require_tenant_scope(self.request, tenant)
+        serializer.save()
+
     def perform_update(self, serializer):
         should_sync = any(field in serializer.validated_data for field in ("devices", "parent"))
+        instance = serializer.instance
+        tenant = serializer.validated_data.get("tenant", instance.tenant)
+        _require_tenant_scope(self.request, tenant)
+        if serializer.validated_data.get("tenant") is not None and tenant.id != instance.tenant_id:
+            raise PermissionDenied("Changing tenant is not allowed for this resource.")
         department = serializer.save()
         if not should_sync:
             return
@@ -551,7 +632,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        queryset = _scope_to_request_tenants(super().get_queryset(), self.request, tenant_field="tenant_id")
         tenant_code = str(self.request.query_params.get("tenant") or "").strip()
         if tenant_code:
             queryset = queryset.filter(tenant__code__iexact=tenant_code)
@@ -559,6 +640,19 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         if pending_only:
             queryset = queryset.filter(needs_gateway_push=True)
         return queryset
+
+    def perform_create(self, serializer):
+        tenant = serializer.validated_data.get("tenant")
+        _require_tenant_scope(self.request, tenant)
+        serializer.save()
+
+    def perform_update(self, serializer):
+        instance = serializer.instance
+        tenant = serializer.validated_data.get("tenant", instance.tenant)
+        _require_tenant_scope(self.request, tenant)
+        if serializer.validated_data.get("tenant") is not None and tenant.id != instance.tenant_id:
+            raise PermissionDenied("Changing tenant is not allowed for this resource.")
+        serializer.save()
 
     @staticmethod
     def _upsert_employee_assignment(employee: Employee, *, planning=None, work_shift=None):
@@ -1378,6 +1472,10 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             tenant = Tenant.objects.get(id=tenant_id)
         except Tenant.DoesNotExist:
             return Response({"detail": "Tenant introuvable."}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            _require_tenant_scope(request, tenant)
+        except PermissionDenied as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
 
         employee_ids = request.data.get("employee_ids")
         if employee_ids is not None and not isinstance(employee_ids, list):
@@ -1448,6 +1546,10 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             tenant = Tenant.objects.get(id=tenant_id)
         except Tenant.DoesNotExist:
             return Response({"detail": "Tenant introuvable."}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            _require_tenant_scope(request, tenant)
+        except PermissionDenied as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
 
         link_device = self._to_bool(request.data.get("link_device", True), default=True)
         max_results = int(request.data.get("max_results", 50))
@@ -1688,3 +1790,41 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             },
             status=response_status,
         )
+
+
+class LeaveRequestViewSet(viewsets.ModelViewSet):
+    queryset = LeaveRequest.objects.select_related("tenant", "employee", "approved_by").order_by("-id")
+    serializer_class = LeaveRequestSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = _scope_to_request_tenants(super().get_queryset(), self.request, tenant_field="tenant_id")
+        tenant_code = str(self.request.query_params.get("tenant") or "").strip()
+        if tenant_code:
+            queryset = queryset.filter(tenant__code__iexact=tenant_code)
+        employee_id = str(self.request.query_params.get("employee") or "").strip()
+        if employee_id:
+            queryset = queryset.filter(employee_id=employee_id)
+        status_value = str(self.request.query_params.get("status") or "").strip().lower()
+        if status_value:
+            queryset = queryset.filter(status=status_value)
+        start_from = parse_date(str(self.request.query_params.get("start_from") or "").strip())
+        end_to = parse_date(str(self.request.query_params.get("end_to") or "").strip())
+        if start_from:
+            queryset = queryset.filter(end_date__gte=start_from)
+        if end_to:
+            queryset = queryset.filter(start_date__lte=end_to)
+        return queryset
+
+    def perform_create(self, serializer):
+        tenant = serializer.validated_data.get("tenant")
+        _require_tenant_scope(self.request, tenant)
+        serializer.save()
+
+    def perform_update(self, serializer):
+        instance = serializer.instance
+        tenant = serializer.validated_data.get("tenant", instance.tenant)
+        _require_tenant_scope(self.request, tenant)
+        if serializer.validated_data.get("tenant") is not None and tenant.id != instance.tenant_id:
+            raise PermissionDenied("Changing tenant is not allowed for this resource.")
+        serializer.save()

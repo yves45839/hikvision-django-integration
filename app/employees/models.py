@@ -447,6 +447,80 @@ class PlanningAssignment(models.Model):
         return f"{self.tenant.code}:{target}:{self.valid_from}->{self.valid_to or 'open'}"
 
 
+class LeaveRequest(models.Model):
+    TYPE_PAID = "paid"
+    TYPE_SICK = "sick"
+    TYPE_UNPAID = "unpaid"
+    TYPE_SPECIAL = "special"
+    TYPE_CHOICES = (
+        (TYPE_PAID, "Paid"),
+        (TYPE_SICK, "Sick"),
+        (TYPE_UNPAID, "Unpaid"),
+        (TYPE_SPECIAL, "Special"),
+    )
+
+    STATUS_PENDING = "pending"
+    STATUS_APPROVED = "approved"
+    STATUS_REJECTED = "rejected"
+    STATUS_CANCELLED = "cancelled"
+    STATUS_CHOICES = (
+        (STATUS_PENDING, "Pending"),
+        (STATUS_APPROVED, "Approved"),
+        (STATUS_REJECTED, "Rejected"),
+        (STATUS_CANCELLED, "Cancelled"),
+    )
+
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="leave_requests")
+    employee = models.ForeignKey("Employee", on_delete=models.CASCADE, related_name="leave_requests")
+    leave_type = models.CharField(max_length=16, choices=TYPE_CHOICES, default=TYPE_PAID)
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    start_date = models.DateField()
+    end_date = models.DateField()
+    reason = models.TextField(blank=True, default="")
+    rejection_reason = models.TextField(blank=True, default="")
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="approved_leave_requests",
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["tenant", "employee", "start_date", "end_date"]),
+            models.Index(fields=["tenant", "status"]),
+            models.Index(fields=["tenant", "leave_type"]),
+        ]
+
+    def clean(self):
+        if self.employee_id and self.tenant_id and self.employee.tenant_id != self.tenant_id:
+            raise ValidationError({"employee": "L'employee doit appartenir au meme tenant."})
+        if self.end_date < self.start_date:
+            raise ValidationError({"end_date": "La date de fin doit etre superieure ou egale a la date de debut."})
+        if self.status == self.STATUS_APPROVED:
+            if self.approved_by_id is None:
+                raise ValidationError({"approved_by": "approved_by est obligatoire quand le conge est approuve."})
+            if self.approved_at is None:
+                raise ValidationError({"approved_at": "approved_at est obligatoire quand le conge est approuve."})
+        if self.status != self.STATUS_APPROVED:
+            self.approved_by = None
+            self.approved_at = None
+        if self.status != self.STATUS_REJECTED:
+            self.rejection_reason = ""
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return f"{self.tenant.code}:{self.employee_id}:{self.start_date}->{self.end_date}:{self.status}"
+
+
 class Department(models.Model):
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="departments")
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="departments")

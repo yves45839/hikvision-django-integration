@@ -1,4 +1,6 @@
-from datetime import datetime
+import random
+from calendar import monthrange
+from datetime import date, datetime, timedelta
 from datetime import timezone as dt_timezone
 from io import BytesIO, StringIO
 from unittest.mock import patch
@@ -11,10 +13,19 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from openpyxl import load_workbook
 
-from employees.models import Department, Employee, EmployeeCard, Organization, WorkShift
+from employees.models import (
+    Department,
+    Employee,
+    EmployeeCard,
+    Organization,
+    Planning,
+    PlanningAssignment,
+    PlanningEntry,
+    WorkShift,
+)
 from hik_gateway.models import AttendanceCorrection, AttendanceCorrectionLog, AttendanceLog, Device, Gateway, RawEvent
 from hik_gateway.services.webhook_ingest import ingest_event
-from tenants.models import Tenant
+from tenants.models import Tenant, TenantMembership, TenantRole
 
 
 class HikAttendancePersonLinkingTests(APITestCase):
@@ -1121,6 +1132,11 @@ class HikGatewayAdminApiTests(APITestCase):
         user_model = get_user_model()
         self.admin = user_model.objects.create_user(username="admin-api", password="pass", is_staff=True)
         self.user = user_model.objects.create_user(username="simple-user", password="pass")
+        TenantMembership.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            role=TenantRole.VIEWER,
+        )
 
     def _create_attendance_log(
         self,
@@ -1856,6 +1872,164 @@ class HikGatewayAdminApiTests(APITestCase):
         self.assertEqual(details[0]["arrival_delta_minutes"], 5)
         self.assertEqual(details[0]["departure_delta_minutes"], -5)
         self.assertEqual(details[0]["matched_shift"]["code"], "night-shift")
+
+    def test_attendance_reports_monthly_complex_rotation_with_weekends_and_random_logs(self):
+        self.client.force_authenticate(user=self.user)
+        generator = random.Random(260319)
+        period_start = date(2026, 3, 1)
+        period_end = date(2026, 3, monthrange(2026, 3)[1])
+        days_count = (period_end - period_start).days + 1
+
+        organization = Organization.objects.create(tenant=self.tenant, name="Ops Rotation", code="ops-rotation")
+        department = Department.objects.create(
+            tenant=self.tenant,
+            organization=organization,
+            name="Rotation Team",
+            code="rotation-team",
+        )
+        shift_0714 = WorkShift.objects.create(
+            tenant=self.tenant,
+            name="Quart 07h-14h",
+            code="shift-0714",
+            start_time="07:00",
+            end_time="14:00",
+            overtime_minutes=120,
+        )
+        shift_1422 = WorkShift.objects.create(
+            tenant=self.tenant,
+            name="Quart 14h-22h",
+            code="shift-1422",
+            start_time="14:00",
+            end_time="22:00",
+            overtime_minutes=120,
+        )
+        shift_2206 = WorkShift.objects.create(
+            tenant=self.tenant,
+            name="Quart 22h-06h",
+            code="shift-2206",
+            start_time="22:00",
+            end_time="06:00",
+            overtime_minutes=120,
+        )
+        cycle = [shift_0714, shift_1422, shift_2206]
+
+        employee = Employee.objects.create(
+            tenant=self.tenant,
+            department=department,
+            employee_no="E8001",
+            name="Complex Monthly User",
+            work_shift=shift_0714,
+        )
+        employee.work_shifts.set(cycle)
+
+        planning = Planning.objects.create(
+            tenant=self.tenant,
+            name="Planning Rotation 3 Quarts",
+            code="planning-rotation-3q",
+            timezone="UTC",
+            metadata={"cycle_length_days": 3, "cycle_anchor_date": period_start.isoformat()},
+        )
+        for index, shift in enumerate(cycle):
+            PlanningEntry.objects.create(
+                planning=planning,
+                sequence_index=index,
+                work_shift=shift,
+                label=f"Cycle {index + 1}",
+            )
+        PlanningAssignment.objects.create(
+            tenant=self.tenant,
+            planning=planning,
+            employee=employee,
+            valid_from=period_start,
+            flexible_weekend=True,
+            priority=500,
+        )
+
+        serial_no = 18000
+        weekend_days = 0
+        for day_offset in range(days_count):
+            current_day = period_start + timedelta(days=day_offset)
+            shift = cycle[day_offset % len(cycle)]
+            if current_day.weekday() >= 5:
+                weekend_days += 1
+
+            start_dt = datetime.combine(current_day, shift.start_time, tzinfo=dt_timezone.utc)
+            end_day = current_day if shift.end_time > shift.start_time else (current_day + timedelta(days=1))
+            end_dt = datetime.combine(end_day, shift.end_time, tzinfo=dt_timezone.utc)
+
+            checkin_dt = start_dt - timedelta(minutes=generator.randint(0, 30))
+            checkout_dt = end_dt + timedelta(minutes=generator.randint(0, 50))
+
+            checkin = self._create_attendance_log(
+                person_id=employee.employee_no,
+                timestamp=checkin_dt.isoformat().replace("+00:00", "Z"),
+                serial_no=serial_no,
+                attendance_type="checkin",
+                attendance_status="checkin",
+                direction="IN",
+            )
+            serial_no += 1
+            checkin.employee = employee
+            checkin.save(update_fields=["employee"])
+
+            checkout = self._create_attendance_log(
+                person_id=employee.employee_no,
+                timestamp=checkout_dt.isoformat().replace("+00:00", "Z"),
+                serial_no=serial_no,
+                attendance_type="checkout",
+                attendance_status="checkout",
+                direction="OUT",
+            )
+            serial_no += 1
+            checkout.employee = employee
+            checkout.save(update_fields=["employee"])
+
+        response = self.client.get(
+            "/api/hikgateway/reports/attendance/",
+            {
+                "tenant": self.tenant.code,
+                "period": "monthly",
+                "start_date": period_start.isoformat(),
+                "end_date": period_end.isoformat(),
+                "person_id": employee.employee_no,
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload["summary"]["total_logs"], days_count * 2)
+        self.assertEqual(payload["summary"]["checkins"], days_count)
+        self.assertEqual(payload["summary"]["checkouts"], days_count)
+        self.assertEqual(payload["summary"]["unknown_events"], 0)
+
+        compliance_summary = payload["compliance"]["summary"]
+        self.assertEqual(compliance_summary["evaluated_employees"], 1)
+        self.assertEqual(compliance_summary["expected_work_days"], days_count)
+        self.assertEqual(compliance_summary["compliant_days"], days_count)
+        self.assertEqual(compliance_summary["partial_days"], 0)
+        self.assertEqual(compliance_summary["missing_days"], 0)
+
+        employee_payload = payload["compliance"]["employees"][0]
+        self.assertEqual(employee_payload["person_id"], employee.employee_no)
+        self.assertEqual(employee_payload["expected_work_days"], days_count)
+        self.assertEqual(employee_payload["compliant_days"], days_count)
+        self.assertEqual(employee_payload["missing_days"], 0)
+        self.assertEqual(len(employee_payload["details"]), days_count)
+
+        details = employee_payload["details"]
+        weekend_details = [
+            item for item in details if date.fromisoformat(item["date"]).weekday() >= 5
+        ]
+        self.assertEqual(len(weekend_details), weekend_days)
+        self.assertTrue(all(item["status"] == "compliant" for item in details))
+        self.assertTrue(all(item["matched_shift"] for item in details))
+
+        used_shift_codes = {
+            item["matched_shift"]["code"]
+            for item in details
+            if item.get("matched_shift")
+        }
+        self.assertSetEqual(used_shift_codes, {"shift-0714", "shift-1422", "shift-2206"})
 
     def test_attendance_reports_include_executive_summary_and_hr_fields(self):
         self.client.force_authenticate(user=self.user)

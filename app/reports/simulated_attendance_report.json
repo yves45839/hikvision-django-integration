@@ -19,12 +19,12 @@
     ],
     "plannings": [
       {
-        "id": 12,
+        "id": 18,
         "code": "SIM-TEST-ATTENDANCE-OFFICE-PLANNING",
         "name": "Simulation Lundi-Vendredi 08h-17h"
       },
       {
-        "id": 13,
+        "id": 19,
         "code": "SIM-TEST-ATTENDANCE-ROTATION-PLANNING",
         "name": "Simulation 3 Quarts Tournants (3 jours)"
       }
@@ -57,12 +57,12 @@
         "absent_days": 8
       },
       "heures": {
-        "normal_minutes": 5969,
-        "normal_hours": 99.48,
+        "normal_minutes": 6536,
+        "normal_hours": 108.93,
         "overtime_minutes": 402,
         "overtime_hours": 6.7,
-        "worked_minutes": 6371,
-        "worked_hours": 106.18,
+        "worked_minutes": 6938,
+        "worked_hours": 115.63,
         "planned_minutes": 11160,
         "planned_hours": 186.0
       },
@@ -84,12 +84,12 @@
           {
             "person_id": "PERS-0001",
             "employee_name": "Awa Traore",
-            "anomaly_days": 4
+            "anomaly_days": 3
           },
           {
             "person_id": "PERS-0002",
             "employee_name": "Awa Traore Modifiee",
-            "anomaly_days": 6
+            "anomaly_days": 5
           }
         ]
       }
@@ -221,12 +221,12 @@
       "summary": {
         "evaluated_employees": 2,
         "expected_work_days": 22,
-        "compliant_days": 12,
-        "partial_days": 2,
+        "compliant_days": 7,
+        "partial_days": 7,
         "missing_days": 8,
         "unexpected_activity_days": 0,
         "rest_days": 2,
-        "compliance_rate": 54.55
+        "compliance_rate": 31.82
       },
       "employees": [
         {
@@ -240,21 +240,21 @@
           "planning_name": "Simulation 3 Quarts Tournants (3 jours)",
           "work_shift_name": "",
           "expected_work_days": 12,
-          "compliant_days": 8,
-          "partial_days": 1,
+          "compliant_days": 6,
+          "partial_days": 3,
           "missing_days": 3,
           "unexpected_activity_days": 0,
           "rest_days": 0,
           "late_days": 3,
-          "early_leave_days": 0,
-          "anomaly_days": 4,
-          "total_worked_minutes": 4100,
-          "total_worked_hours": 68.33,
-          "total_normal_minutes": 3826,
-          "total_normal_hours": 63.77,
+          "early_leave_days": 1,
+          "anomaly_days": 3,
+          "total_worked_minutes": 4365,
+          "total_worked_hours": 72.75,
+          "total_normal_minutes": 4091,
+          "total_normal_hours": 68.18,
           "total_overtime_minutes": 274,
           "total_overtime_hours": 4.57,
-          "compliance_rate": 66.67,
+          "compliance_rate": 50.0,
           "details": [
             {
               "date": "2026-03-09",
@@ -272,8 +272,10 @@
                 "unknown_events": 2,
                 "first_checkin": "2026-03-09T05:55:00+00:00",
                 "last_checkout": "2026-03-09T14:12:00+00:00",
+                "first_activity": "2026-03-09T05:55:00+00:00",
+                "last_activity": "2026-03-09T14:12:00+00:00",
                 "matched_shift": {
-                  "id": 22,
+                  "id": 30,
                   "name": "Simulation Quart A 06h-14h",
                   "code": "SIM-TEST-ATTENDANCE-SHIFT-A",
                   "start_time": "06:00:00",
@@ -295,8 +297,10 @@
               "overtime_hours": 0.28,
               "late_minutes": 0,
               "early_leave_minutes": 0,
+              "covers_at_least_one_shift": true,
+              "overtime_enabled": true,
               "matched_shift": {
-                "id": 22,
+                "id": 30,
                 "name": "Simulation Quart A 06h-14h",
                 "code": "SIM-TEST-ATTENDANCE-SHIFT-A",
                 "start_time": "06:00:00",
@@ -307,7 +311,7 @@
             },
             {
               "date": "2026-03-10",
-              "status": "compliant",
+              "status": "partial",
               "hr_status": "a_verifier",
               "validation_status": "none",
               "anomaly_types": [
@@ -322,8 +326,10 @@
                 "unknown_events": 2,
                 "first_checkin": "2026-03-10T06:07:00+00:00",
                 "last_checkout": "2026-03-10T14:05:00+00:00",
+                "first_activity": "2026-03-10T06:07:00+00:00",
+                "last_activity": "2026-03-10T14:05:00+00:00",
                 "matched_shift": {
-                  "id": 22,
+                  "id": 30,
                   "name": "Simulation Quart A 06h-14h",
                   "code": "SIM-TEST-ATTENDANCE-SHIFT-A",
                   "start_time": "06:00:00",
@@ -345,8 +351,10 @@
               "overtime_hours": 0.0,
               "late_minutes": 7,
               "early_leave_minutes": 0,
+              "covers_at_least_one_shift": false,
+              "overtime_enabled": true,
               "matched_shift": {
-                "id": 22,
+                "id": 30,
                 "name": "Simulation Quart A 06h-14h",
                 "code": "SIM-TEST-ATTENDANCE-SHIFT-A",
                 "start_time": "06:00:00",
@@ -371,8 +379,10 @@
                 "unknown_events": 2,
                 "first_checkin": "2026-03-11T06:00:00+00:00",
                 "last_checkout": "2026-03-11T15:30:00+00:00",
+                "first_activity": "2026-03-11T06:00:00+00:00",
+                "last_activity": "2026-03-11T15:30:00+00:00",
                 "matched_shift": {
-                  "id": 22,
+                  "id": 30,
                   "name": "Simulation Quart A 06h-14h",
                   "code": "SIM-TEST-ATTENDANCE-SHIFT-A",
                   "start_time": "06:00:00",
@@ -394,8 +404,10 @@
               "overtime_hours": 1.5,
               "late_minutes": 0,
               "early_leave_minutes": 0,
+              "covers_at_least_one_shift": true,
+              "overtime_enabled": true,
               "matched_shift": {
-                "id": 22,
+                "id": 30,
                 "name": "Simulation Quart A 06h-14h",
                 "code": "SIM-TEST-ATTENDANCE-SHIFT-A",
                 "start_time": "06:00:00",
@@ -420,8 +432,10 @@
                 "unknown_events": 2,
                 "first_checkin": "2026-03-12T13:55:00+00:00",
                 "last_checkout": "2026-03-12T22:00:00+00:00",
+                "first_activity": "2026-03-12T13:55:00+00:00",
+                "last_activity": "2026-03-12T22:00:00+00:00",
                 "matched_shift": {
-                  "id": 23,
+                  "id": 31,
                   "name": "Simulation Quart B 14h-22h",
                   "code": "SIM-TEST-ATTENDANCE-SHIFT-B",
                   "start_time": "14:00:00",
@@ -443,8 +457,10 @@
               "overtime_hours": 0.08,
               "late_minutes": 0,
               "early_leave_minutes": 0,
+              "covers_at_least_one_shift": true,
+              "overtime_enabled": true,
               "matched_shift": {
-                "id": 23,
+                "id": 31,
                 "name": "Simulation Quart B 14h-22h",
                 "code": "SIM-TEST-ATTENDANCE-SHIFT-B",
                 "start_time": "14:00:00",
@@ -456,11 +472,11 @@
             {
               "date": "2026-03-13",
               "status": "partial",
-              "hr_status": "anomalie",
+              "hr_status": "a_verifier",
               "validation_status": "none",
               "anomaly_types": [
-                "pointage_incomplet",
                 "retard",
+                "depart_anticipe",
                 "anomalie_inconnue"
               ],
               "expected_work_period": true,
@@ -471,8 +487,10 @@
                 "unknown_events": 2,
                 "first_checkin": "2026-03-13T14:05:00+00:00",
                 "last_checkout": null,
+                "first_activity": "2026-03-13T14:05:00+00:00",
+                "last_activity": "2026-03-13T18:30:00+00:00",
                 "matched_shift": {
-                  "id": 23,
+                  "id": 31,
                   "name": "Simulation Quart B 14h-22h",
                   "code": "SIM-TEST-ATTENDANCE-SHIFT-B",
                   "start_time": "14:00:00",
@@ -483,19 +501,21 @@
               "expected_checkin_at": "2026-03-13T14:00:00+00:00",
               "expected_checkout_at": "2026-03-13T22:00:00+00:00",
               "actual_checkin_at": "2026-03-13T14:05:00+00:00",
-              "actual_checkout_at": null,
+              "actual_checkout_at": "2026-03-13T18:30:00+00:00",
               "arrival_delta_minutes": 5,
-              "departure_delta_minutes": null,
-              "worked_minutes": 0,
-              "worked_hours": 0.0,
-              "normal_minutes": 0,
-              "normal_hours": 0.0,
+              "departure_delta_minutes": -210,
+              "worked_minutes": 265,
+              "worked_hours": 4.42,
+              "normal_minutes": 265,
+              "normal_hours": 4.42,
               "overtime_minutes": 0,
               "overtime_hours": 0.0,
               "late_minutes": 5,
-              "early_leave_minutes": 0,
+              "early_leave_minutes": 210,
+              "covers_at_least_one_shift": false,
+              "overtime_enabled": true,
               "matched_shift": {
-                "id": 23,
+                "id": 31,
                 "name": "Simulation Quart B 14h-22h",
                 "code": "SIM-TEST-ATTENDANCE-SHIFT-B",
                 "start_time": "14:00:00",
@@ -520,8 +540,10 @@
                 "unknown_events": 2,
                 "first_checkin": "2026-03-14T14:00:00+00:00",
                 "last_checkout": "2026-03-14T23:15:00+00:00",
+                "first_activity": "2026-03-14T14:00:00+00:00",
+                "last_activity": "2026-03-14T23:15:00+00:00",
                 "matched_shift": {
-                  "id": 23,
+                  "id": 31,
                   "name": "Simulation Quart B 14h-22h",
                   "code": "SIM-TEST-ATTENDANCE-SHIFT-B",
                   "start_time": "14:00:00",
@@ -543,8 +565,10 @@
               "overtime_hours": 1.25,
               "late_minutes": 0,
               "early_leave_minutes": 0,
+              "covers_at_least_one_shift": true,
+              "overtime_enabled": true,
               "matched_shift": {
-                "id": 23,
+                "id": 31,
                 "name": "Simulation Quart B 14h-22h",
                 "code": "SIM-TEST-ATTENDANCE-SHIFT-B",
                 "start_time": "14:00:00",
@@ -569,8 +593,10 @@
                 "unknown_events": 2,
                 "first_checkin": "2026-03-15T22:00:00+00:00",
                 "last_checkout": "2026-03-16T06:10:00+00:00",
+                "first_activity": "2026-03-15T22:00:00+00:00",
+                "last_activity": "2026-03-16T06:10:00+00:00",
                 "matched_shift": {
-                  "id": 24,
+                  "id": 32,
                   "name": "Simulation Quart C 22h-06h",
                   "code": "SIM-TEST-ATTENDANCE-SHIFT-C",
                   "start_time": "22:00:00",
@@ -592,8 +618,10 @@
               "overtime_hours": 0.17,
               "late_minutes": 0,
               "early_leave_minutes": 0,
+              "covers_at_least_one_shift": true,
+              "overtime_enabled": true,
               "matched_shift": {
-                "id": 24,
+                "id": 32,
                 "name": "Simulation Quart C 22h-06h",
                 "code": "SIM-TEST-ATTENDANCE-SHIFT-C",
                 "start_time": "22:00:00",
@@ -604,7 +632,7 @@
             },
             {
               "date": "2026-03-16",
-              "status": "compliant",
+              "status": "partial",
               "hr_status": "a_verifier",
               "validation_status": "none",
               "anomaly_types": [
@@ -619,8 +647,10 @@
                 "unknown_events": 2,
                 "first_checkin": "2026-03-16T22:12:00+00:00",
                 "last_checkout": "2026-03-17T06:00:00+00:00",
+                "first_activity": "2026-03-16T22:12:00+00:00",
+                "last_activity": "2026-03-17T06:00:00+00:00",
                 "matched_shift": {
-                  "id": 24,
+                  "id": 32,
                   "name": "Simulation Quart C 22h-06h",
                   "code": "SIM-TEST-ATTENDANCE-SHIFT-C",
                   "start_time": "22:00:00",
@@ -642,8 +672,10 @@
               "overtime_hours": 0.0,
               "late_minutes": 12,
               "early_leave_minutes": 0,
+              "covers_at_least_one_shift": false,
+              "overtime_enabled": true,
               "matched_shift": {
-                "id": 24,
+                "id": 32,
                 "name": "Simulation Quart C 22h-06h",
                 "code": "SIM-TEST-ATTENDANCE-SHIFT-C",
                 "start_time": "22:00:00",
@@ -668,8 +700,10 @@
                 "unknown_events": 2,
                 "first_checkin": "2026-03-17T21:58:00+00:00",
                 "last_checkout": "2026-03-18T07:15:00+00:00",
+                "first_activity": "2026-03-17T21:58:00+00:00",
+                "last_activity": "2026-03-18T07:15:00+00:00",
                 "matched_shift": {
-                  "id": 24,
+                  "id": 32,
                   "name": "Simulation Quart C 22h-06h",
                   "code": "SIM-TEST-ATTENDANCE-SHIFT-C",
                   "start_time": "22:00:00",
@@ -691,8 +725,10 @@
               "overtime_hours": 1.28,
               "late_minutes": 0,
               "early_leave_minutes": 0,
+              "covers_at_least_one_shift": true,
+              "overtime_enabled": true,
               "matched_shift": {
-                "id": 24,
+                "id": 32,
                 "name": "Simulation Quart C 22h-06h",
                 "code": "SIM-TEST-ATTENDANCE-SHIFT-C",
                 "start_time": "22:00:00",
@@ -716,7 +752,9 @@
                 "checkouts": 0,
                 "unknown_events": 0,
                 "first_checkin": null,
-                "last_checkout": null
+                "last_checkout": null,
+                "first_activity": null,
+                "last_activity": null
               },
               "planned_minutes": 480,
               "expected_checkin_at": "2026-03-18T06:00:00+00:00",
@@ -733,6 +771,8 @@
               "overtime_hours": 0.0,
               "late_minutes": 0,
               "early_leave_minutes": 0,
+              "covers_at_least_one_shift": false,
+              "overtime_enabled": true,
               "matched_shift": null,
               "correction": null,
               "correction_log": null
@@ -752,7 +792,9 @@
                 "checkouts": 0,
                 "unknown_events": 0,
                 "first_checkin": null,
-                "last_checkout": null
+                "last_checkout": null,
+                "first_activity": null,
+                "last_activity": null
               },
               "planned_minutes": 480,
               "expected_checkin_at": "2026-03-19T06:00:00+00:00",
@@ -769,6 +811,8 @@
               "overtime_hours": 0.0,
               "late_minutes": 0,
               "early_leave_minutes": 0,
+              "covers_at_least_one_shift": false,
+              "overtime_enabled": true,
               "matched_shift": null,
               "correction": null,
               "correction_log": null
@@ -788,7 +832,9 @@
                 "checkouts": 0,
                 "unknown_events": 0,
                 "first_checkin": null,
-                "last_checkout": null
+                "last_checkout": null,
+                "first_activity": null,
+                "last_activity": null
               },
               "planned_minutes": 480,
               "expected_checkin_at": "2026-03-20T06:00:00+00:00",
@@ -805,6 +851,8 @@
               "overtime_hours": 0.0,
               "late_minutes": 0,
               "early_leave_minutes": 0,
+              "covers_at_least_one_shift": false,
+              "overtime_enabled": true,
               "matched_shift": null,
               "correction": null,
               "correction_log": null
@@ -822,25 +870,25 @@
           "planning_name": "Simulation Lundi-Vendredi 08h-17h",
           "work_shift_name": "",
           "expected_work_days": 10,
-          "compliant_days": 4,
-          "partial_days": 1,
+          "compliant_days": 1,
+          "partial_days": 4,
           "missing_days": 5,
           "unexpected_activity_days": 0,
           "rest_days": 2,
           "late_days": 3,
-          "early_leave_days": 0,
-          "anomaly_days": 6,
-          "total_worked_minutes": 2271,
-          "total_worked_hours": 37.85,
-          "total_normal_minutes": 2143,
-          "total_normal_hours": 35.72,
+          "early_leave_days": 1,
+          "anomaly_days": 5,
+          "total_worked_minutes": 2573,
+          "total_worked_hours": 42.88,
+          "total_normal_minutes": 2445,
+          "total_normal_hours": 40.75,
           "total_overtime_minutes": 128,
           "total_overtime_hours": 2.13,
-          "compliance_rate": 40.0,
+          "compliance_rate": 10.0,
           "details": [
             {
               "date": "2026-03-09",
-              "status": "compliant",
+              "status": "partial",
               "hr_status": "a_verifier",
               "validation_status": "none",
               "anomaly_types": [
@@ -855,10 +903,12 @@
                 "unknown_events": 2,
                 "first_checkin": "2026-03-09T08:03:00+00:00",
                 "last_checkout": "2026-03-09T17:08:00+00:00",
+                "first_activity": "2026-03-09T08:03:00+00:00",
+                "last_activity": "2026-03-09T17:08:00+00:00",
                 "matched_shift": {
-                  "id": 21,
-                  "name": "Simulation Bureau 08h-17h",
-                  "code": "SIM-TEST-ATTENDANCE-SHIFT-OFFICE",
+                  "id": 25,
+                  "name": "Wzard - Quart Jour S1-308573",
+                  "code": "WZD-W-308573-01",
                   "start_time": "08:00:00",
                   "end_time": "17:00:00"
                 }
@@ -878,10 +928,12 @@
               "overtime_hours": 0.08,
               "late_minutes": 3,
               "early_leave_minutes": 0,
+              "covers_at_least_one_shift": false,
+              "overtime_enabled": true,
               "matched_shift": {
-                "id": 21,
-                "name": "Simulation Bureau 08h-17h",
-                "code": "SIM-TEST-ATTENDANCE-SHIFT-OFFICE",
+                "id": 25,
+                "name": "Wzard - Quart Jour S1-308573",
+                "code": "WZD-W-308573-01",
                 "start_time": "08:00:00",
                 "end_time": "17:00:00"
               },
@@ -904,8 +956,10 @@
                 "unknown_events": 2,
                 "first_checkin": "2026-03-10T07:58:00+00:00",
                 "last_checkout": "2026-03-10T17:02:00+00:00",
+                "first_activity": "2026-03-10T07:58:00+00:00",
+                "last_activity": "2026-03-10T17:02:00+00:00",
                 "matched_shift": {
-                  "id": 21,
+                  "id": 29,
                   "name": "Simulation Bureau 08h-17h",
                   "code": "SIM-TEST-ATTENDANCE-SHIFT-OFFICE",
                   "start_time": "08:00:00",
@@ -927,8 +981,10 @@
               "overtime_hours": 0.07,
               "late_minutes": 0,
               "early_leave_minutes": 0,
+              "covers_at_least_one_shift": true,
+              "overtime_enabled": true,
               "matched_shift": {
-                "id": 21,
+                "id": 29,
                 "name": "Simulation Bureau 08h-17h",
                 "code": "SIM-TEST-ATTENDANCE-SHIFT-OFFICE",
                 "start_time": "08:00:00",
@@ -939,7 +995,7 @@
             },
             {
               "date": "2026-03-11",
-              "status": "compliant",
+              "status": "partial",
               "hr_status": "a_verifier",
               "validation_status": "none",
               "anomaly_types": [
@@ -954,8 +1010,10 @@
                 "unknown_events": 2,
                 "first_checkin": "2026-03-11T08:17:00+00:00",
                 "last_checkout": "2026-03-11T17:00:00+00:00",
+                "first_activity": "2026-03-11T08:17:00+00:00",
+                "last_activity": "2026-03-11T17:00:00+00:00",
                 "matched_shift": {
-                  "id": 21,
+                  "id": 29,
                   "name": "Simulation Bureau 08h-17h",
                   "code": "SIM-TEST-ATTENDANCE-SHIFT-OFFICE",
                   "start_time": "08:00:00",
@@ -977,8 +1035,10 @@
               "overtime_hours": 0.0,
               "late_minutes": 17,
               "early_leave_minutes": 0,
+              "covers_at_least_one_shift": false,
+              "overtime_enabled": true,
               "matched_shift": {
-                "id": 21,
+                "id": 29,
                 "name": "Simulation Bureau 08h-17h",
                 "code": "SIM-TEST-ATTENDANCE-SHIFT-OFFICE",
                 "start_time": "08:00:00",
@@ -990,10 +1050,10 @@
             {
               "date": "2026-03-12",
               "status": "partial",
-              "hr_status": "anomalie",
+              "hr_status": "a_verifier",
               "validation_status": "none",
               "anomaly_types": [
-                "pointage_incomplet",
+                "depart_anticipe",
                 "anomalie_inconnue"
               ],
               "expected_work_period": true,
@@ -1004,8 +1064,10 @@
                 "unknown_events": 2,
                 "first_checkin": "2026-03-12T08:00:00+00:00",
                 "last_checkout": null,
+                "first_activity": "2026-03-12T08:00:00+00:00",
+                "last_activity": "2026-03-12T13:02:00+00:00",
                 "matched_shift": {
-                  "id": 21,
+                  "id": 29,
                   "name": "Simulation Bureau 08h-17h",
                   "code": "SIM-TEST-ATTENDANCE-SHIFT-OFFICE",
                   "start_time": "08:00:00",
@@ -1016,19 +1078,21 @@
               "expected_checkin_at": "2026-03-12T08:00:00+00:00",
               "expected_checkout_at": "2026-03-12T17:00:00+00:00",
               "actual_checkin_at": "2026-03-12T08:00:00+00:00",
-              "actual_checkout_at": null,
+              "actual_checkout_at": "2026-03-12T13:02:00+00:00",
               "arrival_delta_minutes": 0,
-              "departure_delta_minutes": null,
-              "worked_minutes": 0,
-              "worked_hours": 0.0,
-              "normal_minutes": 0,
-              "normal_hours": 0.0,
+              "departure_delta_minutes": -238,
+              "worked_minutes": 302,
+              "worked_hours": 5.03,
+              "normal_minutes": 302,
+              "normal_hours": 5.03,
               "overtime_minutes": 0,
               "overtime_hours": 0.0,
               "late_minutes": 0,
-              "early_leave_minutes": 0,
+              "early_leave_minutes": 238,
+              "covers_at_least_one_shift": false,
+              "overtime_enabled": true,
               "matched_shift": {
-                "id": 21,
+                "id": 29,
                 "name": "Simulation Bureau 08h-17h",
                 "code": "SIM-TEST-ATTENDANCE-SHIFT-OFFICE",
                 "start_time": "08:00:00",
@@ -1039,7 +1103,7 @@
             },
             {
               "date": "2026-03-13",
-              "status": "compliant",
+              "status": "partial",
               "hr_status": "a_verifier",
               "validation_status": "none",
               "anomaly_types": [
@@ -1054,8 +1118,10 @@
                 "unknown_events": 2,
                 "first_checkin": "2026-03-13T08:01:00+00:00",
                 "last_checkout": "2026-03-13T19:00:00+00:00",
+                "first_activity": "2026-03-13T08:01:00+00:00",
+                "last_activity": "2026-03-13T19:00:00+00:00",
                 "matched_shift": {
-                  "id": 21,
+                  "id": 29,
                   "name": "Simulation Bureau 08h-17h",
                   "code": "SIM-TEST-ATTENDANCE-SHIFT-OFFICE",
                   "start_time": "08:00:00",
@@ -1077,8 +1143,10 @@
               "overtime_hours": 1.98,
               "late_minutes": 1,
               "early_leave_minutes": 0,
+              "covers_at_least_one_shift": false,
+              "overtime_enabled": true,
               "matched_shift": {
-                "id": 21,
+                "id": 29,
                 "name": "Simulation Bureau 08h-17h",
                 "code": "SIM-TEST-ATTENDANCE-SHIFT-OFFICE",
                 "start_time": "08:00:00",
@@ -1102,7 +1170,9 @@
                 "checkouts": 0,
                 "unknown_events": 0,
                 "first_checkin": null,
-                "last_checkout": null
+                "last_checkout": null,
+                "first_activity": null,
+                "last_activity": null
               },
               "planned_minutes": 540,
               "expected_checkin_at": "2026-03-16T08:00:00+00:00",
@@ -1119,6 +1189,8 @@
               "overtime_hours": 0.0,
               "late_minutes": 0,
               "early_leave_minutes": 0,
+              "covers_at_least_one_shift": false,
+              "overtime_enabled": true,
               "matched_shift": null,
               "correction": null,
               "correction_log": null
@@ -1138,7 +1210,9 @@
                 "checkouts": 0,
                 "unknown_events": 0,
                 "first_checkin": null,
-                "last_checkout": null
+                "last_checkout": null,
+                "first_activity": null,
+                "last_activity": null
               },
               "planned_minutes": 540,
               "expected_checkin_at": "2026-03-17T08:00:00+00:00",
@@ -1155,6 +1229,8 @@
               "overtime_hours": 0.0,
               "late_minutes": 0,
               "early_leave_minutes": 0,
+              "covers_at_least_one_shift": false,
+              "overtime_enabled": true,
               "matched_shift": null,
               "correction": null,
               "correction_log": null
@@ -1174,7 +1250,9 @@
                 "checkouts": 0,
                 "unknown_events": 0,
                 "first_checkin": null,
-                "last_checkout": null
+                "last_checkout": null,
+                "first_activity": null,
+                "last_activity": null
               },
               "planned_minutes": 540,
               "expected_checkin_at": "2026-03-18T08:00:00+00:00",
@@ -1191,6 +1269,8 @@
               "overtime_hours": 0.0,
               "late_minutes": 0,
               "early_leave_minutes": 0,
+              "covers_at_least_one_shift": false,
+              "overtime_enabled": true,
               "matched_shift": null,
               "correction": null,
               "correction_log": null
@@ -1210,7 +1290,9 @@
                 "checkouts": 0,
                 "unknown_events": 0,
                 "first_checkin": null,
-                "last_checkout": null
+                "last_checkout": null,
+                "first_activity": null,
+                "last_activity": null
               },
               "planned_minutes": 540,
               "expected_checkin_at": "2026-03-19T08:00:00+00:00",
@@ -1227,6 +1309,8 @@
               "overtime_hours": 0.0,
               "late_minutes": 0,
               "early_leave_minutes": 0,
+              "covers_at_least_one_shift": false,
+              "overtime_enabled": true,
               "matched_shift": null,
               "correction": null,
               "correction_log": null
@@ -1246,7 +1330,9 @@
                 "checkouts": 0,
                 "unknown_events": 0,
                 "first_checkin": null,
-                "last_checkout": null
+                "last_checkout": null,
+                "first_activity": null,
+                "last_activity": null
               },
               "planned_minutes": 540,
               "expected_checkin_at": "2026-03-20T08:00:00+00:00",
@@ -1263,6 +1349,8 @@
               "overtime_hours": 0.0,
               "late_minutes": 0,
               "early_leave_minutes": 0,
+              "covers_at_least_one_shift": false,
+              "overtime_enabled": true,
               "matched_shift": null,
               "correction": null,
               "correction_log": null

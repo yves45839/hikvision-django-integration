@@ -1,6 +1,7 @@
 import os
 from datetime import timedelta
 from django.db.backends.signals import connection_created
+from django.utils.translation import gettext_lazy as _
 """
 Django settings for config project.
 
@@ -25,6 +26,13 @@ PROJECT_ROOT = BASE_DIR.parent
 for env_path in (PROJECT_ROOT / ".env", BASE_DIR / ".env"):
     if env_path.exists():
         load_dotenv(env_path)
+
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
 
 # Quick-start development settings - unsuitable for production
@@ -74,6 +82,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -151,7 +160,20 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = os.getenv("LANGUAGE_CODE", "fr").strip().lower() or "fr"
+
+LANGUAGES = [
+    ('fr', _('French')),
+    ('en', _('English')),
+]
+
+LOCALE_PATHS = [
+    BASE_DIR / 'locale',
+]
+
+LANGUAGE_COOKIE_NAME = os.getenv("LANGUAGE_COOKIE_NAME", "securepoint_language")
+LANGUAGE_COOKIE_AGE = int(os.getenv("LANGUAGE_COOKIE_AGE", str(60 * 60 * 24 * 365)))
+LANGUAGE_COOKIE_SAMESITE = "Lax"
 
 TIME_ZONE = 'UTC'
 
@@ -182,6 +204,7 @@ JWT_REFRESH_TOKEN_DAYS = int(os.getenv("JWT_REFRESH_TOKEN_DAYS", "30"))
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=JWT_ACCESS_TOKEN_MINUTES),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=JWT_REFRESH_TOKEN_DAYS),
+    'TOKEN_REFRESH_SERIALIZER': 'tenants.jwt_serializers.SafeTokenRefreshSerializer',
 }
 
 SPECTACULAR_SETTINGS = {
@@ -216,3 +239,13 @@ try:
 except ValueError:
     HIK_CATCHUP_FAST_ACTIVE_HOURS = 48
 PAYMENT_WEBHOOK_TOKEN = os.getenv("PAYMENT_WEBHOOK_TOKEN", "")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "no-reply@label-ci.com")
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
+EMAIL_HOST = os.getenv("EMAIL_HOST", "")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "465"))
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = _env_bool("EMAIL_USE_TLS", False)
+EMAIL_USE_SSL = _env_bool("EMAIL_USE_SSL", True)
+EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "30"))
+FRONTEND_AUTH_BASE_URL = os.getenv("FRONTEND_AUTH_BASE_URL", "http://localhost:3000")

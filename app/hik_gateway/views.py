@@ -4,10 +4,11 @@ import json
 import logging
 import time as pytime
 import xml.etree.ElementTree as ET
+import csv
 from decimal import Decimal, InvalidOperation
 from datetime import date, datetime, time, timedelta
 from datetime import timezone as dt_timezone
-from io import BytesIO
+from io import BytesIO, StringIO
 from threading import Lock, Thread
 
 from django.conf import settings
@@ -40,7 +41,8 @@ from hik_gateway.services.catchup import (
 from hik_gateway.services.webhook_ingest import ingest_event
 from employees.models import Employee
 from employees.schedule_resolver import ScheduleResolver
-from tenants.models import Tenant
+from tenants.models import Tenant, TenantRole
+from tenants.services import has_tenant_role
 
 
 logger = logging.getLogger(__name__)
@@ -302,6 +304,24 @@ def _require_admin_api(request: HttpRequest) -> Response | None:
         {"detail": "Admin privileges required."},
         status=status.HTTP_403_FORBIDDEN,
     )
+
+
+def _resolve_tenant_from_code(tenant_code: str) -> Tenant | None:
+    code = str(tenant_code or "").strip()
+    if not code:
+        return None
+    return Tenant.objects.filter(code__iexact=code).first()
+
+
+def _require_tenant_scope_api(request: HttpRequest, tenant_code: str) -> tuple[Response | None, Tenant | None]:
+    tenant = _resolve_tenant_from_code(tenant_code)
+    if tenant is None:
+        return Response({"detail": "Unknown tenant."}, status=status.HTTP_404_NOT_FOUND), None
+    if _is_admin_request(request):
+        return None, tenant
+    if has_tenant_role(request.user, tenant, TenantRole.VIEWER):
+        return None, tenant
+    return Response({"detail": "Insufficient tenant scope for this tenant."}, status=status.HTTP_403_FORBIDDEN), None
 
 
 def _normalize_acs_event_cond(payload: dict, *, default_max_results: int) -> dict:
@@ -852,6 +872,72 @@ def _build_export_filename(prefix: str, start_date: date, end_date: date, extens
     return f"{prefix}-{start_date.strftime('%Y%m%d')}-{end_date.strftime('%Y%m%d')}.{extension}"
 
 
+ATTENDANCE_EXPORT_FIELD_CONFIG: dict[str, dict[str, str]] = {
+    "tenant": {"header": "Tenant", "row_key": "tenant"},
+    "person_id": {"header": "Person ID", "row_key": "person_id"},
+    "employee_name": {"header": "Employe", "row_key": "employee_name"},
+    "department_name": {"header": "Departement", "row_key": "department_name"},
+    "planning_name": {"header": "Planning", "row_key": "planning_name"},
+    "work_shift_name": {"header": "Shift", "row_key": "work_shift_name"},
+    "date": {"header": "Date", "row_key": "date"},
+    "status": {"header": "Statut", "row_key": "status"},
+    "expected_work_period": {"header": "Pointage attendu", "row_key": "expected_work_period"},
+    "planned_minutes": {"header": "Minutes planifiees", "row_key": "planned_minutes"},
+    "total_logs": {"header": "Total logs", "row_key": "total_logs"},
+    "checkins": {"header": "Entrees", "row_key": "checkins"},
+    "checkouts": {"header": "Sorties", "row_key": "checkouts"},
+    "unknown_events": {"header": "Inconnus", "row_key": "unknown_events"},
+    "arrival_time": {"header": "Heure arrivee", "row_key": "arrival_time"},
+    "departure_time": {"header": "Heure depart", "row_key": "departure_time"},
+    "expected_checkin_at": {"header": "Arrivee attendue", "row_key": "expected_checkin_at"},
+    "actual_checkin_at": {"header": "Arrivee reelle", "row_key": "actual_checkin_at"},
+    "arrival_delta_minutes": {"header": "Ecart arrivee (min)", "row_key": "arrival_delta_minutes"},
+    "expected_checkout_at": {"header": "Depart attendu", "row_key": "expected_checkout_at"},
+    "actual_checkout_at": {"header": "Depart reel", "row_key": "actual_checkout_at"},
+    "departure_delta_minutes": {"header": "Ecart depart (min)", "row_key": "departure_delta_minutes"},
+}
+
+ATTENDANCE_EXPORT_DEFAULT_FIELD_IDS = [
+    "person_id",
+    "employee_name",
+    "department_name",
+    "date",
+    "arrival_time",
+    "departure_time",
+    "status",
+]
+
+
+def _resolve_attendance_export_fields(requested_fields: list[str]) -> list[str]:
+    selected: list[str] = []
+    for field in requested_fields:
+        normalized = str(field or "").strip().lower()
+        if not normalized or normalized in selected:
+            continue
+        if normalized in ATTENDANCE_EXPORT_FIELD_CONFIG:
+            selected.append(normalized)
+    if selected:
+        return selected
+    return ATTENDANCE_EXPORT_DEFAULT_FIELD_IDS.copy()
+
+
+def _build_attendance_export_matrix(detail_rows: list[dict], selected_field_ids: list[str]) -> tuple[list[str], list[list]]:
+    resolved_field_ids = [field_id for field_id in selected_field_ids if field_id in ATTENDANCE_EXPORT_FIELD_CONFIG]
+    if not resolved_field_ids:
+        resolved_field_ids = ATTENDANCE_EXPORT_DEFAULT_FIELD_IDS.copy()
+
+    headers = [ATTENDANCE_EXPORT_FIELD_CONFIG[field_id]["header"] for field_id in resolved_field_ids]
+    matrix_rows: list[list] = []
+    for row in detail_rows:
+        matrix_rows.append(
+            [
+                row.get(ATTENDANCE_EXPORT_FIELD_CONFIG[field_id]["row_key"], "")
+                for field_id in resolved_field_ids
+            ]
+        )
+    return headers, matrix_rows
+
+
 def _build_attendance_export_rows(compliance_employees: list[dict]) -> list[dict]:
     status_labels = {
         "compliant": "Conforme",
@@ -908,6 +994,7 @@ def _build_attendance_excel_response(
     end_date: date,
     filters: dict,
     compliance_employees: list[dict],
+    selected_field_ids: list[str],
 ) -> HttpResponse | None:
     try:
         from openpyxl import Workbook
@@ -933,62 +1020,15 @@ def _build_attendance_excel_response(
     )
     worksheet.append([])
 
-    headers = [
-        "Tenant",
-        "Person ID",
-        "Employe",
-        "Departement",
-        "Planning",
-        "Shift",
-        "Date",
-        "Statut",
-        "Pointage attendu",
-        "Minutes planifiees",
-        "Total logs",
-        "Entrees",
-        "Sorties",
-        "Inconnus",
-        "Heure arrivee",
-        "Heure depart",
-        "Arrivee attendue",
-        "Arrivee reelle",
-        "Ecart arrivee (min)",
-        "Depart attendu",
-        "Depart reel",
-        "Ecart depart (min)",
-    ]
+    detail_rows = _build_attendance_export_rows(compliance_employees)
+    headers, export_rows = _build_attendance_export_matrix(detail_rows, selected_field_ids)
     worksheet.append(headers)
     header_row_index = worksheet.max_row
     for col_idx in range(1, len(headers) + 1):
         worksheet.cell(row=header_row_index, column=col_idx).font = Font(bold=True)
 
-    for row in _build_attendance_export_rows(compliance_employees):
-        worksheet.append(
-            [
-                row["tenant"],
-                row["person_id"],
-                row["employee_name"],
-                row["department_name"],
-                row["planning_name"],
-                row["work_shift_name"],
-                row["date"],
-                row["status"],
-                row["expected_work_period"],
-                row["planned_minutes"],
-                row["total_logs"],
-                row["checkins"],
-                row["checkouts"],
-                row["unknown_events"],
-                row["arrival_time"],
-                row["departure_time"],
-                row["expected_checkin_at"],
-                row["actual_checkin_at"],
-                row["arrival_delta_minutes"],
-                row["expected_checkout_at"],
-                row["actual_checkout_at"],
-                row["departure_delta_minutes"],
-            ]
-        )
+    for row_values in export_rows:
+        worksheet.append(row_values)
 
     for column_cells in worksheet.columns:
         max_len = max(len(str(cell.value or "")) for cell in column_cells)
@@ -1015,6 +1055,7 @@ def _build_attendance_pdf_response(
     filters: dict,
     summary: dict,
     compliance_employees: list[dict],
+    selected_field_ids: list[str],
 ) -> HttpResponse | None:
     try:
         from reportlab.lib import colors
@@ -1102,25 +1143,17 @@ def _build_attendance_pdf_response(
     if detail_rows:
         elements.append(Spacer(1, 12))
         elements.append(Paragraph("Details horaires (arrivee/depart)", styles["Heading3"]))
-        details_table_data = [[
-            "Person ID",
-            "Employe",
-            "Date",
-            "Heure arrivee",
-            "Heure depart",
-            "Statut",
-        ]]
-        for row in detail_rows:
+        detail_headers, detail_matrix_rows = _build_attendance_export_matrix(detail_rows, selected_field_ids)
+        details_table_data = [detail_headers]
+        for row_values in detail_matrix_rows:
             details_table_data.append(
                 [
-                    row["person_id"],
-                    row["employee_name"],
-                    row["date"],
-                    row["arrival_time"] or "-",
-                    row["departure_time"] or "-",
-                    row["status"],
+                    "-" if value is None or value == "" else str(value)
+                    for value in row_values
                 ]
             )
+        if len(details_table_data) == 1:
+            details_table_data.append(["-" for _ in detail_headers])
         details_table = Table(details_table_data, repeatRows=1)
         details_table.setStyle(
             TableStyle(
@@ -1130,7 +1163,7 @@ def _build_attendance_pdf_response(
                     ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
                     ("FONTSIZE", (0, 0), (-1, -1), 9),
                     ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#9CA3AF")),
-                    ("ALIGN", (3, 1), (4, -1), "CENTER"),
+                    ("ALIGN", (0, 1), (-1, -1), "LEFT"),
                     ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                 ]
             )
@@ -1142,6 +1175,28 @@ def _build_attendance_pdf_response(
     buffer.close()
     filename = _build_export_filename("attendance-report", start_date, end_date, "pdf")
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
+def _build_attendance_csv_response(
+    *,
+    start_date: date,
+    end_date: date,
+    compliance_employees: list[dict],
+    selected_field_ids: list[str],
+) -> HttpResponse:
+    detail_rows = _build_attendance_export_rows(compliance_employees)
+    headers, matrix_rows = _build_attendance_export_matrix(detail_rows, selected_field_ids)
+
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(headers)
+    for row_values in matrix_rows:
+        writer.writerow(row_values)
+
+    filename = _build_export_filename("attendance-report", start_date, end_date, "csv")
+    response = HttpResponse(f"\ufeff{output.getvalue()}", content_type="text/csv; charset=utf-8")
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
 
@@ -1279,6 +1334,10 @@ def hik_read_card_api(request: HttpRequest) -> Response:
         return Response({"detail": "dev_index is required"}, status=status.HTTP_400_BAD_REQUEST)
 
     tenant_code = str(request.data.get("tenant") or request.data.get("tenant_code") or "").strip()
+    if tenant_code:
+        denied, _ = _require_tenant_scope_api(request, tenant_code)
+        if denied is not None:
+            return denied
 
     try:
         timeout_seconds = int(request.data.get("timeout_seconds", 15))
@@ -1534,6 +1593,7 @@ def hik_register_webhooks_api(request: HttpRequest) -> Response:
 
 
 @api_view(["GET"])
+@permission_classes([IsAuthenticated])
 def hik_events_api(request: HttpRequest) -> Response:
     tenant_code = (request.GET.get("tenant") or "").strip()
     source = (request.GET.get("source") or "").strip().lower()
@@ -1566,6 +1626,10 @@ def hik_events_api(request: HttpRequest) -> Response:
             {"detail": "Ajoute ?tenant=<code_tenant> (ou connecte-toi en administrateur pour voir tous les événements)."},
             status=status.HTTP_403_FORBIDDEN,
         )
+    if tenant_code:
+        denied, _ = _require_tenant_scope_api(request, tenant_code)
+        if denied is not None:
+            return denied
 
     try:
         catchup_cooldown_seconds = max(
@@ -1711,10 +1775,13 @@ def hik_attendance_corrections_api(request: HttpRequest) -> Response:
         return Response({"detail": "tenant is required"}, status=status.HTTP_400_BAD_REQUEST)
     if not person_id:
         return Response({"detail": "person_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+    denied, tenant = _require_tenant_scope_api(request, tenant_code)
+    if denied is not None:
+        return denied
 
     employee = (
         Employee.objects.select_related("tenant")
-        .filter(tenant__code__iexact=tenant_code, employee_no=person_id)
+        .filter(tenant=tenant, employee_no=person_id)
         .first()
     )
     if employee is None:
@@ -1895,6 +1962,9 @@ def hik_attendance_correction_logs_api(request: HttpRequest) -> Response:
 
     if not tenant_code:
         return Response({"detail": "tenant is required"}, status=status.HTTP_400_BAD_REQUEST)
+    denied, tenant = _require_tenant_scope_api(request, tenant_code)
+    if denied is not None:
+        return denied
 
     if date_value:
         start_date_value = date_value
@@ -1911,7 +1981,7 @@ def hik_attendance_correction_logs_api(request: HttpRequest) -> Response:
         "employee",
         "changed_by",
         "correction",
-    ).filter(tenant__code__iexact=tenant_code)
+    ).filter(tenant=tenant)
     if person_id:
         queryset = queryset.filter(employee__employee_no=person_id)
     if start_date is not None:
@@ -1946,15 +2016,17 @@ def hik_attendance_reports_api(request: HttpRequest) -> Response:
     anomaly_types = sorted(set(_parse_csv_query_list(anomaly_type))) if anomaly_type else []
     validation_status = (request.GET.get("validation_status") or "").strip().lower()
     validation_statuses = sorted(set(_parse_csv_query_list(validation_status))) if validation_status else []
+    requested_export_fields = _parse_csv_query_list(request.GET.get("fields", ""))
+    selected_export_fields = _resolve_attendance_export_fields(requested_export_fields)
 
     if period not in {"daily", "weekly", "monthly"}:
         return Response(
             {"detail": "period must be one of: daily, weekly, monthly"},
             status=status.HTTP_400_BAD_REQUEST,
         )
-    if export_format not in {"json", "excel", "xlsx", "pdf"}:
+    if export_format not in {"json", "excel", "xlsx", "pdf", "csv"}:
         return Response(
-            {"detail": "format must be one of: json, excel, xlsx, pdf"},
+            {"detail": "format must be one of: json, excel, xlsx, pdf, csv"},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -1970,6 +2042,10 @@ def hik_attendance_reports_api(request: HttpRequest) -> Response:
             {"detail": "Ajoute ?tenant=<code_tenant> (ou connecte-toi en administrateur pour voir tous les rapports)."},
             status=status.HTTP_403_FORBIDDEN,
         )
+    if tenant_code:
+        denied, _ = _require_tenant_scope_api(request, tenant_code)
+        if denied is not None:
+            return denied
 
     try:
         start_date, end_date = _resolve_report_window(
@@ -2636,6 +2712,7 @@ def hik_attendance_reports_api(request: HttpRequest) -> Response:
         "source": source or None,
         "anomaly_type": anomaly_types,
         "validation_status": validation_statuses,
+        "export_fields": selected_export_fields,
     }
     response_payload = {
         "period": period,
@@ -2663,6 +2740,7 @@ def hik_attendance_reports_api(request: HttpRequest) -> Response:
             end_date=end_date,
             filters=filters_payload,
             compliance_employees=compliance_employees,
+            selected_field_ids=selected_export_fields,
         )
         if export_response is None:
             return Response(
@@ -2679,6 +2757,7 @@ def hik_attendance_reports_api(request: HttpRequest) -> Response:
             filters=filters_payload,
             summary=summary,
             compliance_employees=compliance_employees,
+            selected_field_ids=selected_export_fields,
         )
         if export_response is None:
             return Response(
@@ -2687,10 +2766,19 @@ def hik_attendance_reports_api(request: HttpRequest) -> Response:
             )
         return export_response
 
+    if export_format == "csv":
+        return _build_attendance_csv_response(
+            start_date=start_date,
+            end_date=end_date,
+            compliance_employees=compliance_employees,
+            selected_field_ids=selected_export_fields,
+        )
+
     return Response(response_payload, status=status.HTTP_200_OK)
 
 
 @api_view(["GET"])
+@permission_classes([IsAuthenticated])
 def hik_devices_api(request: HttpRequest) -> Response:
     tenant_code = (request.GET.get("tenant") or "").strip()
     unassigned_only = _to_bool(request.GET.get("unassigned_only", "0"))
@@ -2722,6 +2810,10 @@ def hik_devices_api(request: HttpRequest) -> Response:
             {"detail": "Utilise soit ?tenant=<code_tenant>, soit ?unassigned_only=1, mais pas les deux."},
             status=status.HTTP_400_BAD_REQUEST,
         )
+    if tenant_code:
+        denied, _ = _require_tenant_scope_api(request, tenant_code)
+        if denied is not None:
+            return denied
 
     devices = []
     errors = []
@@ -2820,6 +2912,13 @@ def hik_devices_page(request: HttpRequest):
             return JsonResponse({"detail": error_message}, status=400)
         context["error"] = error_message
         return render(request, "hik_gateway/device_list.html", context, status=400)
+    if tenant_code and _is_authenticated_request(request) and not is_admin:
+        denied, _ = _require_tenant_scope_api(request, tenant_code)
+        if denied is not None:
+            if wants_json:
+                return JsonResponse(denied.data, status=denied.status_code)
+            context["error"] = denied.data.get("detail", "Tenant access denied.")
+            return render(request, "hik_gateway/device_list.html", context, status=denied.status_code)
 
 
     devices = []
@@ -2928,6 +3027,16 @@ def hikdevice_devices_space(request: HttpRequest):
     if tenant_code and unassigned_only:
         context["error"] = "Utilise soit ?tenant=<code_tenant>, soit ?unassigned_only=1, mais pas les deux."
         return render(request, "hik_gateway/hikdevice_devices_space.html", context, status=400)
+    if tenant_code and _is_authenticated_request(request) and not is_admin:
+        denied, _ = _require_tenant_scope_api(request, tenant_code)
+        if denied is not None:
+            context["error"] = denied.data.get("detail", "Tenant access denied.")
+            return render(
+                request,
+                "hik_gateway/hikdevice_devices_space.html",
+                context,
+                status=denied.status_code,
+            )
 
     tenant_by_dev_index = {
         dev_index: tenant__code

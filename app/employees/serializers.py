@@ -15,6 +15,7 @@ from employees.models import (
     PlanningDailySlot,
     PlanningEntry,
     PlanningPeriod,
+    LeaveRequest,
     WorkShift,
 )
 
@@ -730,3 +731,46 @@ class AccessGroupSerializer(serializers.ModelSerializer):
         if readers is not None:
             instance.readers.set(readers)
         return instance
+
+
+class LeaveRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LeaveRequest
+        fields = [
+            "id",
+            "tenant",
+            "employee",
+            "leave_type",
+            "status",
+            "start_date",
+            "end_date",
+            "reason",
+            "rejection_reason",
+            "approved_by",
+            "approved_at",
+            "metadata",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+    def validate(self, attrs):
+        tenant = attrs.get("tenant") or getattr(self.instance, "tenant", None)
+        employee = attrs.get("employee") if "employee" in attrs else getattr(self.instance, "employee", None)
+        status_value = attrs.get("status") if "status" in attrs else getattr(self.instance, "status", LeaveRequest.STATUS_PENDING)
+        approved_by = attrs.get("approved_by") if "approved_by" in attrs else getattr(self.instance, "approved_by", None)
+        approved_at = attrs.get("approved_at") if "approved_at" in attrs else getattr(self.instance, "approved_at", None)
+        start_date = attrs.get("start_date") if "start_date" in attrs else getattr(self.instance, "start_date", None)
+        end_date = attrs.get("end_date") if "end_date" in attrs else getattr(self.instance, "end_date", None)
+
+        if tenant and employee and employee.tenant_id != tenant.id:
+            raise serializers.ValidationError({"employee": "L'employee doit appartenir au meme tenant."})
+        if start_date and end_date and end_date < start_date:
+            raise serializers.ValidationError({"end_date": "La date de fin doit etre superieure ou egale a la date de debut."})
+        if status_value == LeaveRequest.STATUS_APPROVED:
+            if approved_by is None:
+                raise serializers.ValidationError({"approved_by": "approved_by est obligatoire quand le conge est approuve."})
+            if approved_at is None:
+                raise serializers.ValidationError({"approved_at": "approved_at est obligatoire quand le conge est approuve."})
+
+        return attrs

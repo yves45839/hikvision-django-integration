@@ -8,6 +8,7 @@ from django.conf import settings
 from django.db import transaction
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -15,8 +16,8 @@ from employees.models import Employee, EmployeeFace, EmployeeFingerprint, Organi
 from employees.services import build_card_info_payloads, build_fingerprint_cfg_payloads, build_user_info_payload
 from hik_gateway.services.device_payload import extract_devices
 from hik_gateway.services.gateway_connection import get_shared_gateway_client
-from tenants.models import Tenant, TenantMembership, TenantRole
-from tenants.services import has_organization_role, has_tenant_role
+from tenants.models import Tenant, TenantRole
+from tenants.services import has_organization_role, has_tenant_role, scope_queryset_to_user_tenants
 
 from .models import Device, DeviceOnboardingJob
 from .serializers import (
@@ -121,14 +122,27 @@ class DeviceViewSet(viewsets.ModelViewSet):
     serializer_class = DeviceSerializer
     permission_classes = [IsAuthenticated]
 
+    def _require_tenant_scope(self, tenant: Tenant | None) -> None:
+        if tenant is None:
+            raise PermissionDenied("Tenant is required for this action.")
+        if has_tenant_role(self.request.user, tenant, TenantRole.VIEWER):
+            return
+        raise PermissionDenied("Insufficient tenant scope for this action.")
+
     def get_queryset(self):
         queryset = Device.objects.all().order_by('-id')
+        queryset = scope_queryset_to_user_tenants(queryset, self.request.user, tenant_field="tenant_id")
         owner_only = str(self.request.query_params.get('owner_only', '')).lower() in {'1', 'true', 'yes'}
 
         if owner_only and self.request.user.is_authenticated:
             return queryset.filter(owner=self.request.user)
 
         return queryset
+
+    def perform_create(self, serializer):
+        tenant = serializer.validated_data.get("tenant")
+        self._require_tenant_scope(tenant)
+        serializer.save(owner=self.request.user)
 
     def _can_manage_device(self, user, device: Device) -> bool:
         if not user or not user.is_authenticated:
@@ -418,6 +432,7 @@ class DeviceViewSet(viewsets.ModelViewSet):
         tenant = Tenant.objects.filter(code__iexact=validated['tenant_code']).first()
         if tenant is None:
             return Response({'detail': 'Tenant introuvable.'}, status=status.HTTP_400_BAD_REQUEST)
+        self._require_tenant_scope(tenant)
 
         sn = validated['sn']
 
@@ -941,11 +956,7 @@ class DeviceOnboardingJobViewSet(viewsets.GenericViewSet):
 
     def get_queryset(self):
         qs = DeviceOnboardingJob.objects.select_related("tenant", "organization", "requested_by", "device").order_by("-id")
-        user = self.request.user
-        if user.is_superuser or user.is_staff:
-            return qs
-        tenant_ids = TenantMembership.objects.filter(user=user).values_list("tenant_id", flat=True)
-        return qs.filter(tenant_id__in=tenant_ids)
+        return scope_queryset_to_user_tenants(qs, self.request.user, tenant_field="tenant_id")
 
     def list(self, request):
         queryset = self.get_queryset()
@@ -970,10 +981,21 @@ class DeviceOnboardingJobViewSet(viewsets.GenericViewSet):
         tenant = Tenant.objects.filter(code__iexact=validated["tenant_code"]).first()
         if tenant is None:
             return Response({"detail": "Tenant not found."}, status=status.HTTP_400_BAD_REQUEST)
+        if not has_tenant_role(request.user, tenant, TenantRole.VIEWER):
+            return Response({"detail": "Insufficient tenant scope for this tenant."}, status=status.HTTP_403_FORBIDDEN)
 
         organization = Organization.objects.filter(id=validated["organization_id"], tenant=tenant).first()
         if organization is None:
             return Response({"detail": "Organization not found for this tenant."}, status=status.HTTP_400_BAD_REQUEST)
+        if not has_organization_role(
+            request.user,
+            organization,
+            allowed_org_roles=("org_admin", "operator", "viewer"),
+        ) and not has_tenant_role(request.user, tenant, TenantRole.ORG_ADMIN):
+            return Response(
+                {"detail": "Insufficient organization scope for this tenant."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         job = create_job(
             user=request.user,

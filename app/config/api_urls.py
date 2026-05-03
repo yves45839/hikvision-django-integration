@@ -7,6 +7,7 @@ from employees.views import (
     AccessGroupViewSet,
     DepartmentViewSet,
     EmployeeViewSet,
+    LeaveRequestViewSet,
     OrganizationViewSet,
     PlanningAssignmentViewSet,
     PlanningViewSet,
@@ -28,6 +29,7 @@ router.register(r'plannings', PlanningViewSet)
 router.register(r'planning-assignments', PlanningAssignmentViewSet)
 router.register(r'work-shifts', WorkShiftViewSet)
 router.register(r'access-groups', AccessGroupViewSet)
+router.register(r'leave-requests', LeaveRequestViewSet)
 
 urlpatterns = [
     path('schema/', SpectacularAPIView.as_view(), name='schema'),

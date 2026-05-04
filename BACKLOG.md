@@ -88,7 +88,7 @@
 > Branchement réel sur les endpoints DRF, plus de mocks.
 
 - [ ] **8.1 — Page Dashboard** · KPI temps réel, état présence du jour, alertes, derniers événements. Branché sur `GET /api/dashboard/...` (endpoints existants).
-- [ ] **8.2 — Page Employés** · Liste (search + filtres + pagination), fiche détail `/employes/[id]`, création/édition (modal ou page), suppression/désactivation. Branché sur `GET/POST/PATCH/DELETE /api/employees/`.
+- [~] **8.2 — Page Employés** · Liste (search + filtres + pagination), fiche détail `/employees/[id]`, création/édition (modal ou page), suppression/désactivation. Branché sur `GET/POST/PATCH/DELETE /api/employees/`.
 - [ ] **8.3 — Page Planning** · Vue semaine/mois des shifts, création/édition shift, congés visualisés. Branché sur `GET/POST /api/planning/...` et `/api/leaves/...`.
 - [ ] **8.4 — Page Devices** · Liste devices, statut online/offline, détail device, ajout/onboarding. Branché sur `GET/POST /api/devices/`.
 - [ ] **8.5 — Page Rapports** · Génération + téléchargement (PDF/Excel) des rapports présence, retards, anomalies. Branché sur `GET/POST /api/reports/...`.

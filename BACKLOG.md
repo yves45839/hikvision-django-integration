@@ -82,16 +82,17 @@
 - [ ] **7.2 — Metrics Prometheus** · `django-prometheus` + métriques métier.
 - [ ] **7.3 — Dashboard interne** · Page admin "métriques globales" (MAU, MRR, churn 30j, signups).
 
-## Phase 8 — Frontend (submodule `v0-secure-point-dashboard-design/`)
+## Phase 8 — Frontend (pages principales) — submodule `v0-secure-point-dashboard-design/`
 
-- [ ] **8.1 — Page pricing** · 3 plans + CTA Checkout.
-- [ ] **8.2 — Bouton "S'abonner"** · Redirection Stripe Checkout (utilise 3.3).
-- [ ] **8.3 — "Mon abonnement"** · Bouton Customer Portal (utilise 3.4).
-- [ ] **8.4 — Bannière tenant** · États `trial`, `grace`, `failed`, `inactive`.
-- [ ] **8.5 — Page facturation** · Historique factures + PDF (utilise 3.14).
-- [ ] **8.6 — i18n FR/EN** · `next-intl` ou équivalent ; remplir les `.po` côté backend.
-- [ ] **8.7 — Funnel signup** · signup → email verif → checkout → wizard premier device → 1er rapport.
-- [ ] **8.8 — États erreur Stripe** · 3DS, SCA, carte refusée.
+> DoD pour chaque item de cette phase = **structure + visuel pro + connecté backend**.
+> Branchement réel sur les endpoints DRF, plus de mocks.
+
+- [ ] **8.1 — Page Dashboard** · KPI temps réel, état présence du jour, alertes, derniers événements. Branché sur `GET /api/dashboard/...` (endpoints existants).
+- [ ] **8.2 — Page Employés** · Liste (search + filtres + pagination), fiche détail `/employes/[id]`, création/édition (modal ou page), suppression/désactivation. Branché sur `GET/POST/PATCH/DELETE /api/employees/`.
+- [ ] **8.3 — Page Planning** · Vue semaine/mois des shifts, création/édition shift, congés visualisés. Branché sur `GET/POST /api/planning/...` et `/api/leaves/...`.
+- [ ] **8.4 — Page Devices** · Liste devices, statut online/offline, détail device, ajout/onboarding. Branché sur `GET/POST /api/devices/`.
+- [ ] **8.5 — Page Rapports** · Génération + téléchargement (PDF/Excel) des rapports présence, retards, anomalies. Branché sur `GET/POST /api/reports/...`.
+- [ ] **8.6 — Page Configuration** · Profil tenant, organisations, utilisateurs internes, préférences (timezone, langue). Branché sur `GET/PATCH /api/tenants/...` et endpoints settings existants.
 
 ## Phase 9 — Onboarding & growth
 
@@ -119,6 +120,20 @@
 - [ ] **12.5 — Status page** · UptimeRobot ou statuspage.io.
 - [ ] **12.6 — Load test** · k6 sur ingest webhook + reports (cible : 1k events/s).
 - [ ] **12.7 — Audit sécurité externe** · Pentest ciblé (option fortement recommandée B2B).
+
+## Phase 13 — Billing UI & i18n
+
+> Anciens items 8.1–8.8. À démarrer **après la Phase 3 (Stripe backend)**.
+> DoD = parcours utilisateur complet de bout en bout, branché Stripe live.
+
+- [ ] **13.1 — Page pricing** · 3 plans + CTA Checkout.
+- [ ] **13.2 — Bouton "S'abonner"** · Redirection Stripe Checkout (utilise 3.3).
+- [ ] **13.3 — "Mon abonnement"** · Bouton Customer Portal (utilise 3.4).
+- [ ] **13.4 — Bannière tenant** · États `trial`, `grace`, `failed`, `inactive`.
+- [ ] **13.5 — Page facturation** · Historique factures + PDF (utilise 3.14).
+- [ ] **13.6 — i18n FR/EN** · `next-intl` ou équivalent ; remplir les `.po` côté backend.
+- [ ] **13.7 — Funnel signup** · signup → email verif → checkout → wizard premier device → 1er rapport.
+- [ ] **13.8 — États erreur Stripe** · 3DS, SCA, carte refusée.
 
 ---
 

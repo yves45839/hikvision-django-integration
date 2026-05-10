@@ -2,91 +2,86 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <title>Espace HikDevice - Appareils disponibles</title>
+  <title>Espace HikDevice — Appareils · SecurePoint</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Inter+Tight:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
-    body { font-family: Arial, sans-serif; background: #f5f7fb; margin: 0; color: #1f2937; }
-    .wrap { max-width: 1200px; margin: 0 auto; padding: 24px; }
-    h1 { margin: 0 0 6px; }
-    .subtitle { color: #4b5563; margin-bottom: 18px; }
-    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
-    .filters { display: grid; grid-template-columns: repeat(5, minmax(120px, 1fr)); gap: 10px; align-items: end; }
-    label { display: block; margin-bottom: 5px; font-size: 13px; color: #374151; }
-    input { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 8px; }
-    button { border: 0; background: #2563eb; color: #fff; padding: 9px 14px; border-radius: 8px; cursor: pointer; }
-    .muted { color: #6b7280; font-size: 14px; margin-top: 10px; }
-    .error { color: #b91c1c; margin: 10px 0; }
-    table { width: 100%; border-collapse: collapse; background: #fff; }
-    th, td { border: 1px solid #e5e7eb; padding: 8px; font-size: 14px; text-align: left; }
-    th { background: #f9fafb; }
-  </style>
-</head>
-<body>
-<div class="wrap">
-  <h1>Espace HikDevice</h1>
-  <div class="subtitle">Liste des appareils disponibles sur Hik Device Gateway.</div>
+    /* === SecurePoint — Design tokens === */
+    :root {
+      --bg:         oklch(0.985 0.003 90);
+      --surface:    oklch(1 0 0);
+      --surface-2:  oklch(0.975 0.005 90);
+      --surface-3:  oklch(0.955 0.006 90);
+      --line:       oklch(0.92 0.005 90);
+      --line-2:     oklch(0.88 0.006 90);
+      --ink:        oklch(0.22 0.012 250);
+      --ink-2:      oklch(0.42 0.01 250);
+      --ink-3:      oklch(0.58 0.008 250);
+      --ink-4:      oklch(0.72 0.006 250);
+      --brand:      oklch(0.46 0.085 165);
+      --brand-2:    oklch(0.55 0.09 165);
+      --brand-soft: oklch(0.95 0.025 165);
+      --brand-ink:  oklch(0.32 0.07 165);
+      --success:    oklch(0.62 0.13 155);
+      --success-soft: oklch(0.95 0.03 155);
+      --danger:     oklch(0.62 0.18 25);
+      --danger-soft: oklch(0.96 0.03 25);
+      --danger-ink: oklch(0.42 0.15 25);
+      --info:       oklch(0.6 0.12 240);
+      --info-soft:  oklch(0.96 0.025 240);
+      --r-1: 6px; --r-2: 10px; --r-3: 14px;
+      --shadow-sm: 0 1px 0 oklch(0 0 0 / .04), 0 1px 2px oklch(0 0 0 / .04);
+      --font-sans: "Inter", -apple-system, system-ui, sans-serif;
+      --font-display: "Inter Tight", "Inter", sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, monospace;
+    }
 
-  <div class="card">
-    <form method="get" class="filters">
-      <div>
-        <label for="tenant">Tenant</label>
-        <input id="tenant" name="tenant" value="{{ tenant_code }}" placeholder="code tenant">
-      </div>
-      <div>
-        <label for="protocol">Protocoles (csv)</label>
-        <input id="protocol" name="protocol" value="{{ protocol }}" placeholder="ehomeV5">
-      </div>
-      <div>
-        <label for="status">Statuts (csv)</label>
-        <input id="status" name="status" value="{{ status_filter }}" placeholder="online,offline">
-      </div>
-      <div>
-        <label for="dev_type">Type</label>
-        <input id="dev_type" name="dev_type" value="{{ dev_type }}" placeholder="AccessControl">
-      </div>
-      <div>
-        <label for="key">Recherche</label>
-        <input id="key" name="key" value="{{ key }}" placeholder="nom, serial...">
-      </div>
-      <div>
-        <button type="submit">Afficher</button>
-      </div>
-    </form>
-    <div class="muted">Résultats: <strong>{{ devices|length }}</strong></div>
-    {% if error %}
-      <div class="error">{{ error }}</div>
-    {% endif %}
-  </div>
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; }
+    body {
+      font-family: var(--font-sans);
+      color: var(--ink);
+      background: var(--bg);
+      font-size: 14px;
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+    }
 
-  {% if devices %}
-  <div class="card">
-    <table>
-      <thead>
-        <tr>
-          <th>Tenant</th>
-          <th>Nom</th>
-          <th>SN</th>
-          <th>Dev Index</th>
-          <th>Status</th>
-          <th>Protocole</th>
-          <th>Type</th>
-        </tr>
-      </thead>
-      <tbody>
-      {% for device in devices %}
-        <tr>
-          <td>{{ device.tenant_code|default:'-' }}</td>
-          <td>{{ device.device_name|default:'-' }}</td>
-          <td>{{ device.sn|default:device.serial_number|default:'-' }}</td>
-          <td>{{ device.dev_index|default:'-' }}</td>
-          <td>{{ device.status|default:'-' }}</td>
-          <td>{{ device.protocol_type|default:'-' }}</td>
-          <td>{{ device.device_type|default:'-' }}</td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% endif %}
-</div>
-</body>
-</html>
+    /* === Shell === */
+    .shell { display: grid; grid-template-columns: 232px 1fr; min-height: 100vh; }
+
+    /* === Sidebar === */
+    .sb {
+      background: var(--surface);
+      border-right: 1px solid var(--line);
+      display: flex; flex-direction: column;
+      padding: 14px 10px; gap: 2px;
+      position: sticky; top: 0; height: 100vh; overflow-y: auto;
+    }
+    .sb-brand {
+      display: flex; align-items: center; gap: 10px;
+      padding: 6px 8px 14px; margin-bottom: 6px;
+      border-bottom: 1px solid var(--line);
+    }
+    .sb-logo {
+      width: 30px; height: 30px; border-radius: 9px;
+      background: var(--brand); color: white;
+      display: grid; place-items: center;
+      font-family: var(--font-display); font-weight: 700; font-size: 13px;
+      flex-shrink: 0;
+    }
+    .sb-name   { font-family: var(--font-display); font-weight: 600; font-size: 14.5px; letter-spacing: -0.015em; }
+    .sb-tenant { font-size: 11.5px; color: var(--ink-3); margin-top: 1px; }
+    .sb-section {
+      font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--ink-4); font-weight: 600; padding: 12px 10px 4px;
+    }
+    .sb-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 7px 10px; border-radius: 8px;
+      text-decoration: none; color: var(--ink-2); font-size: 13.5px;
+      position: relative; transition: background 0.1s;
+    }
+    .sb-item:hover { background: var(--surface-2); color: var(--ink); }
+   

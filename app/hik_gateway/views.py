@@ -2818,10 +2818,20 @@ def hik_devices_api(request: HttpRequest) -> Response:
     devices = []
     errors = []
 
-    tenant_by_dev_index = {
-        dev_index: tenant__code
-        for dev_index, tenant__code in Device.objects.select_related("tenant").values_list("dev_index", "tenant__code")
-    }
+    tenant_device_pairs = list(Device.objects.select_related("tenant").values_list("dev_index", "tenant__code"))
+    if tenant_code:
+        tenant_by_dev_index = {
+            dev_index: mapped_tenant_code
+            for dev_index, mapped_tenant_code in tenant_device_pairs
+            if str(mapped_tenant_code).lower() == tenant_code.lower()
+        }
+        for dev_index, mapped_tenant_code in tenant_device_pairs:
+            tenant_by_dev_index.setdefault(dev_index, mapped_tenant_code)
+    else:
+        tenant_by_dev_index = {
+            dev_index: tenant__code
+            for dev_index, tenant__code in tenant_device_pairs
+        }
     allowed_dev_indexes = None
     if tenant_code:
         allowed_dev_indexes = {

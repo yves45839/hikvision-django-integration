@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Empty State</title>
+<link rel="stylesheet" href="_pv.css"/>
+<style>
+  body { background: #F0F3F8; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .es {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: 16px;
+    padding: 40px 32px;
+    text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+    box-shadow: var(--shadow-sm);
+    min-height: 360px;
+    justify-content: center;
+  }
+  .es__art {
+    width: 88px; height: 88px;
+    border-radius: 22px;
+    background: linear-gradient(135deg, var(--brand-soft), var(--lr-blue-100));
+    color: var(--brand);
+    display: grid; place-items: center;
+    box-shadow: inset 0 -2px 0 rgba(47,107,230,.08);
+  }
+  .es__art svg { width: 38px; height: 38px; }
+  .es h3 { font-family: var(--font-display); font-weight: 600; font-size: 18px; color: var(--fg1); margin: 0; letter-spacing: -.005em; }
+  .es p { color: var(--fg3); font-size: 13.5px; line-height: 1.55; margin: 0; max-width: 38ch; }
+  .es .actions { display: flex; gap: 10px; margin-top: 6px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 16px; border-radius: 8px; font-family: var(--font-sans); font-weight: 600; font-size: 13.5px; border: 1px solid transparent; cursor: pointer; }
+  .btn--primary { background: var(--brand); color: white; }
+  .btn--primary:hover { background: var(--brand-hover); }
+  .btn--secondary { background: var(--bg-surface); color: var(--fg2); border-color: var(--border-default); }
+  .btn--secondary:hover { background: var(--bg-subtle); }
+  .es small { color: var(--fg4); font-size: 12px; }
+
+  .es--accent .es__art { background: linear-gradient(135deg, var(--accent-soft), #FFE6CC); color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="pv-shell">
+  <div class="pv-head">
+    <div>
+      <p class="pv-eyebrow">Components · Empty state</p>
+      <h1 class="pv-title">Empty states</h1>
+      <p class="pv-sub">Always teach the next action. One primary CTA, one optional secondary, one helper line.</p>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="es">
+      <div class="es__art">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg>
+      </div>
+      <h3>Aucun appareil connecté</h3>
+      <p>Connectez votre première caméra ou lecteur biométrique Hikvision pour démarrer la supervision et activer les pointages.</p>
+      <div class="actions">
+        <button class="btn btn--primary">+ Ajouter un appareil</button>
+        <button class="btn btn--secondary">Voir le guide</button>
+      </div>
+      <small>Compatibilité : DS-K1T343, iVMS-4200, HikCentral 2.x</small>
+    </div>
+
+    <div class="es es--accent">
+      <div class="es__art">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 11h-6M22 15h-4"/></svg>
+      </div>
+      <h3>Aucun employé importé</h3>
+      <p>Connectez votre annuaire Active Directory ou importez un CSV — la biométrie sera enrôlée à la première présence.</p>
+      <div class="actions">
+        <button class="btn btn--primary">Importer un CSV</button>
+        <button class="btn btn--secondary">Connecter AD</button>
+      </div>
+      <small>Format attendu : matricule, nom, prénom, site, équipe</small>
+    </div>
+  </div>
+</div>
+</body></html>

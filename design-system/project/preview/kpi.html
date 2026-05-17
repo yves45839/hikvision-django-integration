@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>KPI Tile</title>
+<link rel="stylesheet" href="_pv.css"/>
+<style>
+  body { background: #F0F3F8; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .kpi {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: 16px;
+    padding: 18px;
+    box-shadow: var(--shadow-sm), inset 0 -1px 0 rgba(15,23,42,.03);
+    display: flex; flex-direction: column; gap: 12px;
+    transition: box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
+    cursor: pointer;
+  }
+  .kpi:hover { box-shadow: var(--shadow-md), inset 0 -1px 0 rgba(15,23,42,.03); transform: translateY(-1px); }
+  .kpi__hd { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .kpi__label { font-size: 12.5px; color: var(--fg3); font-weight: 500; }
+  .kpi__icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    background: var(--brand-soft);
+    color: var(--brand);
+    display: grid; place-items: center;
+  }
+  .kpi__icon svg { width: 18px; height: 18px; }
+  .kpi__value {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 32px;
+    line-height: 1;
+    letter-spacing: -.025em;
+    color: var(--fg1);
+    font-variant-numeric: tabular-nums;
+  }
+  .kpi__value small { font-size: 16px; color: var(--fg3); font-weight: 500; margin-left: 4px; }
+  .kpi__delta { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--success-700); }
+  .kpi__delta.is-down { color: var(--danger-700); }
+  .kpi__sub { font-size: 12px; color: var(--fg3); }
+  .kpi--accent .kpi__icon { background: var(--accent-soft); color: var(--accent); }
+  .kpi--ok .kpi__icon { background: var(--success-50); color: var(--success-600); }
+  .kpi--warn .kpi__icon { background: var(--warning-50); color: var(--warning-700); }
+
+  .spark { width: 100%; height: 28px; }
+</style>
+</head>
+<body>
+<div class="pv-shell">
+  <div class="pv-head">
+    <div>
+      <p class="pv-eyebrow">Components · KPI</p>
+      <h1 class="pv-title">KPI tile</h1>
+      <p class="pv-sub">Numbers in Inter Tight 600. Always paired with denominator and a delta. Inset hairline gives the "pressed-in" feel.</p>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="kpi">
+      <div class="kpi__hd">
+        <span class="kpi__label">Présents aujourd'hui</span>
+        <div class="kpi__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg></div>
+      </div>
+      <div class="kpi__value">142<small>/ 163</small></div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="kpi__delta">▲ 4 vs hier</span>
+        <span class="kpi__sub">Couverture 87%</span>
+      </div>
+    </div>
+
+    <div class="kpi kpi--accent">
+      <div class="kpi__hd">
+        <span class="kpi__label">Anomalies à traiter</span>
+        <div class="kpi__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg></div>
+      </div>
+      <div class="kpi__value">14</div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="kpi__delta is-down">▼ 6 vs hier</span>
+        <span class="kpi__sub">À valider avant 11h</span>
+      </div>
+    </div>
+
+    <div class="kpi kpi--ok">
+      <div class="kpi__hd">
+        <span class="kpi__label">Appareils actifs</span>
+        <div class="kpi__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3"/></svg></div>
+      </div>
+      <div class="kpi__value">31<small>/ 32</small></div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="kpi__delta">▲ stable</span>
+        <span class="kpi__sub">1 hors ligne · Hall B</span>
+      </div>
+    </div>
+
+    <div class="kpi kpi--warn">
+      <div class="kpi__hd">
+        <span class="kpi__label">Retards moyens</span>
+        <div class="kpi__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></svg></div>
+      </div>
+      <div class="kpi__value">9<small> min</small></div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="kpi__delta is-down">▲ 2 min</span>
+        <span class="kpi__sub">Sur 23 retards</span>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>

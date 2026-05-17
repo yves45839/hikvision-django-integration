@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Type Scale</title>
+<link rel="stylesheet" href="_pv.css"/>
+<style>
+  .row { display: grid; grid-template-columns: 220px 1fr; gap: 24px; padding: 14px 0; border-bottom: 1px solid var(--border-subtle); align-items: baseline; }
+  .row:last-child { border-bottom: 0; }
+  .meta { display: flex; flex-direction: column; gap: 4px; }
+  .meta .name { font-family: var(--font-display); font-weight: 600; font-size: 14px; color: var(--fg1); }
+  .meta .spec { font-family: var(--font-mono); font-size: 11.5px; color: var(--fg3); }
+  .sample { color: var(--fg1); }
+</style>
+</head>
+<body>
+<div class="pv-shell">
+  <div class="pv-head">
+    <div>
+      <p class="pv-eyebrow">Type · Scale</p>
+      <h1 class="pv-title">Typographic scale</h1>
+      <p class="pv-sub">Inter Tight for display. Inter for body. JetBrains Mono for technical strings (IPs, IDs, timestamps).</p>
+    </div>
+  </div>
+
+  <div class="pv-card">
+    <div class="row">
+      <div class="meta"><span class="name">Display</span><span class="spec">Inter Tight 600 · 40 / 48 · -0.025em</span></div>
+      <div class="sample t-display">142 présents aujourd'hui</div>
+    </div>
+    <div class="row">
+      <div class="meta"><span class="name">Heading 1</span><span class="spec">Inter Tight 600 · 28 / 34 · -0.015em</span></div>
+      <div class="sample t-h1">Tableau de bord</div>
+    </div>
+    <div class="row">
+      <div class="meta"><span class="name">Heading 2</span><span class="spec">Inter Tight 600 · 22 / 30 · -0.01em</span></div>
+      <div class="sample t-h2">Activité des appareils</div>
+    </div>
+    <div class="row">
+      <div class="meta"><span class="name">Heading 3</span><span class="spec">Inter Tight 600 · 18 / 24</span></div>
+      <div class="sample t-h3">Anomalies à traiter</div>
+    </div>
+    <div class="row">
+      <div class="meta"><span class="name">Heading 4</span><span class="spec">Inter Tight 600 · 16 / 22</span></div>
+      <div class="sample t-h4">Site Casablanca — Hall A</div>
+    </div>
+    <div class="row">
+      <div class="meta"><span class="name">Body</span><span class="spec">Inter 400 · 14 / 21</span></div>
+      <div class="sample t-body">Connectez votre première caméra Hikvision pour démarrer la supervision et activer les pointages biométriques.</div>
+    </div>
+    <div class="row">
+      <div class="meta"><span class="name">Small</span><span class="spec">Inter 400 · 13 / 19</span></div>
+      <div class="sample t-small">Synchronisé il y a 12 secondes — gateway ACME-CASA</div>
+    </div>
+    <div class="row">
+      <div class="meta"><span class="name">Mono</span><span class="spec">JetBrains Mono 500 · 12</span></div>
+      <div class="sample t-mono">192.168.10.42 · DS-K1T343MFWX · fw 6.2.4 · 09:47:13</div>
+    </div>
+    <div class="row">
+      <div class="meta"><span class="name">Eyebrow</span><span class="spec">Inter 600 · 11 · .08em UPPERCASE</span></div>
+      <div class="sample t-eyebrow">Présence en temps réel</div>
+    </div>
+  </div>
+</div>
+</body></html>

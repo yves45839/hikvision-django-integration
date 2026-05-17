@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40" role="img" aria-label="LR Time logo">
+  <defs>
+    <linearGradient id="lr-mark-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2F6BE6"></stop>
+      <stop offset="100%" stop-color="#173FA1"></stop>
+    </linearGradient>
+    <linearGradient id="lr-mark-shine" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.18"></stop>
+      <stop offset="60%" stop-color="#FFFFFF" stop-opacity="0"></stop>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="40" height="40" rx="10" fill="url(#lr-mark-grad)"></rect>
+  <rect x="0" y="0" width="40" height="40" rx="10" fill="url(#lr-mark-shine)"></rect>
+  
+  <path d="M11.5 10.5 v15.4 a2 2 0 0 0 2 2 h11.6 a1.4 1.4 0 0 0 1.4 -1.4 v-1.6 a1.4 1.4 0 0 0 -1.4 -1.4 h-7.6 a0.6 0.6 0 0 1 -0.6 -0.6 v-12.4 a1.4 1.4 0 0 0 -1.4 -1.4 h-2.6 a1.4 1.4 0 0 0 -1.4 1.4 z" fill="#FFFFFF"></path>
+  
+  <circle cx="29" cy="13" r="2.6" fill="#F97316"></circle>
+</svg>

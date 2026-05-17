@@ -1,35 +1,35 @@
 # Backlog de commercialisation — Pointage Hikvision SaaS
 
 > **Format de case** : `[ ]` à faire · `[~]` rendu, en attente validation humaine · `[x]` validé.
-> Seul l'humain coche `[x]`. Voir règles dans `AGENTS.md` (section Sprint Workflow).
+> Seul l'humain coche `[x]`. Voir règles dans `AGENTS.md` (section Sprint Workflow). Le point 8 ne doit pas dépendre des autres sprint
 
 ## Phase 0 — Hardening de base
 
-- [ ] **0.1 — Secrets hors git** · `SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS` lus depuis env ; rotation `Lsg@2020` ; `.env.example` fourni ; secrets purgés de `docker-compose.yml`. Test : settings refuse de booter sans `SECRET_KEY` en prod.
-- [ ] **0.2 — Postgres branché** · `DATABASE_URL` câblé via `dj_database_url` dans `app/config/settings.py:117` ; docker-compose démarre sur Postgres réel. Test : `python manage.py migrate` sur Postgres vide passe.
-- [ ] **0.3 — Indexes critiques** · Indexes sur `AttendanceEvent(tenant, timestamp)`, `RawEvent(serial_no, occurred_at)`, etc. Test : migration appliquée, `EXPLAIN` vérifié.
-- [ ] **0.4 — Rate limiting** · `DEFAULT_THROTTLE_CLASSES` DRF + `django-axes` sur login/signup/OTP/reset. Test : 11ᵉ requête sur OTP renvoie 429.
-- [ ] **0.5 — Audit log** · Modèle `AuditEvent(actor, action, target, ip, ts)` ou `django-easy-audit`. Test : créer un device génère 1 ligne.
-- [ ] **0.6 — Chiffrement credentials device** · `Device.device_password`, `Device.ehome_key`, `DeviceOnboardingJob.*` chiffrés Fernet (`KMS_KEY` env). Test : round-trip + migration data.
-- [ ] **0.7 — JWT lifetime court + rotation** · Access 15 min, refresh 7j tournant, blacklist activée.
-- [ ] **0.8 — Headers sécurité** · HSTS, `SECURE_SSL_REDIRECT`, cookies `Secure`, `SECURE_PROXY_SSL_HEADER`. Test : `python manage.py check --deploy` clean.
+- [x] **0.1 — Secrets hors git** · `SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS` lus depuis env ; rotation `Lsg@2020` ; `.env.example` fourni ; secrets purgés de `docker-compose.yml`. Test : settings refuse de booter sans `SECRET_KEY` en prod.
+- [x] **0.2 — Postgres branché** · `DATABASE_URL` câblé via `dj_database_url` dans `app/config/settings.py:117` ; docker-compose démarre sur Postgres réel. Test : `python manage.py migrate` sur Postgres vide passe.
+- [x] **0.3 — Indexes critiques** · Indexes sur `AttendanceEvent(tenant, timestamp)`, `RawEvent(serial_no, occurred_at)`, etc. Test : migration appliquée, `EXPLAIN` vérifié.
+- [x] **0.4 — Rate limiting** · `DEFAULT_THROTTLE_CLASSES` DRF + `django-axes` sur login/signup/OTP/reset. Test : 11ᵉ requête sur OTP renvoie 429.
+- [x] **0.5 — Audit log** · Modèle `AuditEvent(actor, action, target, ip, ts)` ou `django-easy-audit`. Test : créer un device génère 1 ligne.
+- [x] **0.6 — Chiffrement credentials device** · `Device.device_password`, `Device.ehome_key`, `DeviceOnboardingJob.*` chiffrés Fernet (`KMS_KEY` env). Test : round-trip + migration data.
+- [x] **0.7 — JWT lifetime court + rotation** · Access 15 min, refresh 7j tournant, blacklist activée.
+- [x] **0.8 — Headers sécurité** · HSTS, `SECURE_SSL_REDIRECT`, cookies `Secure`, `SECURE_PROXY_SSL_HEADER`. Test : `python manage.py check --deploy` clean.
 
 ## Phase 1 — Infra production
 
-- [ ] **1.1 — Dockerfile prod** · Multi-stage, gunicorn, user non-root, `HEALTHCHECK`.
-- [ ] **1.2 — Static files** · `whitenoise` + `STATIC_ROOT` + `collectstatic` dans entrypoint.
-- [ ] **1.3 — Healthchecks** · `/health/` (DB+cache) et `/ready/`.
-- [ ] **1.4 — Logging structuré + Sentry** · `LOGGING` JSON, `sentry-sdk[django]` avec tag `tenant_id`.
-- [ ] **1.5 — CI GitHub Actions** · Workflow lint+tests+coverage+build image.
+- [x] **1.1 — Dockerfile prod** · Multi-stage, gunicorn, user non-root, `HEALTHCHECK`.
+- [x] **1.2 — Static files** · `whitenoise` + `STATIC_ROOT` + `collectstatic` dans entrypoint.
+- [x] **1.3 — Healthchecks** · `/health/` (DB+cache) et `/ready/`.
+- [x] **1.4 — Logging structuré + Sentry** · `LOGGING` JSON, `sentry-sdk[django]` avec tag `tenant_id`.
+- [x] **1.5 — CI GitHub Actions** · Workflow lint+tests+coverage+build image.
 
 ## Phase 2 — Async & email
 
-- [ ] **2.1 — Celery + Redis + Beat** · Squelette + worker docker-compose ; tâche `ping` testée.
-- [ ] **2.2 — Email async** · `_send_auth_email` → tâche Celery avec retry exponential.
-- [ ] **2.3 — Push gateway async** · `_auto_sync_employees_queryset` → tâche Celery.
-- [ ] **2.4 — Onboarding async** · Remplacer `threading.Thread` (`app/devices/services/onboarding.py:233`) par Celery.
-- [ ] **2.5 — Catchup ACS planifié** · `hik_catchup_acs_events` → Celery Beat (toutes les 30 s par tenant actif).
-- [ ] **2.6 — Provider email pro** · `django-anymail` + Postmark/SES + templates HTML branded i18n FR/EN.
+- [x] **2.1 — Celery + Redis + Beat** · Squelette + worker docker-compose ; tâche `ping` testée.
+- [x] **2.2 — Email async** · `_send_auth_email` → tâche Celery avec retry exponential.
+- [x] **2.3 — Push gateway async** · `_auto_sync_employees_queryset` → tâche Celery.
+- [x] **2.4 — Onboarding async** · Remplacer `threading.Thread` (`app/devices/services/onboarding.py:233`) par Celery.
+- [x] **2.5 — Catchup ACS planifié** · `hik_catchup_acs_events` → Celery Beat (toutes les 30 s par tenant actif).
+- [x] **2.6 — Provider email pro** · `django-anymail` + Postmark/SES + templates HTML branded i18n FR/EN.
 
 ## Phase 3 — Stripe (cœur commercial)
 
@@ -53,41 +53,41 @@
 
 ## Phase 4 — Multi-tenant durci
 
-- [ ] **4.1 — `TenantScopedManager`** · Manager générique ; refactor des viewsets non-scopés.
-- [ ] **4.2 — Tests isolation systématiques** · Pour CHAQUE viewset : tenant A ne voit/modifie pas ressources B (parametrize pytest).
-- [ ] **4.3 — Sécurité webhook Hik** · HMAC obligatoire (refus si token vide en prod), IP allowlist obligatoire.
-- [ ] **4.4 — `is_domain_verified` strict** · Refus boîtes publiques (gmail/outlook/yahoo) pour B2B ; flag `tenant_domain_kind`.
-- [ ] **4.5 — Bug events scoping** · Réviser `device__owner=user` (`app/events/views.py:21`) → logique tenant/org.
+- [x] **4.1 — `TenantScopedManager`** · Manager générique ; refactor des viewsets non-scopés.
+- [x] **4.2 — Tests isolation systématiques** · Pour CHAQUE viewset : tenant A ne voit/modifie pas ressources B (parametrize pytest).
+- [x] **4.3 — Sécurité webhook Hik** · HMAC obligatoire (refus si token vide en prod), IP allowlist obligatoire.
+- [x] **4.4 — `is_domain_verified` strict** · Refus boîtes publiques (gmail/outlook/yahoo) pour B2B ; flag `tenant_domain_kind`.
+- [x] **4.5 — Bug events scoping** · Réviser `device__owner=user` (`app/events/views.py:21`) → logique tenant/org.
 
 ## Phase 5 — Sécurité avancée
 
-- [ ] **5.1 — 2FA TOTP** · `django-otp` + endpoint enroll/verify ; obligatoire pour `org_admin`.
-- [ ] **5.2 — Anti-bruteforce OTP** · Lock après 5 essais, expiration 10 min, log incident.
-- [ ] **5.3 — Session management** · "Mes appareils connectés" + révocation.
-- [ ] **5.4 — CSP + Permissions-Policy** · `django-csp` + headers durcis.
+- [x] **5.1 — 2FA TOTP** · `django-otp` + endpoint enroll/verify ; obligatoire pour `org_admin`.
+- [x] **5.2 — Anti-bruteforce OTP** · Lock après 5 essais, expiration 10 min, log incident.
+- [x] **5.3 — Session management** · "Mes appareils connectés" + révocation.
+- [x] **5.4 — CSP + Permissions-Policy** · `django-csp` + headers durcis.
 
 ## Phase 6 — Conformité RGPD
 
-- [ ] **6.1 — Pages légales** · ToS, Privacy, Mentions, Cookies (markdown servi par template).
-- [ ] **6.2 — Export données (art. 20)** · `GET /api/auth/me/export/` → ZIP JSON + CSV.
-- [ ] **6.3 — Effacement (art. 17)** · `DELETE /api/auth/me/` → anonymisation + soft-delete tenant.
-- [ ] **6.4 — Consent log** · Modèle + capture au signup (ToS, Privacy, marketing) ; horodaté + IP.
-- [ ] **6.5 — Rétention configurable** · `event_retention_days` par plan ; cron de purge soft-delete + hard-delete.
-- [ ] **6.6 — DPIA biométrie** · Document interne + chiffrement fort `EmployeeFingerprint` / `EmployeeFace`.
-- [ ] **6.7 — DPA téléchargeable** · PDF généré et stocké au signup B2B.
+- [x] **6.1 — Pages légales** · ToS, Privacy, Mentions, Cookies (markdown servi par template).
+- [x] **6.2 — Export données (art. 20)** · `GET /api/auth/me/export/` → ZIP JSON + CSV.
+- [x] **6.3 — Effacement (art. 17)** · `DELETE /api/auth/me/` → anonymisation + soft-delete tenant.
+- [x] **6.4 — Consent log** · Modèle + capture au signup (ToS, Privacy, marketing) ; horodaté + IP.
+- [x] **6.5 — Rétention configurable** · `event_retention_days` par plan ; cron de purge soft-delete + hard-delete.
+- [x] **6.6 — DPIA biométrie** · Document interne + chiffrement fort `EmployeeFingerprint` / `EmployeeFace`.
+- [x] **6.7 — DPA téléchargeable** · PDF généré et stocké au signup B2B.
 
 ## Phase 7 — Observabilité
 
-- [ ] **7.1 — Sentry tags** · `tenant_id`, `org_id`, `user_id`, `release` injectés.
-- [ ] **7.2 — Metrics Prometheus** · `django-prometheus` + métriques métier.
-- [ ] **7.3 — Dashboard interne** · Page admin "métriques globales" (MAU, MRR, churn 30j, signups).
+- [x] **7.1 — Sentry tags** · `tenant_id`, `org_id`, `user_id`, `release` injectés.
+- [x] **7.2 — Metrics Prometheus** · `django-prometheus` + métriques métier.
+- [x] **7.3 — Dashboard interne** · Page admin "métriques globales" (MAU, MRR, churn 30j, signups).
 
 ## Phase 8 — Frontend (pages principales) — submodule `v0-secure-point-dashboard-design/`
 
 > DoD pour chaque item de cette phase = **structure + visuel pro + connecté backend**.
 > Branchement réel sur les endpoints DRF, plus de mocks.
 
-- [ ] **8.1 — Page Dashboard** · KPI temps réel, état présence du jour, alertes, derniers événements. Branché sur `GET /api/dashboard/...` (endpoints existants).
+- [~] **8.1 — Page Dashboard** · KPI temps réel, état présence du jour, alertes, derniers événements. Branché sur `GET /api/dashboard/...` (endpoints existants).
 - [~] **8.2 — Page Employés** · Liste (search + filtres + pagination), fiche détail `/employees/[id]`, création/édition (modal ou page), suppression/désactivation. Branché sur `GET/POST/PATCH/DELETE /api/employees/`.
 - [ ] **8.3 — Page Planning** · Vue semaine/mois des shifts, création/édition shift, congés visualisés. Branché sur `GET/POST /api/planning/...` et `/api/leaves/...`.
 - [ ] **8.4 — Page Devices** · Liste devices, statut online/offline, détail device, ajout/onboarding. Branché sur `GET/POST /api/devices/`.
@@ -107,9 +107,9 @@
 
 ## Phase 11 — Résilience Hikvision
 
-- [ ] **11.1 — Retry + circuit breaker** · `tenacity` + `pybreaker` sur appels gateway.
-- [ ] **11.2 — Health monitoring devices** · Tâche périodique ping + status `online/offline`.
-- [ ] **11.3 — Dédup events robuste** · Clé `(serial_no, event_no, occurred_at)` ; tests collisions.
+- [~] **11.1 — Retry + circuit breaker** · `tenacity` + `pybreaker` sur appels gateway.
+- [~] **11.2 — Health monitoring devices** · Tâche périodique ping + status `online/offline`.
+- [~] **11.3 — Dédup events robuste** · Clé `(serial_no, event_no, occurred_at)` ; tests collisions.
 
 ## Phase 12 — Pré-launch
 

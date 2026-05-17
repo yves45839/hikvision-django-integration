@@ -19,3 +19,18 @@ staticfiles/
 
 # Mac
 .DS_Store
+
+# Fichiers temporaires FUSE / agents
+.fuse_hidden*
+app/.fuse_hidden*
+EXECUTIVE_SUMMARY.txt
+FILES_MANIFEST.txt
+FILE_LISTING.txt
+FINAL_REPORT.txt
+IMPLEMENTATION_SUMMARY.txt
+PHASE0_IMPLEMENTATION.md
+PHASE6_11_README.md
+README_PHASES6_11.txt
+RISKS_AND_MITIGATIONS.md
+app/db.sqlite3-wal
+app/db.sqlite3-shm

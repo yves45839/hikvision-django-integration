@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LR Time · Planning</title>
+<link rel="stylesheet" href="../tokens.css" />
+<style>
+  /* Coverage strip */
+  .coverage {
+    display: grid; grid-template-columns: 1fr 280px;
+    gap: 20px;
+    background: linear-gradient(135deg, #F4F8FF, #fff 60%);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-2xl);
+    padding: 22px 24px; margin-bottom: 16px;
+  }
+  .coverage h2 { font-size: 18px; }
+  .coverage-bars { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-top: 12px; }
+  .cov-bar {
+    background: #fff; border: 1px solid var(--border-default);
+    border-radius: var(--radius-md); padding: 8px 6px;
+    text-align: center;
+  }
+  .cov-bar .day { font-size: 10.5px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
+  .cov-bar .pct { font-family: var(--font-display); font-size: 16px; font-weight: 600; color: var(--text-strong); margin: 4px 0; }
+  .cov-bar .gauge {
+    height: 4px; background: var(--slate-100); border-radius: 999px; overflow: hidden;
+  }
+  .cov-bar .gauge i { display: block; height: 100%; border-radius: 999px; }
+  .cov-bar.is-low .pct { color: var(--danger-600); }
+  .cov-bar.is-warn .pct { color: var(--warning-700); }
+
+  /* Calendar grid */
+  .calendar {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+  }
+  .cal-grid {
+    display: grid;
+    grid-template-columns: 200px repeat(7, 1fr);
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--slate-25);
+  }
+  .cal-head {
+    padding: 12px 14px;
+    font-size: 11.5px; font-weight: 600; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: .04em;
+    border-right: 1px solid var(--border-subtle);
+  }
+  .cal-head.today { background: var(--brand-soft); color: var(--brand-active); }
+  .cal-head .num { display: block; font-size: 18px; color: var(--text-strong); font-family: var(--font-display); margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .cal-head.today .num { color: var(--brand); }
+  .cal-row {
+    display: grid;
+    grid-template-columns: 200px repeat(7, 1fr);
+    border-bottom: 1px solid var(--border-subtle);
+    min-height: 76px;
+  }
+  .cal-row:last-child { border-bottom: 0; }
+  .cal-row .who {
+    padding: 12px 14px;
+    border-right: 1px solid var(--border-subtle);
+    background: var(--slate-25);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .cal-row .who strong { display: block; font-size: 13px; color: var(--text-strong); line-height: 1.2; }
+  .cal-row .who small { font-size: 11.5px; color: var(--text-muted); }
+  .cal-cell {
+    padding: 8px;
+    border-right: 1px solid var(--border-subtle);
+    position: relative;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .cal-cell:last-child { border-right: 0; }
+  .cal-cell.today { background: rgba(244, 248, 255, .55); }
+  .cal-cell.weekend { background: var(--slate-25); }
+
+  .shift {
+    padding: 6px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 11.5px; font-weight: 600;
+    color: #fff;
+    box-shadow: var(--shadow-xs);
+    cursor: grab;
+    line-height: 1.2;
+  }
+  .shift small { font-weight: 500; opacity: .85; display: block; font-size: 10.5px; margin-top: 2px; }
+  .shift--day    { background: linear-gradient(135deg, #2F6BE6, #1F52C7); }
+  .shift--morn   { background: linear-gradient(135deg, #14B8A6, #0F766E); }
+  .shift--eve    { background: linear-gradient(135deg, #F97316, #DC5F0A); }
+  .shift--night  { background: linear-gradient(135deg, #6366F1, #4338CA); }
+  .shift--rest   { background: var(--slate-100); color: var(--text-muted); box-shadow: none; font-style: italic; font-weight: 500; }
+  .shift--leave  { background: repeating-linear-gradient(45deg, #EEF4FF, #EEF4FF 6px, #DCE7FF 6px, #DCE7FF 12px); color: var(--brand-active); }
+  .shift--conflict { background: var(--danger-500); position: relative; }
+  .shift--conflict::after {
+    content: ""; position: absolute; inset: -2px; border: 2px solid var(--danger-500);
+    border-radius: var(--radius-sm); animation: pulse-bad 1.4s infinite;
+  }
+  @keyframes pulse-bad {
+    0%   { box-shadow: 0 0 0 0 rgba(239, 68, 68, .3); }
+    70%  { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+  }
+  .empty-cell {
+    border: 1.5px dashed var(--border-strong);
+    border-radius: var(--radius-sm);
+    padding: 6px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-subtle);
+    height: 100%;
+    display: grid; place-items: center;
+    cursor: pointer;
+  }
+  .empty-cell:hover { background: var(--brand-softer); border-color: var(--lr-blue-300); color: var(--brand); }
+
+  /* Side rail with shift palette */
+  .planning-layout { display: grid; grid-template-columns: 1fr 280px; gap: 20px; }
+  .palette {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    padding: 18px;
+    box-shadow: var(--shadow-sm);
+    height: fit-content;
+    position: sticky; top: 80px;
+  }
+  .palette h3 { font-size: 13px; margin-bottom: 12px; }
+  .palette-shift {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-default);
+    background: var(--bg-surface);
+    cursor: grab; margin-bottom: 8px;
+    transition: box-shadow var(--dur-fast), border-color var(--dur-fast);
+  }
+  .palette-shift:hover { box-shadow: var(--shadow-md); border-color: var(--lr-blue-200); }
+  .palette-shift .swatch { width: 12px; height: 28px; border-radius: 4px; flex-shrink: 0; }
+  .palette-shift strong { display: block; font-size: 13px; color: var(--text-strong); }
+  .palette-shift small { font-size: 11.5px; color: var(--text-muted); }
+  .palette-shift .grow { flex: 1; }
+
+  .conflict-card {
+    background: linear-gradient(135deg, #FEF2F2, #fff 70%);
+    border: 1px solid var(--danger-100);
+    border-radius: var(--radius-lg);
+    padding: 12px;
+  }
+  .conflict-card h4 { font-size: 12px; color: var(--danger-700); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12 12 4l9 8"/><path d="M5 10v10h14V10"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 11a3 3 0 1 0 0-6"/><path d="M22 20a5 5 0 0 0-5-5"/></symbol>
+  <symbol id="i-cpu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v16h16"/><path d="M8 14l3-3 3 3 5-7"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 9 19.3a1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.7 9a1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 9H3c0-1 3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 1 1 5.7 1.4c-.7 1.1-2.3 1.6-2.8 2.6-.2.5-.2 1 .1 1.5"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6l8-3z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></symbol>
+  <symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></symbol>
+  <symbol id="i-magic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v4M3 5h4M19 15v4M17 17h4"/><path d="m12 4 2 4 4 2-4 2-2 4-2-4-4-2 4-2z"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 21h20L12 3z"/><path d="M12 9v5"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L21 6"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 9v6l-4-2v-4z"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="18" cy="12" r="1"/></symbol>
+  <symbol id="i-grip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/></symbol>
+</svg>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="sidebar__brand">
+      <div class="logo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 4h3v12h8v3H5V4z" fill="currentColor"/></svg></div>
+      <div class="name">LR Time<small>Workforce Suite</small></div>
+    </div>
+    <div class="sidebar__group">
+      <div class="sidebar__label">Pilotage</div>
+      <a class="sidebar__item"><svg class="icon" width="18" height="18"><use href="#i-home"/></svg>Tableau de bord</a>
+      <a class="sidebar__item"><svg class="icon" width="18" height="18"><use href="#i-chart"/></svg>Rapports<span class="badge">12</span></a>
+      <a class="sidebar__item is-active"><svg class="icon" width="18" height="18"><use href="#i-calendar"/></svg>Planning</a>
+    </div>
+    <div class="sidebar__group">
+      <div class="sidebar__label">Organisation</div>
+      <a class="sidebar__item"><svg class="icon" width="18" height="18"><use href="#i-users"/></svg>Employés</a>
+      <a class="sidebar__item"><svg class="icon" width="18" height="18"><use href="#i-cpu"/></svg>Appareils<span class="badge">3</span></a>
+      <a class="sidebar__item"><svg class="icon" width="18" height="18"><use href="#i-shield"/></svg>Contrôle d'accès</a>
+    </div>
+    <div class="sidebar__group">
+      <div class="sidebar__label">Compte</div>
+      <a class="sidebar__item"><svg class="icon" width="18" height="18"><use href="#i-settings"/></svg>Paramètres</a>
+      <a class="sidebar__item"><svg class="icon" width="18" height="18"><use href="#i-help"/></svg>Aide & support</a>
+    </div>
+    <div class="sidebar__user">
+      <div class="avatar">YV</div>
+      <div class="meta"><strong>Yves Roland</strong><span>Directeur RH · LR Time</span></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="crumbs">
+        <span>LR Time</span><span class="sep">/</span><strong>Planning d'équipe</strong>
+      </div>
+      <div class="topbar__search" style="margin-left: 24px">
+        <svg class="icon" width="14" height="14"><use href="#i-search"/></svg>
+        <span>Rechercher un employé, un quart…</span>
+        <kbd>⌘K</kbd>
+      </div>
+      <div class="topbar__actions">
+        <span class="live-pill"><span class="pulse"></span>Modifications synchronisées</span>
+        <button class="iconbtn"><svg width="18" height="18"><use href="#i-help"/></svg></button>
+        <button class="iconbtn"><svg width="18" height="18"><use href="#i-bell"/></svg><span class="dot"></span></button>
+      </div>
+    </header>
+
+    <div class="content">
+      <div class="page-header">
+        <div class="page-header__title">
+          <span class="page-header__eyebrow">Sem. 19 · 4 → 10 mai 2026 · Casablanca (UTC+1)</span>
+          <h1>Planning d'équipe</h1>
+          <p class="page-header__subtitle">Organisez la couverture hebdomadaire. Faites glisser un quart depuis la palette, ou lancez l'auto-planification équilibrée.</p>
+        </div>
+        <div class="page-header__actions">
+          <button class="btn btn--secondary"><svg width="14" height="14"><use href="#i-copy"/></svg>Copier la semaine</button>
+          <button class="btn btn--secondary"><svg width="14" height="14"><use href="#i-magic"/></svg>Auto-planifier</button>
+          <button class="btn btn--primary"><svg width="14" height="14"><use href="#i-plus"/></svg>Nouveau planning</button>
+        </div>
+      </div>
+
+      <!-- ============== Coverage strip ============== -->
+      <div class="coverage">
+        <div>
+          <span class="badge badge--brand"><span class="dot"></span>Couverture hebdo · objectif 90%</span>
+          <h2 style="margin-top: 8px">Vue de la semaine — 88% couverte</h2>
+          <p class="muted" style="font-size: 13.5px; margin-top: 4px">3 créneaux non pourvus · 1 conflit double-affectation · 2 quarts en heures supp.</p>
+          <div class="coverage-bars">
+            <div class="cov-bar"><div class="day">Lun 4</div><div class="pct">95%</div><div class="gauge"><i style="width:95%; background: linear-gradient(90deg, #34D399, #059669)"></i></div></div>
+            <div class="cov-bar"><div class="day">Mar 5</div><div class="pct">93%</div><div class="gauge"><i style="width:93%; background: linear-gradient(90deg, #34D399, #059669)"></i></div></div>
+            <div class="cov-bar is-warn"><div class="day">Mer 6</div><div class="pct">82%</div><div class="gauge"><i style="width:82%; background: linear-gradient(90deg, #FBBF24, #F59E0B)"></i></div></div>
+            <div class="cov-bar"><div class="day">Jeu 7</div><div class="pct">90%</div><div class="gauge"><i style="width:90%; background: linear-gradient(90deg, #34D399, #059669)"></i></div></div>
+            <div class="cov-bar"><div class="day">Ven 8</div><div class="pct">94%</div><div class="gauge"><i style="width:94%; background: linear-gradient(90deg, #34D399, #059669)"></i></div></div>
+            <div class="cov-bar is-low"><div class="day">Sam 9</div><div class="pct">68%</div><div class="gauge"><i style="width:68%; background: linear-gradient(90deg, #F87171, #DC2626)"></i></div></div>
+            <div class="cov-bar"><div class="day">Dim 10</div><div class="pct">—</div><div class="gauge"></div></div>
+          </div>
+        </div>
+        <div style="background: #fff; border: 1px solid var(--border-default); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px">
+          <strong style="font-size: 13px">Capacité requise</strong>
+          <div class="row" style="justify-content: space-between"><span class="muted" style="font-size: 12.5px">Production</span><strong>62 / 65 attendus</strong></div>
+          <div class="progress"><i style="width: 95%; background: var(--success-500)"></i></div>
+          <div class="row" style="justify-content: space-between"><span class="muted" style="font-size: 12.5px">Logistique</span><strong>22 / 28 attendus</strong></div>
+          <div class="progress progress--accent"><i style="width: 79%"></i></div>
+          <div class="row" style="justify-content: space-between"><span class="muted" style="font-size: 12.5px">Sécurité</span><strong>10 / 12 attendus</strong></div>
+          <div class="progress progress--success"><i style="width: 83%"></i></div>
+        </div>
+      </div>
+
+      <!-- ============== Filter row ============== -->
+      <div class="card" style="padding: 8px 12px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px">
+        <button class="iconbtn"><svg width="16" height="16"><use href="#i-arrow-left"/></svg></button>
+        <strong style="font-size: 14px">Semaine du 4 mai 2026</strong>
+        <button class="iconbtn"><svg width="16" height="16"><use href="#i-arrow-right"/></svg></button>
+        <div class="tabs" style="margin-left: 12px">
+          <button>Jour</button>
+          <button class="is-active">Semaine</button>
+          <button>Mois</button>
+        </div>
+        <div class="grow" style="flex: 1"></div>
+        <select class="select"><option>Département : Production</option><option>Tous</option><option>Logistique</option></select>
+        <select class="select"><option>Site : Casablanca</option></select>
+        <button class="btn btn--secondary btn--sm"><svg width="13" height="13"><use href="#i-filter"/></svg>Filtres</button>
+      </div>
+
+      <div class="planning-layout">
+        <!-- ============== Calendar ============== -->
+        <div class="calendar">
+          <div class="cal-grid">
+            <div class="cal-head"></div>
+            <div class="cal-head">Lun<span class="num">04</span></div>
+            <div class="cal-head today">Mar<span class="num">05</span></div>
+            <div class="cal-head">Mer<span class="num">06</span></div>
+            <div class="cal-head">Jeu<span class="num">07</span></div>
+            <div class="cal-head">Ven<span class="num">08</span></div>
+            <div class="cal-head">Sam<span class="num">09</span></div>
+            <div class="cal-head">Dim<span class="num">10</span></div>
+          </div>
+
+          <!-- Row 1 -->
+          <div class="cal-row">
+            <div class="who">
+              <svg width="14" height="14" style="color: var(--text-subtle)"><use href="#i-grip"/></svg>
+              <div class="avatar avatar--sm" style="background: #FFE4E6; color: #BE185D">RM</div>
+              <div><strong>Rachid Mansouri</strong><small>Production · A2</small></div>
+            </div>
+            <div class="cal-cell"><div class="shift shift--morn">Matin<small>06h–14h</small></div></div>
+            <div class="cal-cell today"><div class="shift shift--morn">Matin<small>06h–14h</small></div></div>
+            <div class="cal-cell"><div class="shift shift--morn">Matin<small>06h–14h</small></div></div>
+            <div class="cal-cell"><div class="shift shift--morn">Matin<small>06h–14h</small></div></div>
+            <div class="cal-cell"><div class="shift shift--morn">Matin<small>06h–14h</small></div></div>
+            <div class="cal-cell weekend"><div class="shift shift--rest">Repos</div></div>
+            <div class="cal-cell weekend"><div class="shift shift--rest">Repos</div></div>
+          </div>
+
+          <!-- Row 2 -->
+          <div class="cal-row">
+            <div class="who">
+              <svg width="14" height="14" style="color: var(--text-subtle)"><use href="#i-grip"/></svg>
+              <div class="avatar avatar--sm" style="background: #DCFCE7; color: #047857">SE</div>
+              <div><strong>Salma El Hattab</strong><small>Marketing</small></div>
+            </div>
+            <div class="cal-cell"><div class="shift shift--day">Jour<small>08h–17h</small></div></div>
+            <div class="cal-cell today"><div class="shift shift--day">Jour<small>08h–17h</small></div></div>
+            <div class="cal-cell"><div class="shift shift--leave">Congé<small>Personnel</small></div></div>
+            <div class="cal-cell"><div class="shift shift--day">Jour<small>08h–17h</small></div></div>
+            <div class="cal-cell"><div class="shift shift--day">Jour<small>08h–17h</small></div></div>
+            <div class="cal-cell weekend"><div class="shift shift--rest">Repos</div></div>
+            <div class="cal-cell weekend"><div class="shift shift--rest">Repos</div></div>
+          </div>
+
+          <!-- Row 3 -->
+          <div class="cal-row">
+            <div class="who">
+              <svg width="14" height="14" style="color: var(--text-subtle)"><use href="#i-grip"/></svg>
+              <div class="avatar avatar--sm" style="background: #FEF3C7; color: #B45309">AB</div>
+              <div><strong>Amine Berrada</strong><small>Logistique</small></div>
+            </div>
+            <div class="cal-cell"><div class="shift shift--eve">Soir<small>14h–22h</small></div></div>
+            <div class="cal-cell today"><div class="shift shift--eve">Soir<small>14h–22h</small></div></div>
+            <div class="cal-cell"><div class="shift shift--eve">Soir<small>14h–22h</small></div></div>
+            <div class="cal-cell"><div class="empty-cell">+ Affecter</div></div>
+            <div class="cal-cell"><div class="shift shift--eve">Soir<small>14h–22h</small></div></div>
+            <div class="cal-cell weekend"><div class="shift shift--eve">Soir<small>+ heures supp.</small></div></div>
+            <div class="cal-cell weekend"><div class="shift shift--rest">Repos</div></div>
+          </div>
+
+          <!-- Row 4 — conflict -->
+          <div class="cal-row">
+            <div class="who">
+              <svg width="14" height="14" style="color: var(--text-subtle)"><use href="#i-grip"/></svg>
+              <div class="avatar avatar--sm" style="background: #F3E8FF; color: #6B21A8">YT</div>
+              <div><strong>Youssef Tazi</strong><small>Production · A4</small></div>
+            </div>
+            <div class="cal-cell"><div class="shift shift--night">Nuit<small>22h–06h</small></div></div>
+            <div class="cal-cell today"><div class="shift shift--night">Nuit<small>22h–06h</small></div></div>
+            <div class="cal-cell">
+              <div class="shift shift--conflict">⚠ Conflit<small>Nuit + Matin</small></div>
+            </div>
+            <div class="cal-cell"><div class="shift shift--night">Nuit<small>22h–06h</small></div></div>
+            <div class="cal-cell"><div class="shift shift--night">Nuit<small>22h–06h</small></div></div>
+            <div class="cal-cell weekend"><div class="shift shift--rest">Repos</div></div>
+            <div class="cal-cell weekend"><div class="shift shift--rest">Repos</div></div>
+          </div>
+
+          <!-- Row 5 -->
+          <div class="cal-row">
+            <div class="who">
+              <svg width="14" height="14" style="color: var(--text-subtle)"><use href="#i-grip"/></svg>
+              <div class="avatar avatar--sm" style="background: #CFFAFE; color: #155E75">MB</div>
+              <div><strong>Mehdi Bennani</strong><small>Production · A1</small></div>
+            </div>
+            <div class="cal-cell"><div class="shift shift--morn">Matin<small>06h–14h</small></div></div>
+            <div class="cal-cell today"><div class="shift shift--morn">Matin<small>06h–14h</small></div></div>
+            <div class="cal-cell"><div class="shift shift--leave">Congé<small>Validé</small></div></div>
+            <div class="cal-cell"><div class="shift shift--morn">Matin<small>06h–14h</small></div></div>
+            <div class="cal-cell"><div class="shift shift--morn">Matin<small>06h–14h</small></div></div>
+            <div class="cal-cell weekend"><div class="shift shift--rest">Repos</div></div>
+            <div class="cal-cell weekend"><div class="shift shift--rest">Repos</div></div>
+          </div>
+
+          <!-- Row 6 -->
+          <div class="cal-row">
+            <div class="who">
+              <svg width="14" height="14" style="color: var(--text-subtle)"><use href="#i-grip"/></svg>
+              <div class="avatar avatar--sm" style="background: #DBEAFE; color: #1D4ED8">FK</div>
+              <div><strong>Fatima Kabbaj</strong><small>Direction</small></div>
+            </div>
+            <div class="cal-cell"><div class="shift shift--day">Jour<small>09h–18h</small></div></div>
+            <div class="cal-cell today"><div class="shift shift--day">Jour<small>09h–18h</small></div></div>
+            <div class="cal-cell"><div class="shift shift--day">Jour<small>09h–18h</small></div></div>
+            <div class="cal-cell"><div class="shift shift--day">Jour<small>09h–18h</small></div></div>
+            <div class="cal-cell"><div class="shift shift--day">Jour<small>09h–18h</small></div></div>
+            <div class="cal-cell weekend"><div class="shift shift--rest">Repos</div></div>
+            <div class="cal-cell weekend"><div class="shift shift--rest">Repos</div></div>
+          </div>
+
+          <!-- Row 7 — gap -->
+          <div class="cal-row">
+            <div class="who">
+              <svg width="14" height="14" style="color: var(--text-subtle)"><use href="#i-grip"/></svg>
+              <div class="avatar avatar--sm" style="background: #DCFCE7; color: #047857">NL</div>
+              <div><strong>Nadia Lahlou</strong><small>RH</small></div>
+            </div>
+            <div class="cal-cell"><div class="shift shift--day">Jour<small>09h–18h</small></div></div>
+            <div class="cal-cell today"><div class="shift shift--day">Jour<small>09h–18h</small></div></div>
+            <div class="cal-cell"><div class="empty-cell">+ Affecter</div></div>
+            <div class="cal-cell"><div class="empty-cell">+ Affecter</div></div>
+            <div class="cal-cell"><div class="shift shift--day">Jour<small>09h–18h</small></div></div>
+            <div class="cal-cell weekend"><div class="shift shift--rest">Repos</div></div>
+            <div class="cal-cell weekend"><div class="shift shift--rest">Repos</div></div>
+          </div>
+
+          <div class="card__footer">
+            <span>7 employés · 39 quarts placés cette semaine</span>
+            <a class="row gap-1" style="font-weight: 600">Voir tous les employés <svg width="12" height="12"><use href="#i-arrow-right"/></svg></a>
+          </div>
+        </div>
+
+        <!-- ============== Side rail ============== -->
+        <div class="palette">
+          <h3>Palette de quarts</h3>
+          <div class="palette-shift">
+            <span class="swatch" style="background: linear-gradient(135deg, #14B8A6, #0F766E)"></span>
+            <div class="grow">
+              <strong>Matin</strong>
+              <small>06h00 – 14h00 · 30 min pause</small>
+            </div>
+          </div>
+          <div class="palette-shift">
+            <span class="swatch" style="background: linear-gradient(135deg, #2F6BE6, #1F52C7)"></span>
+            <div class="grow">
+              <strong>Jour</strong>
+              <small>08h00 – 17h00 · 1 h pause</small>
+            </div>
+          </div>
+          <div class="palette-shift">
+            <span class="swatch" style="background: linear-gradient(135deg, #F97316, #DC5F0A)"></span>
+            <div class="grow">
+              <strong>Soir</strong>
+              <small>14h00 – 22h00 · 30 min pause</small>
+            </div>
+          </div>
+          <div class="palette-shift">
+            <span class="swatch" style="background: linear-gradient(135deg, #6366F1, #4338CA)"></span>
+            <div class="grow">
+              <strong>Nuit</strong>
+              <small>22h00 – 06h00 · majoration 25%</small>
+            </div>
+          </div>
+          <div class="palette-shift" style="border-style: dashed">
+            <span class="swatch" style="background: var(--slate-100)"></span>
+            <div class="grow">
+              <strong style="color: var(--text-muted)">Repos</strong>
+              <small>Aucune affectation</small>
+            </div>
+          </div>
+          <button class="btn btn--ghost btn--sm" style="width: 100%; justify-content: center; color: var(--brand); margin-top: 6px"><svg width="13" height="13"><use href="#i-plus"/></svg>Créer un nouveau quart</button>
+
+          <hr style="margin: 16px 0" />
+
+          <h3>Conflits & alertes</h3>
+          <div class="conflict-card" style="margin-bottom: 8px">
+            <div class="row gap-2"><svg width="14" height="14" style="color: var(--danger-700)"><use href="#i-alert"/></svg><strong style="font-size: 12.5px; color: var(--danger-700)">Double affectation</strong></div>
+            <p style="font-size: 12px; color: var(--text-default); margin-top: 4px">Youssef Tazi · mer. 6 mai · Nuit chevauche le Matin du jour suivant.</p>
+            <button class="btn btn--danger btn--sm" style="margin-top: 8px">Résoudre</button>
+          </div>
+
+          <div class="note note--warn" style="margin-bottom: 8px">
+            <svg class="icon" width="14" height="14"><use href="#i-clock"/></svg>
+            <div>
+              <strong style="display: block; font-size: 12.5px">Heures supp. attendues</strong>
+              <span style="font-size: 12px">Amine B. · sam. 9 mai (+8 h)</span>
+            </div>
+          </div>
+
+          <div class="note">
+            <svg class="icon" width="14" height="14"><use href="#i-alert"/></svg>
+            <div>
+              <strong style="display: block; font-size: 12.5px">Couverture sous-cible</strong>
+              <span style="font-size: 12px">Logistique · samedi 9 mai à 68%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

@@ -1,0 +1,30 @@
+{% extends "emails/base.txt" %}
+
+{% block content %}
+PAIEMENT NON ABOUTI — ACTION REQUISE
+------------------------------------
+
+Bonjour{% if first_name %} {{ first_name }}{% endif %},
+
+Votre dernier paiement n'a pas pu être traité.{% if failure_reason %}
+
+Motif : {{ failure_reason }}{% endif %}
+
+Pour éviter toute interruption de votre service, merci de mettre à jour
+votre moyen de paiement et de relancer le règlement dès que possible.
+
+Détails :{% if invoice_number %}
+  N° de facture : {{ invoice_number }}{% endif %}{% if tenant_name %}
+  Compte        : {{ tenant_name }}{% endif %}{% if attempted_at %}
+  Tentative     : {{ attempted_at|date:"d/m/Y H:i" }}{% endif %}{% if amount %}
+  Montant dû    : {{ amount }} {{ currency|default:"EUR"|upper }}{% endif %}
+{% if retry_url %}
+Mettre à jour le paiement :
+{{ retry_url }}
+{% endif %}
+Causes fréquentes : carte expirée, fonds insuffisants, refus de la banque,
+ou plafond atteint. Une nouvelle tentative est automatique sous quelques jours,
+mais vous pouvez régler manuellement depuis votre espace de facturation.
+
+Besoin d'aide ? Notre équipe support est à votre disposition.
+{% endblock %}

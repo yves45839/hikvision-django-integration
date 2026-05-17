@@ -548,7 +548,7 @@ class Department(models.Model):
     devices = models.ManyToManyField(Device, blank=True, related_name="departments")
 
     name = models.CharField(max_length=255)
-    code = models.CharField(max_length=64)
+    code = models.CharField(max_length=64, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -585,6 +585,15 @@ class Department(models.Model):
             raise ValidationError({"work_shift": "Le quart de travail doit appartenir au meme tenant."})
 
     def save(self, *args, **kwargs):
+        if not self.code:
+            from django.utils.text import slugify
+            base = slugify(self.name or "")[:48] or "dept"
+            candidate = base
+            suffix = 1
+            while Department.objects.filter(organization=self.organization, code=candidate).exclude(pk=self.pk).exists():
+                suffix += 1
+                candidate = f"{base}-{suffix}"[:64]
+            self.code = candidate
         self.full_clean()
         return super().save(*args, **kwargs)
 

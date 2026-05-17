@@ -1,0 +1,106 @@
+/* Shared chrome for preview cards. Each card is rendered in its own iframe
+   in the design-system review pane, so this stylesheet must be self-contained. */
+@import url('../colors_and_type.css');
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-canvas);
+  color: var(--fg2);
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: var(--lh-normal);
+  -webkit-font-smoothing: antialiased;
+}
+.pv-shell {
+  padding: 32px;
+  min-height: 100%;
+}
+.pv-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.pv-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  color: var(--fg1);
+  margin: 0;
+}
+.pv-eyebrow {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--brand);
+  margin: 0 0 6px;
+}
+.pv-sub {
+  color: var(--fg3);
+  font-size: 13px;
+  margin: 0;
+  max-width: 60ch;
+}
+.pv-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+  padding: 20px;
+}
+.pv-grid {
+  display: grid;
+  gap: 12px;
+}
+.pv-row {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+.pv-divider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 20px 0;
+}
+
+/* Swatch */
+.sw {
+  position: relative;
+  border-radius: 12px;
+  border: 1px solid var(--border-default);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 96px;
+  background: var(--bg-surface);
+}
+.sw__chip { flex: 1; min-height: 56px; }
+.sw__meta {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+}
+.sw__name { font-size: 12px; font-weight: 600; color: var(--fg1); }
+.sw__hex { font-family: var(--font-mono); font-size: 11px; color: var(--fg3); }
+
+.tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  background: var(--bg-subtle);
+  color: var(--fg2);
+  border: 1px solid var(--border-default);
+}

@@ -1,0 +1,114 @@
+{% extends "emails/base.html" %}
+
+{% block subject %}Paiement confirmé — Label Retail{% endblock %}
+{% block preheader %}Votre paiement a bien été reçu. Détails à l'intérieur.{% endblock %}
+{% block header_tag %}Confirmation de paiement{% endblock %}
+
+{% block content %}
+<tr>
+  <td align="center" style="padding-bottom:20px;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td style="background-color:#E8F5EE;border-radius:50%;width:64px;height:64px;text-align:center;font-family:Arial,sans-serif;font-size:36px;line-height:64px;color:#1F8A4C;">
+          &#10003;
+        </td>
+      </tr>
+    </table>
+  </td>
+</tr>
+<tr>
+  <td align="center" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:24px;font-weight:600;color:#1A2238;line-height:32px;padding-bottom:8px;">
+    Paiement confirmé
+  </td>
+</tr>
+<tr>
+  <td align="center" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:24px;color:#4A5572;padding-bottom:28px;">
+    Bonjour{% if first_name %} {{ first_name }}{% endif %}, nous confirmons la réception de votre paiement. Merci&nbsp;!
+  </td>
+</tr>
+
+<tr>
+  <td style="padding-bottom:24px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F8F9FC;border:1px solid #E5E8F0;border-radius:10px;">
+      <tr>
+        <td style="padding:20px 24px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+            {% if invoice_number %}
+            <tr>
+              <td style="padding:6px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;color:#6B7488;width:40%;">N° de facture</td>
+              <td align="right" style="padding:6px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;font-weight:600;color:#1A2238;">{{ invoice_number }}</td>
+            </tr>
+            {% endif %}
+            {% if plan_name %}
+            <tr>
+              <td style="padding:6px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;color:#6B7488;">Offre</td>
+              <td align="right" style="padding:6px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;font-weight:600;color:#1A2238;">{{ plan_name }}</td>
+            </tr>
+            {% endif %}
+            {% if tenant_name %}
+            <tr>
+              <td style="padding:6px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;color:#6B7488;">Compte</td>
+              <td align="right" style="padding:6px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;font-weight:600;color:#1A2238;">{{ tenant_name }}</td>
+            </tr>
+            {% endif %}
+            {% if paid_at %}
+            <tr>
+              <td style="padding:6px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;color:#6B7488;">Date de paiement</td>
+              <td align="right" style="padding:6px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;font-weight:600;color:#1A2238;">{{ paid_at|date:"d/m/Y H:i" }}</td>
+            </tr>
+            {% endif %}
+            {% if period_start and period_end %}
+            <tr>
+              <td style="padding:6px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;color:#6B7488;">Période couverte</td>
+              <td align="right" style="padding:6px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;font-weight:600;color:#1A2238;">{{ period_start|date:"d/m/Y" }} – {{ period_end|date:"d/m/Y" }}</td>
+            </tr>
+            {% endif %}
+            {% if amount %}
+            <tr>
+              <td colspan="2" style="border-top:1px solid #E5E8F0;padding-top:14px;"></td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;color:#1A2238;font-weight:600;">Montant payé</td>
+              <td align="right" style="padding:8px 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:20px;font-weight:700;color:#243C8C;">{{ amount }}&nbsp;{{ currency|default:"EUR"|upper }}</td>
+            </tr>
+            {% endif %}
+          </table>
+        </td>
+      </tr>
+    </table>
+  </td>
+</tr>
+
+{% if invoice_url or invoice_pdf %}
+<tr>
+  <td align="center" style="padding-bottom:24px;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        {% if invoice_url %}
+        <td style="background-color:#243C8C;border-radius:8px;">
+          <a href="{{ invoice_url }}" style="display:inline-block;padding:13px 28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;font-weight:600;color:#FFFFFF;text-decoration:none;">
+            Voir la facture
+          </a>
+        </td>
+        {% endif %}
+        {% if invoice_pdf %}
+        <td style="width:8px;">&nbsp;</td>
+        <td style="background-color:#FFFFFF;border:1.5px solid #243C8C;border-radius:8px;">
+          <a href="{{ invoice_pdf }}" style="display:inline-block;padding:11.5px 26.5px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;font-weight:600;color:#243C8C;text-decoration:none;">
+            Télécharger le PDF
+          </a>
+        </td>
+        {% endif %}
+      </tr>
+    </table>
+  </td>
+</tr>
+{% endif %}
+
+<tr>
+  <td style="border-top:1px solid #E5E8F0;padding-top:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;color:#6B7488;">
+    Votre service est désormais actif. Vous retrouverez l'historique complet de vos factures dans votre espace de facturation.<br><br>
+    Pour toute question concernant ce paiement, contactez notre équipe support.
+  </td>
+</tr>
+{% endblock %}

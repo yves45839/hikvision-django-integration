@@ -39,10 +39,17 @@ def _env_bool(name: str, default: bool = False) -> bool:
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-ngt+_!1zvxw(3#1+$h17crgo_6hrm1u%phwis5-#ka*1$g5dkx'
+# 0.1: Read SECRET_KEY from environment
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "")
+if not SECRET_KEY and not _env_bool("DJANGO_DEBUG", True):
+    from django.core.exceptions import ImproperlyConfigured
+    raise ImproperlyConfigured("DJANGO_SECRET_KEY must be set in production (DJANGO_DEBUG=0)")
+if not SECRET_KEY:
+    SECRET_KEY = "dev-only-fallback-key-change-me-in-prod"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# 0.1: Read DEBUG from environment
+DEBUG = _env_bool("DJANGO_DEBUG", True)
 
 ALLOWED_HOSTS = [
     host.strip()
@@ -59,10 +66,20 @@ CORS_ALLOWED_ORIGINS = [
     if origin.strip()
 ]
 
+# Custom headers the SPA sends on tenant-scoped requests.
+# Without this, the browser preflight rejects any request carrying
+# `X-Tenant-Code`, which is required by every endpoint that calls
+# `get_request_tenant` / `assert_can_manage_billing`.
+from corsheaders.defaults import default_headers  # noqa: E402
+CORS_ALLOW_HEADERS = list(default_headers) + ["x-tenant-code"]
+
 
 # Application definition
 
 INSTALLED_APPS = [
+    'axes',
+    'audit',
+    'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'rest_framework',
     'drf_spectacular',
@@ -71,6 +88,7 @@ INSTALLED_APPS = [
     'events',
     'employees',
     'hik_gateway',
+    'billing',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -81,12 +99,14 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.locale.LocaleMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'axes.middleware.AxesMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -123,6 +143,12 @@ DATABASES = {
         },
     }
 }
+
+# 0.2: Postgres support via dj_database_url
+import dj_database_url as _dj_db_url
+_db_url = os.getenv("DATABASE_URL")
+if _db_url:
+    DATABASES["default"] = _dj_db_url.parse(_db_url, conn_max_age=600)
 
 
 def _configure_sqlite_pragmas(sender, connection, **kwargs):
@@ -196,16 +222,57 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    # 0.4: Rate limiting
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '100/hour',
+        'user': '1000/hour',
+    }
 }
 
-JWT_ACCESS_TOKEN_MINUTES = int(os.getenv("JWT_ACCESS_TOKEN_MINUTES", "1440"))
-JWT_REFRESH_TOKEN_DAYS = int(os.getenv("JWT_REFRESH_TOKEN_DAYS", "30"))
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=JWT_ACCESS_TOKEN_MINUTES),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=JWT_REFRESH_TOKEN_DAYS),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=int(os.getenv("JWT_ACCESS_TOKEN_MINUTES", "15"))),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=int(os.getenv("JWT_REFRESH_TOKEN_DAYS", "7"))),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
     'TOKEN_REFRESH_SERIALIZER': 'tenants.jwt_serializers.SafeTokenRefreshSerializer',
 }
+
+# 0.4: Axes configuration for brute force protection
+AXES_ENABLED = True
+AXES_FAILURE_LIMIT = 10
+AXES_COOLOFF_TIME = 1  # hour
+AXES_RESET_ON_SUCCESS = True
+AUTHENTICATION_BACKENDS = [
+    'axes.backends.AxesStandaloneBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
+# 0.6: Encryption configuration for device credentials
+KMS_KEY = os.getenv("KMS_KEY", "")
+
+# 0.8: Security headers (enabled outside DEBUG)
+if not DEBUG:
+    SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_SSL_REDIRECT = _env_bool("SECURE_SSL_REDIRECT", True)
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = "DENY"
+
+# 0.8: Static files with whitenoise
+STATIC_ROOT = BASE_DIR / "staticfiles"
+if not DEBUG:
+    STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Hikvision Django Integration API',
@@ -239,6 +306,20 @@ try:
 except ValueError:
     HIK_CATCHUP_FAST_ACTIVE_HOURS = 48
 PAYMENT_WEBHOOK_TOKEN = os.getenv("PAYMENT_WEBHOOK_TOKEN", "")
+
+# --- Stripe billing ---
+# Test mode keys come from https://dashboard.stripe.com/test/apikeys
+# Switch to live keys in production by overriding the env vars at deploy time.
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
+STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
+# Generated when you run `stripe listen` or by adding an endpoint in the
+# Stripe dashboard. Required for production webhooks.
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+# Pin the API version so Stripe responses don't change shape unexpectedly.
+STRIPE_API_VERSION = os.getenv("STRIPE_API_VERSION", "2024-06-20")
+# Enable Stripe Tax (auto-VAT collection) on Checkout sessions.
+# Requires Tax to be activated in your Stripe dashboard.
+STRIPE_AUTOMATIC_TAX = _env_bool("STRIPE_AUTOMATIC_TAX", False)
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "no-reply@label-ci.com")
 EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
 EMAIL_HOST = os.getenv("EMAIL_HOST", "")
@@ -249,3 +330,44 @@ EMAIL_USE_TLS = _env_bool("EMAIL_USE_TLS", False)
 EMAIL_USE_SSL = _env_bool("EMAIL_USE_SSL", True)
 EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "30"))
 FRONTEND_AUTH_BASE_URL = os.getenv("FRONTEND_AUTH_BASE_URL", "http://localhost:3000")
+
+# 1.4: Logging configuration
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "json": {
+            "()": "logging.Formatter",
+            "fmt": '{"time": "%(asctime)s", "level": "%(levelname)s", "logger": "%(name)s", "message": "%(message)s"}',
+        },
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "json" if not DEBUG else "verbose",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": os.getenv("LOG_LEVEL", "INFO"),
+    },
+    "loggers": {
+        "django": {"handlers": ["console"], "level": "WARNING", "propagate": False},
+        "django.request": {"handlers": ["console"], "level": "ERROR", "propagate": False},
+        "hik_gateway": {"handlers": ["console"], "level": "DEBUG", "propagate": False},
+    },
+}
+
+# 1.4: Sentry configuration (optional, DSN not required for tests)
+SENTRY_DSN = os.getenv("SENTRY_DSN", "")
+if SENTRY_DSN:
+    import sentry_sdk
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        traces_sample_rate=0.1,
+        environment="production" if not DEBUG else "development",
+    )

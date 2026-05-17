@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 48" width="220" height="48" role="img" aria-label="LR Time">
+  <defs>
+    <linearGradient id="lrw-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2F6BE6"></stop>
+      <stop offset="100%" stop-color="#173FA1"></stop>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="40" height="40" rx="10" fill="url(#lrw-grad)"></rect>
+  <path d="M15.5 14.5 v15.4 a2 2 0 0 0 2 2 h11.6 a1.4 1.4 0 0 0 1.4 -1.4 v-1.6 a1.4 1.4 0 0 0 -1.4 -1.4 h-7.6 a0.6 0.6 0 0 1 -0.6 -0.6 v-12.4 a1.4 1.4 0 0 0 -1.4 -1.4 h-2.6 a1.4 1.4 0 0 0 -1.4 1.4 z" fill="#FFFFFF"></path>
+  <circle cx="33" cy="17" r="2.6" fill="#F97316"></circle>
+  <text x="56" y="29" font-family="Inter Tight, Inter, sans-serif" font-weight="700" font-size="20" letter-spacing="-0.5" fill="#0F172A">LR Time</text>
+  <text x="56" y="42" font-family="Inter, sans-serif" font-weight="500" font-size="10.5" letter-spacing="1.4" fill="#64748B">PRÉSENCE · ACCÈS · HIK</text>
+</svg>

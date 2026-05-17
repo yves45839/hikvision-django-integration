@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Shadows</title>
+<link rel="stylesheet" href="_pv.css"/>
+<style>
+  body { background: #F0F3F8; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+  .shadow {
+    background: var(--bg-surface);
+    border-radius: 16px;
+    padding: 24px;
+    min-height: 130px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .shadow .nm { font-family: var(--font-display); font-weight: 600; font-size: 14px; color: var(--fg1); }
+  .shadow .role { font-size: 12.5px; color: var(--fg3); }
+  .shadow code { font-family: var(--font-mono); font-size: 10.5px; color: var(--fg3); }
+</style>
+</head>
+<body>
+<div class="pv-shell">
+  <div class="pv-head">
+    <div>
+      <p class="pv-eyebrow">Spacing · Elevation</p>
+      <h1 class="pv-title">Shadow scale</h1>
+      <p class="pv-sub">All shadows are double-layer (one diffuse + one tight). Cards default to <code>--shadow-sm</code> and lift to <code>md</code> on hover.</p>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="shadow" style="box-shadow: var(--shadow-xs)">
+      <div class="nm">xs</div>
+      <div class="role">Hairline lift — table sticky headers</div>
+      <code>--shadow-xs</code>
+    </div>
+    <div class="shadow" style="box-shadow: var(--shadow-sm)">
+      <div class="nm">sm ★</div>
+      <div class="role">Default card resting elevation</div>
+      <code>--shadow-sm</code>
+    </div>
+    <div class="shadow" style="box-shadow: var(--shadow-md)">
+      <div class="nm">md</div>
+      <div class="role">Hovered card, active KPI</div>
+      <code>--shadow-md</code>
+    </div>
+    <div class="shadow" style="box-shadow: var(--shadow-lg)">
+      <div class="nm">lg</div>
+      <div class="role">Popovers, dropdowns, command palette</div>
+      <code>--shadow-lg</code>
+    </div>
+    <div class="shadow" style="box-shadow: var(--shadow-xl)">
+      <div class="nm">xl</div>
+      <div class="role">Drawers, modals, focus dialogs</div>
+      <code>--shadow-xl</code>
+    </div>
+    <div class="shadow" style="box-shadow: var(--shadow-focus); border: 1px solid var(--brand)">
+      <div class="nm">focus</div>
+      <div class="role">3 px ring on inputs, focused buttons</div>
+      <code>--shadow-focus</code>
+    </div>
+  </div>
+</div>
+</body></html>

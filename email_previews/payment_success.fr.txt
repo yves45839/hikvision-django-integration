@@ -1,0 +1,34 @@
+================================================================
+  LR  |  LABEL RETAIL
+================================================================
+
+
+PAIEMENT CONFIRMÉ
+-----------------
+
+Bonjour Marie,
+
+Nous confirmons la réception de votre paiement. Merci !
+
+Détails :
+  N° de facture     : INV-2026-00482
+  Offre             : Pro Mensuel
+  Compte            : Boutique du Centre
+  Date de paiement  : 06/05/2026 19:38
+  Période couverte  : 06/05/2026 – 05/06/2026
+  Montant payé      : 49.00 EUR
+
+Facture en ligne : https://invoice.stripe.com/i/acct_xxx/test_yyy
+Facture PDF      : https://invoice.stripe.com/i/acct_xxx/test_yyy/pdf
+
+Votre service est désormais actif. Vous retrouverez l'historique complet
+de vos factures dans votre espace de facturation.
+
+Pour toute question concernant ce paiement, contactez notre équipe support.
+
+
+----------------------------------------------------------------
+Label Retail
+Ce message est automatique — merci de ne pas répondre directement à cet email.
+© 2026 Label Retail. Tous droits réservés.
+================================================================

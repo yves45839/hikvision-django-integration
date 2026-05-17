@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Buttons</title>
+<link rel="stylesheet" href="_pv.css"/>
+<style>
+  .grid { display: grid; gap: 22px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .row__label { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--fg3); width: 120px; flex-shrink: 0; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    height: 38px; padding: 0 16px;
+    border-radius: 8px;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 13.5px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background var(--dur-fast) var(--ease-out),
+                color var(--dur-fast) var(--ease-out),
+                border-color var(--dur-fast) var(--ease-out),
+                box-shadow var(--dur-fast) var(--ease-out),
+                transform var(--dur-fast) var(--ease-out);
+    line-height: 1;
+  }
+  .btn svg { width: 16px; height: 16px; }
+  .btn:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
+
+  /* primary */
+  .btn--primary { background: var(--brand); color: #fff; }
+  .btn--primary:hover { background: var(--brand-hover); }
+  .btn--primary:active { background: var(--brand-active); transform: translateY(1px); }
+
+  /* secondary */
+  .btn--secondary { background: var(--bg-surface); color: var(--fg2); border-color: var(--border-default); }
+  .btn--secondary:hover { background: var(--bg-subtle); border-color: var(--border-strong); color: var(--fg1); }
+  .btn--secondary:active { background: #E4E9F1; }
+
+  /* ghost */
+  .btn--ghost { background: transparent; color: var(--fg2); }
+  .btn--ghost:hover { background: var(--bg-subtle); color: var(--fg1); }
+
+  /* danger */
+  .btn--danger { background: var(--danger-500); color: #fff; }
+  .btn--danger:hover { background: var(--danger-600); }
+  .btn--danger:focus-visible { box-shadow: var(--shadow-focus-danger); }
+
+  /* accent */
+  .btn--accent { background: var(--accent); color: #fff; }
+  .btn--accent:hover { background: var(--lr-orange-600); }
+
+  /* link */
+  .btn--link { background: transparent; color: var(--brand); padding: 0; height: auto; }
+  .btn--link:hover { color: var(--brand-hover); text-decoration: underline; }
+
+  /* sizes */
+  .btn--sm { height: 30px; padding: 0 12px; font-size: 12.5px; border-radius: 6px; }
+  .btn--lg { height: 44px; padding: 0 20px; font-size: 14.5px; border-radius: 10px; }
+
+  /* disabled */
+  .btn[disabled] { opacity: .5; cursor: not-allowed; }
+
+  /* icon-only */
+  .btn--icon { width: 38px; padding: 0; justify-content: center; }
+  .btn--icon.btn--sm { width: 30px; }
+</style>
+</head>
+<body>
+<div class="pv-shell">
+  <div class="pv-head">
+    <div>
+      <p class="pv-eyebrow">Components · Buttons</p>
+      <h1 class="pv-title">Buttons</h1>
+      <p class="pv-sub">One primary per view. Secondary by default. Ghost in dense toolbars. Accent reserved for "Valider l'anomalie" moments.</p>
+    </div>
+  </div>
+
+  <div class="pv-card grid">
+    <div class="row">
+      <span class="row__label">Variants</span>
+      <button class="btn btn--primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Ajouter un appareil</button>
+      <button class="btn btn--secondary">Annuler</button>
+      <button class="btn btn--ghost">Filtres</button>
+      <button class="btn btn--danger">Supprimer</button>
+      <button class="btn btn--accent">Valider 14 anomalies</button>
+      <button class="btn btn--link">Voir le journal →</button>
+    </div>
+
+    <div class="row">
+      <span class="row__label">Sizes</span>
+      <button class="btn btn--primary btn--sm">Sm · Importer</button>
+      <button class="btn btn--primary">Md · Importer</button>
+      <button class="btn btn--primary btn--lg">Lg · Importer un CSV</button>
+    </div>
+
+    <div class="row">
+      <span class="row__label">States</span>
+      <button class="btn btn--primary">Default</button>
+      <button class="btn btn--primary" style="background: var(--brand-hover)">Hover</button>
+      <button class="btn btn--primary" style="background: var(--brand-active); transform: translateY(1px)">Active</button>
+      <button class="btn btn--primary" style="box-shadow: var(--shadow-focus)">Focus</button>
+      <button class="btn btn--primary" disabled>Disabled</button>
+    </div>
+
+    <div class="row">
+      <span class="row__label">Icon-only</span>
+      <button class="btn btn--secondary btn--icon" aria-label="More"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="6" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="18" cy="12" r="1.4" fill="currentColor"/></svg></button>
+      <button class="btn btn--secondary btn--icon" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></button>
+      <button class="btn btn--ghost btn--icon" aria-label="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></button>
+    </div>
+  </div>
+</div>
+</body></html>

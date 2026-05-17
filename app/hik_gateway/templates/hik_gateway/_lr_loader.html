@@ -1,0 +1,86 @@
+{% comment %}
+  LR Time — overlay de chargement (metaball merge, variante A · halo encre).
+  Inclusion :  {% include "hik_gateway/_lr_loader.html" %}
+  Déclenchement automatique : tout <form> de la page le déclenche au submit.
+  Déclenchement manuel JS : window.LRLoader.show() / hide()
+{% endcomment %}
+<div id="lr-loader" class="lr-loader" aria-hidden="true" role="status" aria-live="polite">
+  <div class="lr-loader__backdrop"></div>
+  <div class="lr-loader__stage">
+    <svg width="220" height="220" viewBox="0 0 200 200" aria-label="Chargement LR Time">
+      <defs>
+        <filter id="lr-goo">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="b"/>
+          <feColorMatrix in="b" mode="matrix" values="
+            1 0 0 0 0
+            0 1 0 0 0
+            0 0 1 0 0
+            0 0 0 22 -10" result="g"/>
+          <feBlend in="SourceGraphic" in2="g"/>
+        </filter>
+      </defs>
+      <g filter="url(#lr-goo)">
+        <circle class="lr-loader__ma" cx="80"  cy="100" r="38" fill="#FF6A1A"/>
+        <circle class="lr-loader__mb" cx="120" cy="100" r="38" fill="#1A4FFF"/>
+      </g>
+      <text class="lr-loader__text"
+            x="100" y="106" text-anchor="middle"
+            font-family="Inter, 'Helvetica Neue', Arial, sans-serif"
+            font-size="20" font-weight="700" letter-spacing=".04em"
+            fill="#fff" stroke="#0E1430" stroke-width="2.5" stroke-opacity=".6"
+            paint-order="stroke fill" stroke-linejoin="round">
+        LR Time
+      </text>
+    </svg>
+  </div>
+</div>
+
+<style>
+  .lr-loader{
+    position: fixed; inset: 0; z-index: 9999;
+    display: none;
+    align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+  .lr-loader.is-visible{ display: flex; pointer-events: auto; }
+  .lr-loader__backdrop{
+    position: absolute; inset: 0;
+    background: rgba(246, 241, 234, .72);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    animation: lrFadeIn .18s ease-out both;
+  }
+  .lr-loader__stage{
+    position: relative;
+    animation: lrFadeIn .22s ease-out both;
+  }
+  @keyframes lrFadeIn { from{ opacity:0 } to{ opacity:1 } }
+  @keyframes lr-meta-a { 0%,100%{ transform:translate(0,0) } 50%{ transform:translate(34px,-4px) } }
+  @keyframes lr-meta-b { 0%,100%{ transform:translate(0,0) } 50%{ transform:translate(-34px,4px) } }
+  .lr-loader__ma{ animation: lr-meta-a 2.6s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+  .lr-loader__mb{ animation: lr-meta-b 2.6s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+  @media (prefers-reduced-motion: reduce){
+    .lr-loader__ma, .lr-loader__mb { animation: none; }
+  }
+</style>
+
+<script>
+(function(){
+  var el = document.getElementById('lr-loader');
+  if(!el) return;
+  function show(){ el.classList.add('is-visible'); el.setAttribute('aria-hidden','false'); }
+  function hide(){ el.classList.remove('is-visible'); el.setAttribute('aria-hidden','true'); }
+  window.LRLoader = { show: show, hide: hide };
+
+  // Auto-trigger : afficher au submit de tout formulaire de la page.
+  document.addEventListener('submit', function(e){
+    if (e.defaultPrevented) return;
+    var form = e.target;
+    if (form && form.hasAttribute('data-no-lr-loader')) return;
+    show();
+  }, true);
+
+  // Si l'utilisateur revient via le cache (back/forward), masquer.
+  window.addEventListener('pageshow', function(){ hide(); });
+})();
+</script>

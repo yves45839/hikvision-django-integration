@@ -205,3 +205,83 @@ class OrganizationCustomRoleAssignment(models.Model):
 
     def __str__(self):
         return f"{self.organization_id}:{self.user_id}:{self.role_id}"
+
+
+class ConsentLog(models.Model):
+    """RGPD art. 6 — Journal des consentements recueillis au signup."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="consent_logs",
+    )
+    email = models.EmailField()
+    consent_tos = models.BooleanField(default=False)
+    consent_privacy = models.BooleanField(default=False)
+    consent_marketing = models.BooleanField(default=False)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["email", "created_at"])]
+
+    def __str__(self):
+        return f"ConsentLog({self.email}, {self.created_at})"
+
+
+class ConsentLog(models.Model):
+    """
+    PHASE 6.4 — Consent Log (RGPD)
+    Enregistre les consentements explicites de l'utilisateur pour TOS, Privacy Policy, Marketing.
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="consent_logs",
+    )
+    email = models.EmailField()  # Garder l'email même si user supprimé
+    consent_tos = models.BooleanField(default=False)
+    consent_privacy = models.BooleanField(default=False)
+    consent_marketing = models.BooleanField(default=False)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["email", "created_at"]),
+            models.Index(fields=["user", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.email}:{self.created_at}"
+
+
+class ConsentLog(models.Model):
+    """RGPD art. 6 — Journal des consentements recueillis au signup."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="consent_logs",
+    )
+    email = models.EmailField()
+    consent_tos = models.BooleanField(default=False)
+    consent_privacy = models.BooleanField(default=False)
+    consent_marketing = models.BooleanField(default=False)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["email", "created_at"])]
+
+    def __str__(self):
+        return f"ConsentLog({self.email}, {self.created_at})"

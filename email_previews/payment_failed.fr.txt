@@ -1,0 +1,38 @@
+================================================================
+  LR  |  LABEL RETAIL
+================================================================
+
+
+PAIEMENT NON ABOUTI — ACTION REQUISE
+------------------------------------
+
+Bonjour Marie,
+
+Votre dernier paiement n'a pas pu être traité.
+
+Motif : Carte refusée par la banque (insufficient_funds).
+
+Pour éviter toute interruption de votre service, merci de mettre à jour
+votre moyen de paiement et de relancer le règlement dès que possible.
+
+Détails :
+  N° de facture : INV-2026-00483
+  Compte        : Boutique du Centre
+  Tentative     : 06/05/2026 19:38
+  Montant dû    : 49.00 EUR
+
+Mettre à jour le paiement :
+https://app.label-retail.com/billing
+
+Causes fréquentes : carte expirée, fonds insuffisants, refus de la banque,
+ou plafond atteint. Une nouvelle tentative est automatique sous quelques jours,
+mais vous pouvez régler manuellement depuis votre espace de facturation.
+
+Besoin d'aide ? Notre équipe support est à votre disposition.
+
+
+----------------------------------------------------------------
+Label Retail
+Ce message est automatique — merci de ne pas répondre directement à cet email.
+© 2026 Label Retail. Tous droits réservés.
+================================================================

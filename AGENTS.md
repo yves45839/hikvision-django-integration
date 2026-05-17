@@ -59,5 +59,6 @@ Le projet est piloté par sprints courts (2–4 h d'effort modèle) listés dans
 2. Lance la checklist manuelle.
 3. Coche `[x]` la case dans `BACKLOG.md` ET signe avec `— validé YYYY-MM-DD`.
 4. Donne le feu vert pour le sprint suivant.
+5. Le sprint 8 ne doit pas dépendre des autres sprint avant de débuter
 
 Tant que ce signal n'est pas donné, ne pas démarrer le sprint suivant.

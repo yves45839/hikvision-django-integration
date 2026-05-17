@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LR Time · Appareils</title>
+<link rel="stylesheet" href="../tokens.css" />
+<style>
+  .device-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .device-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    padding: 18px;
+    box-shadow: var(--shadow-sm);
+    display: flex; flex-direction: column; gap: 14px;
+    position: relative;
+  }
+  .device-card.is-offline { border-color: var(--danger-100); background: linear-gradient(180deg, #FEF7F7, #fff 30%); }
+  .device-card.is-warn { border-color: var(--warning-100); background: linear-gradient(180deg, #FFFBEB, #fff 30%); }
+  .device-card .row-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .device-card .icon-tile {
+    width: 44px; height: 44px; border-radius: 10px;
+    background: var(--brand-soft); color: var(--brand);
+    display: grid; place-items: center;
+  }
+  .device-card.is-offline .icon-tile { background: var(--danger-50); color: var(--danger-700); }
+  .device-card.is-warn .icon-tile { background: var(--warning-50); color: var(--warning-700); }
+  .device-card h3 { font-size: 15px; }
+  .device-card .sub { color: var(--text-muted); font-size: 12.5px; margin-top: 2px; }
+  .device-card .specs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 16px; font-size: 12.5px; padding-top: 10px; border-top: 1px solid var(--border-subtle); }
+  .device-card .specs strong { display: block; color: var(--text-muted); font-weight: 500; font-size: 11.5px; margin-bottom: 1px; letter-spacing: .02em; }
+  .device-card .specs span { color: var(--text-strong); font-family: var(--font-mono); font-size: 12px; }
+  .device-card footer { display: flex; align-items: center; justify-content: space-between; padding-top: 4px; }
+  .pulse-mini { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; }
+  .map-summary {
+    display: grid; grid-template-columns: 1fr 280px; gap: 20px;
+    background: linear-gradient(135deg, #F4F8FF, #fff 60%);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-2xl);
+    padding: 20px 24px;
+    margin-bottom: 20px;
+  }
+  .map-summary h2 { font-size: 18px; }
+  .legend-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 14px; }
+  .legend-tile {
+    background: #fff; border: 1px solid var(--border-default);
+    border-radius: var(--radius-md); padding: 10px 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .legend-tile .num { font-family: var(--font-display); font-size: 22px; font-weight: 600; color: var(--text-strong); font-variant-numeric: tabular-nums; line-height: 1; }
+  .legend-tile small { display: block; color: var(--text-muted); font-size: 11.5px; margin-top: 2px; }
+  .legend-tile .dot { width: 8px; height: 8px; border-radius: 50%; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12 12 4l9 8"/><path d="M5 10v10h14V10"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 11a3 3 0 1 0 0-6"/><path d="M22 20a5 5 0 0 0-5-5"/></symbol>
+  <symbol id="i-cpu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v16h16"/><path d="M8 14l3-3 3 3 5-7"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 9 19.3a1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.7 9a1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 9H3c0-1 3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 1 1 5.7 1.4c-.7 1.1-2.3 1.6-2.8 2.6-.2.5-.2 1 .1 1.5"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6l8-3z"/></symbol>
+  <symbol id="i-finger" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11v3"/><path d="M8 11a4 4 0 0 1 8 0v2"/><path d="M5 13a7 7 0 0 1 14 0c0 2-.5 4-1.5 5"/><path d="M9 18c.5 1 1 1.5 1.5 2"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h4l2-3h6l2 3h4v11H3z"/><circle cx="12" cy="13" r="3.5"/></symbol>
+  <symbol id="i-card" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M7 15h4"/></symbol>
+  <symbol id="i-door" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="1"/><path d="M14 12h.5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 9v6l-4-2v-4z"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="18" cy="12" r="1"/></symbol>
+  <symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></symbol>
+  <symbol id="i-wifi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a16 16 0 0 1 20 0"/><path d="M5 12.5a11 11 0 0 1 14 0"/><path d="M8.5 16a6 6 0 0 1 7 0"/><circle cx="12" cy="19" r="1"/></symbol>
+  <symbol id="i-wifi-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m2 2 20 20"/><path d="M8.5 16a6 6 0 0 1 7 0"/><path d="M5 12.5a11 11 0 0 1 6-2.5"/><circle cx="12" cy="19" r="1"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L21 6"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 21h20L12 3z"/><path d="M12 9v5"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M10 14 21 3"/><path d="M20 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h6"/></symbol>
+  <symbol id="i-power" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v9"/><path d="M5.6 7.6a9 9 0 1 0 12.8 0"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-7.5-7-12a7 7 0 1 1 14 0c0 4.5-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></symbol>
+</svg>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="sidebar__brand">
+      <div class="logo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 4h3v12h8v3H5V4z" fill="currentColor"/></svg></div>
+      <div class="name">LR Time<small>Workforce Suite</small></div>
+    </div>
+    <div class="sidebar__group">
+      <div class="sidebar__label">Pilotage</div>
+      <a class="sidebar__item"><svg class="icon" width="18" height="18"><use href="#i-home"/></svg>Tableau de bord</a>
+      <a class="sidebar__item"><svg class="icon" width="18" height="18"><use href="#i-chart"/></svg>Rapports<span class="badge">12</span></a>
+      <a class="sidebar__item"><svg class="icon" width="18" height="18"><use href="#i-calendar"/></svg>Planning</a>
+    </div>
+    <div class="sidebar__group">
+      <div class="sidebar__label">Organisation</div>
+      <a class="sidebar__item"><svg class="icon" width="18" height="18"><use href="#i-users"/></svg>Employés</a>
+      <a class="sidebar__item is-active"><svg class="icon" width="18" height="18"><use href="#i-cpu"/></svg>Appareils<span class="badge">3</span></a>
+      <a class="sidebar__item"><svg class="icon" width="18" height="18"><use href="#i-shield"/></svg>Contrôle d'accès</a>
+    </div>
+    <div class="sidebar__group">
+      <div class="sidebar__label">Compte</div>
+      <a class="sidebar__item"><svg class="icon" width="18" height="18"><use href="#i-settings"/></svg>Paramètres</a>
+      <a class="sidebar__item"><svg class="icon" width="18" height="18"><use href="#i-help"/></svg>Aide & support</a>
+    </div>
+    <div class="sidebar__user">
+      <div class="avatar">YV</div>
+      <div class="meta"><strong>Yves Roland</strong><span>Directeur RH · LR Time</span></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="crumbs">
+        <span>LR Time</span><span class="sep">/</span><span>Organisation</span><span class="sep">/</span><strong>Appareils</strong>
+      </div>
+      <div class="topbar__search" style="margin-left: 24px">
+        <svg class="icon" width="14" height="14"><use href="#i-search"/></svg>
+        <span>Rechercher un appareil par nom, IP, série…</span>
+        <kbd>⌘K</kbd>
+      </div>
+      <div class="topbar__actions">
+        <span class="live-pill"><span class="pulse"></span>HikCentral connecté</span>
+        <button class="iconbtn"><svg width="18" height="18"><use href="#i-help"/></svg></button>
+        <button class="iconbtn"><svg width="18" height="18"><use href="#i-bell"/></svg><span class="dot"></span></button>
+      </div>
+    </header>
+
+    <div class="content">
+      <div class="page-header">
+        <div class="page-header__title">
+          <span class="page-header__eyebrow">Flotte Hikvision · 20 appareils</span>
+          <h1>Gestion des appareils</h1>
+          <p class="page-header__subtitle">Supervisez l'état de vos lecteurs biométriques, tourniquets et caméras IA. Diagnostiquez et reconnectez en un clic.</p>
+        </div>
+        <div class="page-header__actions">
+          <button class="btn btn--secondary"><svg width="14" height="14"><use href="#i-refresh"/></svg>Synchroniser</button>
+          <button class="btn btn--secondary"><svg width="14" height="14"><use href="#i-download"/></svg>Exporter CSV</button>
+          <button class="btn btn--primary"><svg width="14" height="14"><use href="#i-plus"/></svg>Ajouter un appareil</button>
+        </div>
+      </div>
+
+      <!-- Map / overview -->
+      <div class="map-summary">
+        <div>
+          <span class="badge badge--brand"><svg width="11" height="11"><use href="#i-pin"/></svg>Site Casablanca · 3 zones</span>
+          <h2 style="margin-top: 8px">Vue d'ensemble du parc</h2>
+          <p class="muted" style="font-size: 13.5px; margin-top: 4px">Dernière synchronisation HikCentral : il y a 42 secondes. Couverture réseau opérationnelle à 85%.</p>
+          <div class="legend-tiles">
+            <div class="legend-tile">
+              <span class="dot" style="background: var(--success-500)"></span>
+              <div><div class="num">17</div><small>En ligne</small></div>
+            </div>
+            <div class="legend-tile">
+              <span class="dot" style="background: var(--warning-500)"></span>
+              <div><div class="num">2</div><small>Dégradés</small></div>
+            </div>
+            <div class="legend-tile">
+              <span class="dot" style="background: var(--danger-500)"></span>
+              <div><div class="num">1</div><small>Hors ligne</small></div>
+            </div>
+            <div class="legend-tile">
+              <span class="dot" style="background: var(--brand)"></span>
+              <div><div class="num">234</div><small>Lectures /h</small></div>
+            </div>
+          </div>
+        </div>
+        <div style="background: #fff; border: 1px solid var(--border-default); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px">
+          <div class="row" style="justify-content: space-between">
+            <strong style="font-size: 13px">État de connectivité</strong>
+            <span class="badge badge--success">85%</span>
+          </div>
+          <div class="progress" style="height: 8px"><i style="width:85%; background: linear-gradient(90deg, #10B981, #059669)"></i></div>
+          <div class="row" style="justify-content: space-between; font-size: 12px; color: var(--text-muted)">
+            <span>Latence moyenne</span><strong class="strong" style="font-size: 12.5px">42 ms</strong>
+          </div>
+          <div class="row" style="justify-content: space-between; font-size: 12px; color: var(--text-muted)">
+            <span>Pertes paquets</span><strong class="strong" style="font-size: 12.5px">0,4%</strong>
+          </div>
+          <div class="row" style="justify-content: space-between; font-size: 12px; color: var(--text-muted)">
+            <span>Firmware à jour</span><strong class="strong" style="font-size: 12.5px">14 / 20</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="card" style="border-radius: var(--radius-xl); margin-bottom: 0">
+        <div class="toolbar">
+          <div class="tabs">
+            <button class="is-active">Tous (20)</button>
+            <button>En ligne (17)</button>
+            <button>Dégradés (2)</button>
+            <button>Hors ligne (1)</button>
+          </div>
+          <div class="grow"></div>
+          <div class="input">
+            <svg class="icon" width="14" height="14"><use href="#i-search"/></svg>
+            <input placeholder="Rechercher…" />
+          </div>
+          <button class="btn btn--secondary btn--sm"><svg width="13" height="13"><use href="#i-filter"/></svg>Type</button>
+          <button class="btn btn--secondary btn--sm"><svg width="13" height="13"><use href="#i-filter"/></svg>Site</button>
+          <button class="btn btn--ghost btn--sm">Tout réinitialiser</button>
+        </div>
+
+        <div class="card__body">
+          <div class="device-cards">
+
+            <!-- Card 1 — online fingerprint reader -->
+            <div class="device-card">
+              <div class="row-top">
+                <div class="row gap-3">
+                  <div class="icon-tile"><svg width="22" height="22"><use href="#i-finger"/></svg></div>
+                  <div>
+                    <h3>Lecteur empreintes — Atelier 1</h3>
+                    <p class="sub">DS-K1T804M · Production</p>
+                  </div>
+                </div>
+                <button class="iconbtn"><svg width="16" height="16"><use href="#i-more"/></svg></button>
+              </div>
+              <div class="row" style="justify-content: space-between">
+                <span class="badge badge--success"><span class="dot"></span>En ligne</span>
+                <span class="pulse-mini" style="color: var(--success-700)"><span class="pulse" style="background: var(--success-500); width: 6px; height: 6px"></span>Actif il y a 12s</span>
+              </div>
+              <div class="specs">
+                <div><strong>Adresse IP</strong><span>192.168.1.42</span></div>
+                <div><strong>Firmware</strong><span>v3.4.1</span></div>
+                <div><strong>Utilisateurs</strong><span>87</span></div>
+                <div><strong>Lectures aujourd'hui</strong><span>142</span></div>
+              </div>
+              <footer>
+                <div class="row gap-2">
+                  <button class="btn btn--ghost btn--sm">Tester</button>
+                  <button class="btn btn--ghost btn--sm">Diagnostic</button>
+                </div>
+                <a class="btn btn--secondary btn--sm" style="border-radius: 6px"><svg width="12" height="12"><use href="#i-external"/></svg>Console</a>
+              </footer>
+            </div>
+
+            <!-- Card 2 — online turnstile -->
+            <div class="device-card">
+              <div class="row-top">
+                <div class="row gap-3">
+                  <div class="icon-tile"><svg width="22" height="22"><use href="#i-door"/></svg></div>
+                  <div>
+                    <h3>Tourniquet — Hall principal</h3>
+                    <p class="sub">DS-K3Y501S · Réception</p>
+                  </div>
+                </div>
+                <button class="iconbtn"><svg width="16" height="16"><use href="#i-more"/></svg></button>
+              </div>
+              <div class="row" style="justify-content: space-between">
+                <span class="badge badge--success"><span class="dot"></span>En ligne</span>
+                <span class="pulse-mini" style="color: var(--success-700)"><span class="pulse" style="background: var(--success-500); width: 6px; height: 6px"></span>Actif il y a 2s</span>
+              </div>
+              <div class="specs">
+                <div><strong>Adresse IP</strong><span>192.168.1.10</span></div>
+                <div><strong>Firmware</strong><span>v2.8.0</span></div>
+                <div><strong>Cycles</strong><span>312 / jour</span></div>
+                <div><strong>Latence</strong><span>38 ms</span></div>
+              </div>
+              <footer>
+                <div class="row gap-2">
+                  <button class="btn btn--ghost btn--sm">Tester</button>
+                  <button class="btn btn--ghost btn--sm">Diagnostic</button>
+                </div>
+                <a class="btn btn--secondary btn--sm"><svg width="12" height="12"><use href="#i-external"/></svg>Console</a>
+              </footer>
+            </div>
+
+            <!-- Card 3 — degraded camera -->
+            <div class="device-card is-warn">
+              <div class="row-top">
+                <div class="row gap-3">
+                  <div class="icon-tile"><svg width="22" height="22"><use href="#i-camera"/></svg></div>
+                  <div>
+                    <h3>Caméra IA — Quai chargement</h3>
+                    <p class="sub">DS-2CD2T87 · Logistique</p>
+                  </div>
+                </div>
+                <button class="iconbtn"><svg width="16" height="16"><use href="#i-more"/></svg></button>
+              </div>
+              <div class="row" style="justify-content: space-between">
+                <span class="badge badge--warning"><svg width="11" height="11"><use href="#i-alert"/></svg>Performance dégradée</span>
+                <span class="pulse-mini" style="color: var(--warning-700)">FPS 18 / 25</span>
+              </div>
+              <div class="note note--warn" style="font-size: 12px">
+                <svg class="icon" width="14" height="14"><use href="#i-alert"/></svg>
+                <span>Reconnexion automatique tentée 3 fois. Vérifier le câble PoE.</span>
+              </div>
+              <div class="specs">
+                <div><strong>Adresse IP</strong><span>192.168.2.18</span></div>
+                <div><strong>Firmware</strong><span>v5.6.4</span></div>
+                <div><strong>Stockage</strong><span>72%</span></div>
+                <div><strong>FPS</strong><span style="color: var(--warning-700)">18 / 25</span></div>
+              </div>
+              <footer>
+                <div class="row gap-2">
+                  <button class="btn btn--secondary btn--sm"><svg width="12" height="12"><use href="#i-refresh"/></svg>Reconnecter</button>
+                  <button class="btn btn--ghost btn--sm">Diagnostic</button>
+                </div>
+                <a class="btn btn--secondary btn--sm"><svg width="12" height="12"><use href="#i-external"/></svg>Console</a>
+              </footer>
+            </div>
+
+            <!-- Card 4 — offline -->
+            <div class="device-card is-offline">
+              <div class="row-top">
+                <div class="row gap-3">
+                  <div class="icon-tile"><svg width="22" height="22"><use href="#i-finger"/></svg></div>
+                  <div>
+                    <h3>Lecteur empreintes — Atelier 4</h3>
+                    <p class="sub">DS-K1T804M · Production</p>
+                  </div>
+                </div>
+                <button class="iconbtn"><svg width="16" height="16"><use href="#i-more"/></svg></button>
+              </div>
+              <div class="row" style="justify-content: space-between">
+                <span class="badge badge--danger"><svg width="11" height="11"><use href="#i-wifi-off"/></svg>Hors ligne</span>
+                <span class="pulse-mini" style="color: var(--danger-600)">Depuis 2h17</span>
+              </div>
+              <div class="note note--danger" style="font-size: 12px">
+                <svg class="icon" width="14" height="14"><use href="#i-alert"/></svg>
+                <span>Aucune réponse au ping. 100% paquets perdus.</span>
+              </div>
+              <div class="specs">
+                <div><strong>Adresse IP</strong><span>192.168.1.45</span></div>
+                <div><strong>Firmware</strong><span>v3.4.1</span></div>
+                <div><strong>Dernière lecture</strong><span>07:25:11</span></div>
+                <div><strong>Utilisateurs</strong><span>62</span></div>
+              </div>
+              <footer>
+                <div class="row gap-2">
+                  <button class="btn btn--danger btn--sm"><svg width="12" height="12"><use href="#i-power"/></svg>Redémarrer</button>
+                  <button class="btn btn--ghost btn--sm">Notifier IT</button>
+                </div>
+                <a class="btn btn--secondary btn--sm"><svg width="12" height="12"><use href="#i-external"/></svg>Console</a>
+              </footer>
+            </div>
+
+            <!-- Card 5 — card reader -->
+            <div class="device-card">
+              <div class="row-top">
+                <div class="row gap-3">
+                  <div class="icon-tile"><svg width="22" height="22"><use href="#i-card"/></svg></div>
+                  <div>
+                    <h3>Lecteur badge — Étage 3</h3>
+                    <p class="sub">DS-K1102MK · Direction</p>
+                  </div>
+                </div>
+                <button class="iconbtn"><svg width="16" height="16"><use href="#i-more"/></svg></button>
+              </div>
+              <div class="row" style="justify-content: space-between">
+                <span class="badge badge--success"><span class="dot"></span>En ligne</span>
+                <span class="pulse-mini" style="color: var(--success-700)"><span class="pulse" style="background: var(--success-500); width: 6px; height: 6px"></span>Actif il y a 8s</span>
+              </div>
+              <div class="specs">
+                <div><strong>Adresse IP</strong><span>192.168.3.04</span></div>
+                <div><strong>Firmware</strong><span>v2.5.7</span></div>
+                <div><strong>Badges actifs</strong><span>14</span></div>
+                <div><strong>Lectures aujourd'hui</strong><span>38</span></div>
+              </div>
+              <footer>
+                <div class="row gap-2">
+                  <button class="btn btn--ghost btn--sm">Tester</button>
+                  <button class="btn btn--ghost btn--sm">Diagnostic</button>
+                </div>
+                <a class="btn btn--secondary btn--sm"><svg width="12" height="12"><use href="#i-external"/></svg>Console</a>
+              </footer>
+            </div>
+
+            <!-- Card 6 — face recognition -->
+            <div class="device-card">
+              <div class="row-top">
+                <div class="row gap-3">
+                  <div class="icon-tile"><svg width="22" height="22"><use href="#i-camera"/></svg></div>
+                  <div>
+                    <h3>Reconnaissance faciale — Cantine</h3>
+                    <p class="sub">DS-K1T671MF · Espace commun</p>
+                  </div>
+                </div>
+                <button class="iconbtn"><svg width="16" height="16"><use href="#i-more"/></svg></button>
+              </div>
+              <div class="row" style="justify-content: space-between">
+                <span class="badge badge--success"><span class="dot"></span>En ligne</span>
+                <span class="pulse-mini" style="color: var(--success-700)"><span class="pulse" style="background: var(--success-500); width: 6px; height: 6px"></span>Actif il y a 4s</span>
+              </div>
+              <div class="specs">
+                <div><strong>Adresse IP</strong><span>192.168.2.05</span></div>
+                <div><strong>Firmware</strong><span>v6.1.2</span></div>
+                <div><strong>Visages enrôlés</strong><span>156</span></div>
+                <div><strong>Reconnaissances /h</strong><span>89</span></div>
+              </div>
+              <footer>
+                <div class="row gap-2">
+                  <button class="btn btn--ghost btn--sm">Tester</button>
+                  <button class="btn btn--ghost btn--sm">Diagnostic</button>
+                </div>
+                <a class="btn btn--secondary btn--sm"><svg width="12" height="12"><use href="#i-external"/></svg>Console</a>
+              </footer>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="card__footer">
+          <span>6 sur 20 appareils affichés</span>
+          <div class="row gap-2">
+            <button class="btn btn--ghost btn--sm">Précédent</button>
+            <button class="btn btn--secondary btn--sm">Suivant</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

@@ -1,0 +1,26 @@
+{% extends "emails/base.txt" %}
+
+{% block content %}
+PAYMENT CONFIRMED
+-----------------
+
+Hi{% if first_name %} {{ first_name }}{% endif %},
+
+We have received your payment. Thank you!
+
+Details:{% if invoice_number %}
+  Invoice #       : {{ invoice_number }}{% endif %}{% if plan_name %}
+  Plan            : {{ plan_name }}{% endif %}{% if tenant_name %}
+  Account         : {{ tenant_name }}{% endif %}{% if paid_at %}
+  Payment date    : {{ paid_at|date:"Y-m-d H:i" }}{% endif %}{% if period_start and period_end %}
+  Billing period  : {{ period_start|date:"Y-m-d" }} – {{ period_end|date:"Y-m-d" }}{% endif %}{% if amount %}
+  Amount paid     : {{ amount }} {{ currency|default:"EUR"|upper }}{% endif %}
+{% if invoice_url %}
+View invoice : {{ invoice_url }}{% endif %}{% if invoice_pdf %}
+Invoice PDF  : {{ invoice_pdf }}{% endif %}
+
+Your service is now active. The full history of your invoices is available
+in your billing portal.
+
+For any question regarding this payment, please contact our support team.
+{% endblock %}

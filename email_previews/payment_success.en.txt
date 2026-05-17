@@ -1,0 +1,34 @@
+================================================================
+  LR  |  LABEL RETAIL
+================================================================
+
+
+PAYMENT CONFIRMED
+-----------------
+
+Hi Marie,
+
+We have received your payment. Thank you!
+
+Details:
+  Invoice #       : INV-2026-00482
+  Plan            : Pro Mensuel
+  Account         : Boutique du Centre
+  Payment date    : 2026-05-06 19:38
+  Billing period  : 2026-05-06 – 2026-06-05
+  Amount paid     : 49.00 EUR
+
+View invoice : https://invoice.stripe.com/i/acct_xxx/test_yyy
+Invoice PDF  : https://invoice.stripe.com/i/acct_xxx/test_yyy/pdf
+
+Your service is now active. The full history of your invoices is available
+in your billing portal.
+
+For any question regarding this payment, please contact our support team.
+
+
+----------------------------------------------------------------
+Label Retail
+This is an automated message — please do not reply directly to this email.
+© 2026 Label Retail. All rights reserved.
+================================================================

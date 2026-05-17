@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>LR Time — Operator Dashboard</title>
+  <meta name="viewport" content="width=1440" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* Inject the icon symbol bank inline so <use href="#i-x"> resolves without cross-doc fetches. */
+    #icon-host { position: absolute; width: 0; height: 0; overflow: hidden; }
+  </style>
+</head>
+<body>
+  <div id="icon-host"></div>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script>
+    // Inline the icon bank so <use href="#i-…"> works regardless of where this file is opened from.
+    fetch('../../assets/icons.svg').then(r => r.text()).then(svg => {
+      document.getElementById('icon-host').innerHTML = svg;
+    });
+  </script>
+
+  <script type="text/babel" src="Sidebar.jsx"></script>
+  <script type="text/babel" src="Topbar.jsx"></script>
+  <script type="text/babel" src="KpiCard.jsx"></script>
+  <script type="text/babel" src="DashboardScreen.jsx"></script>
+  <script type="text/babel" src="DevicesScreen.jsx"></script>
+  <script type="text/babel" src="EmployeesScreen.jsx"></script>
+  <script type="text/babel" src="LoginScreen.jsx"></script>
+
+  <script type="text/babel">
+    /* global React, ReactDOM, Sidebar, Topbar, DashboardScreen, DevicesScreen, EmployeesScreen, LoginScreen */
+    const { useState } = React;
+
+    const SCREENS = [
+      { id: 'login',     label: 'Login' },
+      { id: 'dashboard', label: 'Tableau de bord' },
+      { id: 'devices',   label: 'Appareils' },
+      { id: 'employees', label: 'Employés' },
+    ];
+
+    const CRUMBS = {
+      dashboard: ['Pilotage', 'Tableau de bord'],
+      devices:   ['Pilotage', 'Appareils'],
+      employees: ['Pilotage', 'Employés'],
+    };
+
+    const App = () => {
+      const [screen, setScreen] = useState('dashboard');
+
+      // Login screen is full-bleed, no shell.
+      if (screen === 'login') {
+        return (
+          <>
+            <div data-screen-label="00 Login">
+              <LoginScreen />
+            </div>
+            <DemoNav screen={screen} setScreen={setScreen} />
+          </>
+        );
+      }
+
+      const ScreenComp = {
+        dashboard: DashboardScreen,
+        devices:   DevicesScreen,
+        employees: EmployeesScreen,
+      }[screen];
+
+      const labelMap = {
+        dashboard: '01 Tableau de bord',
+        devices:   '02 Appareils',
+        employees: '03 Employés',
+      };
+
+      return (
+        <>
+          <div className="app" data-screen-label={labelMap[screen]}>
+            <Sidebar active={screen} onNav={setScreen} />
+            <div className="app__main">
+              <Topbar crumbs={CRUMBS[screen]} />
+              <div className="app__content">
+                <ScreenComp />
+              </div>
+            </div>
+          </div>
+          <DemoNav screen={screen} setScreen={setScreen} />
+        </>
+      );
+    };
+
+    const DemoNav = ({ screen, setScreen }) => (
+      <nav className="demo-nav" aria-label="Démonstration">
+        {SCREENS.map(s => (
+          <button
+            key={s.id}
+            className={screen === s.id ? 'is-active' : ''}
+            onClick={() => setScreen(s.id)}
+          >
+            {s.label}
+          </button>
+        ))}
+      </nav>
+    );
+
+    // Wait for child scripts to register components on window before rendering.
+    const waitFor = (names) => new Promise(resolve => {
+      const tick = () => {
+        if (names.every(n => window[n])) resolve();
+        else setTimeout(tick, 30);
+      };
+      tick();
+    });
+
+    waitFor(['Sidebar','Topbar','KpiCard','DashboardScreen','DevicesScreen','EmployeesScreen','LoginScreen']).then(() => {
+      ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+================================================================
+  LR  |  LABEL RETAIL
+================================================================
+
+{% block content %}{% endblock %}
+
+----------------------------------------------------------------
+Label Retail
+{% if lang == 'en' %}This is an automated message — please do not reply directly to this email.
+© {% now "Y" %} Label Retail. All rights reserved.{% else %}Ce message est automatique — merci de ne pas répondre directement à cet email.
+© {% now "Y" %} Label Retail. Tous droits réservés.{% endif %}
+================================================================

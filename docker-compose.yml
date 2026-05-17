@@ -4,10 +4,26 @@ services:
     environment:
       POSTGRES_DB: saas
       POSTGRES_USER: saas
-      POSTGRES_PASSWORD: saas_pass_change_me
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-saas_pass_change_me}
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U saas"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   web:
     build: .
@@ -15,25 +31,36 @@ services:
     volumes:
       - ./app:/app
     environment:
-      DJANGO_SECRET_KEY: change_me_secret
-      DJANGO_DEBUG: "1"
-      ALLOWED_HOSTS: "213.156.133.202,localhost,127.0.0.1"
-      DATABASE_URL: "postgres://saas:saas_pass_change_me@db:5432/saas"
-      HIK_DEVICE_GATEWAY_BASE_URL: "http://213.156.133.202:88"
-      HIK_DEVICE_GATEWAY_USERNAME: "admin"
-      HIK_DEVICE_GATEWAY_PASSWORD: "Lsg@2020"
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-change_me_insecure_dev_only}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-1}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-213.156.133.202,localhost,127.0.0.1}
+      DATABASE_URL: "postgres://${POSTGRES_USER:-saas}:${POSTGRES_PASSWORD:-saas_pass_change_me}@db:5432/${POSTGRES_DB:-saas}"
+      HIK_DEVICE_GATEWAY_BASE_URL: ${HIK_DEVICE_GATEWAY_BASE_URL:-http://213.156.133.202:88}
+      HIK_DEVICE_GATEWAY_USERNAME: ${HIK_DEVICE_GATEWAY_USERNAME:-admin}
+      HIK_DEVICE_GATEWAY_PASSWORD: ${HIK_DEVICE_GATEWAY_PASSWORD:-change_me}
+      KMS_KEY: ${KMS_KEY:-}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     command: >
       sh -c "
       python manage.py migrate &&
-      python manage.py runserver 0.0.0.0:8000
+      gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --reload
       "
     ports:
       - "80:8000"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
 
 volumes:
   pgdata:

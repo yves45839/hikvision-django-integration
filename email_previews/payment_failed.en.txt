@@ -1,0 +1,38 @@
+================================================================
+  LR  |  LABEL RETAIL
+================================================================
+
+
+PAYMENT UNSUCCESSFUL — ACTION REQUIRED
+--------------------------------------
+
+Hi Marie,
+
+Your last payment could not be processed.
+
+Reason: Carte refusée par la banque (insufficient_funds).
+
+To avoid any service interruption, please update your payment method
+and retry the payment as soon as possible.
+
+Details:
+  Invoice # : INV-2026-00483
+  Account   : Boutique du Centre
+  Attempt   : 2026-05-06 19:38
+  Amount    : 49.00 EUR
+
+Update payment method:
+https://app.label-retail.com/billing
+
+Common causes: expired card, insufficient funds, bank decline, or spending
+limit reached. A new attempt will be made automatically within a few days,
+but you can also pay manually from your billing portal.
+
+Need help? Our support team is here for you.
+
+
+----------------------------------------------------------------
+Label Retail
+This is an automated message — please do not reply directly to this email.
+© 2026 Label Retail. All rights reserved.
+================================================================

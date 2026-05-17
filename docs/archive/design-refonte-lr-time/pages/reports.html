@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LR Time · Rapports</title>
+<link rel="stylesheet" href="../tokens.css" />
+<style>
+  .report-grid { display: grid; grid-template-columns: 280px 1fr; gap: 20px; }
+  .report-side {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    padding: 18px;
+    box-shadow: var(--shadow-sm);
+    height: fit-content; position: sticky; top: 80px;
+  }
+  .report-side h3 { font-size: 13px; margin-bottom: 12px; }
+  .report-side .filter-grp { padding: 10px 0; border-bottom: 1px solid var(--border-subtle); }
+  .report-side .filter-grp:last-child { border-bottom: 0; }
+  .report-side label {
+    display: block; font-size: 11.5px; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--text-muted); font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .seg {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+    background: var(--slate-100); padding: 3px; border-radius: var(--radius-md);
+  }
+  .seg button {
+    border: 0; background: transparent; padding: 6px 8px;
+    font-size: 12px; font-weight: 600; color: var(--text-muted);
+    border-radius: 6px;
+  }
+  .seg button.is-active { background: #fff; color: var(--text-strong); box-shadow: var(--shadow-xs); }
+
+  .date-range {
+    background: var(--slate-50);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    padding: 8px 12px;
+    font-size: 13px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
+  .checkbox-list { display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow: auto; }
+  .checkbox-list label {
+    display: flex; align-items: center; gap: 8px;
+    text-transform: none; letter-spacing: 0;
+    color: var(--text-default); font-weight: 500; font-size: 13px;
+    margin: 0; padding: 5px 0;
+  }
+  .checkbox-list label .count { margin-left: auto; color: var(--text-muted); font-size: 11.5px; }
+
+  /* Summary */
+  .summary-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 16px; }
+  .stat-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    padding: 14px 16px;
+    position: relative;
+  }
+  .stat-card .lbl { font-size: 11.5px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
+  .stat-card .val { font-family: var(--font-display); font-size: 24px; font-weight: 600; color: var(--text-strong); margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .stat-card .delta { display: inline-flex; align-items: center; gap: 3px; font-size: 11.5px; font-weight: 600; margin-top: 4px; }
+
+  /* Status legend */
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 8px; border-radius: var(--radius-pill);
+    font-size: 11.5px; font-weight: 600;
+  }
+  .st-ok    { background: var(--success-50); color: var(--success-700); }
+  .st-late  { background: var(--warning-50); color: var(--warning-700); }
+  .st-miss  { background: var(--danger-50);  color: var(--danger-700); }
+  .st-rest  { background: var(--slate-100);  color: var(--slate-600); }
+  .st-anom  { background: #F3E8FF; color: #6B21A8; }
+
+  /* Time bar showing planned vs actual */
+  .timebar { position: relative; height: 24px; background: var(--slate-50); border-radius: 6px; overflow: hidden; margin: 4px 0; }
+  .timebar .planned {
+    position: absolute; top: 6px; bottom: 6px;
+    background: repeating-linear-gradient(45deg, #DCE7FF, #DCE7FF 4px, #EEF4FF 4px, #EEF4FF 8px);
+    border-radius: 3px;
+  }
+  .timebar .actual {
+    position: absolute; top: 4px; bottom: 4px;
+    background: var(--brand);
+    border-radius: 4px;
+    box-shadow: 0 1px 0 rgba(255,255,255,.25) inset;
+  }
+  .timebar .actual.late { background: var(--warning-500); }
+  .timebar .actual.short { background: var(--danger-500); }
+  .timebar .scale {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 24px;
+    pointer-events: none;
+  }
+  .timebar .tick {
+    position: absolute; top: 0; bottom: 0; width: 1px;
+    background: var(--border-strong);
+  }
+  .timebar .tick small {
+    position: absolute; top: -16px;
+    transform: translateX(-50%);
+    font-size: 9.5px; color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12 12 4l9 8"/><path d="M5 10v10h14V10"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 11a3 3 0 1 0 0-6"/><path d="M22 20a5 5 0 0 0-5-5"/></symbol>
+  <symbol id="i-cpu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v16h16"/><path d="M8 14l3-3 3 3 5-7"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 9 19.3a1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.7 9a1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 9H3c0-1 3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 1 1 5.7 1.4c-.7 1.1-2.3 1.6-2.8 2.6-.2.5-.2 1 .1 1.5"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6l8-3z"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 9v6l-4-2v-4z"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="18" cy="12" r="1"/></symbol>
+  <symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></symbol>
+  <symbol id="i-arrow-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
+  <symbol id="i-arrow-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L21 6"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 21h20L12 3z"/><path d="M12 9v5"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-file-csv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/><path d="M9 14h6M9 17h4"/></symbol>
+  <symbol id="i-file-pdf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/><path d="M10 14v5"/><path d="M9 14h2a1 1 0 0 1 0 2H9"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></symbol>
+</svg>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="sidebar__brand">
+      <div class="logo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 4h3v12h8v3H5V4z" fill="currentColor"/></svg></div>
+      <div class="name">LR Time<small>Workforce Suite</small></div>
+    </div>
+    <div class="sidebar__group">
+      <div class="sidebar__label">Pilotage</div>
+      <a class="sidebar__item"><svg class="icon" width="18" height="18"><use href="#i-home"/></svg>Tableau de bord</a>
+      <a class="sidebar__item is-active"><svg class="icon" width="18" height="18"><use href="#i-chart"/></svg>Rapports<span class="badge">12</span></a>
+      <a class="sidebar__item"><svg class="icon" width="18" height="18"><use href="#i-calendar"/></svg>Planning</a>
+    </div>
+    <div class="sidebar__group">
+      <div class="sidebar__label">Organisation</div>
+      <a class="sidebar__item"><svg class="icon" width="18" height="18"><use href="#i-users"/></svg>Employés</a>
+      <a class="sidebar__item"><svg class="icon" width="18" height="18"><use href="#i-cpu"/></svg>Appareils<span class="badge">3</span></a>
+      <a class="sidebar__item"><svg class="icon" width="18" height="18"><use href="#i-shield"/></svg>Contrôle d'accès</a>
+    </div>
+    <div class="sidebar__group">
+      <div class="sidebar__label">Compte</div>
+      <a class="sidebar__item"><svg class="icon" width="18" height="18"><use href="#i-settings"/></svg>Paramètres</a>
+      <a class="sidebar__item"><svg class="icon" width="18" height="18"><use href="#i-help"/></svg>Aide & support</a>
+    </div>
+    <div class="sidebar__user">
+      <div class="avatar">YV</div>
+      <div class="meta"><strong>Yves Roland</strong><span>Directeur RH · LR Time</span></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="crumbs">
+        <span>LR Time</span><span class="sep">/</span><strong>Rapports de présence</strong>
+      </div>
+      <div class="topbar__search" style="margin-left: 24px">
+        <svg class="icon" width="14" height="14"><use href="#i-search"/></svg>
+        <span>Rechercher un rapport sauvegardé…</span>
+        <kbd>⌘K</kbd>
+      </div>
+      <div class="topbar__actions">
+        <span class="live-pill"><span class="pulse"></span>Données fraîches · 2 min</span>
+        <button class="iconbtn"><svg width="18" height="18"><use href="#i-help"/></svg></button>
+        <button class="iconbtn"><svg width="18" height="18"><use href="#i-bell"/></svg><span class="dot"></span></button>
+      </div>
+    </header>
+
+    <div class="content">
+      <div class="page-header">
+        <div class="page-header__title">
+          <span class="page-header__eyebrow">Période · 28 avril → 4 mai 2026</span>
+          <h1>Rapports de présence</h1>
+          <p class="page-header__subtitle">Auditez les pointages, corrigez les anomalies et exportez vers la paie en un clic.</p>
+        </div>
+        <div class="page-header__actions">
+          <button class="btn btn--secondary"><svg width="14" height="14"><use href="#i-mail"/></svg>Programmer l'envoi</button>
+          <button class="btn btn--secondary"><svg width="14" height="14"><use href="#i-file-pdf"/></svg>Exporter PDF</button>
+          <button class="btn btn--primary"><svg width="14" height="14"><use href="#i-file-csv"/></svg>Exporter CSV paie</button>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="card" style="padding: 8px 12px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px">
+        <div class="tabs">
+          <button class="is-active">Présence quotidienne</button>
+          <button>Heures supplémentaires</button>
+          <button>Anomalies</button>
+          <button>Conformité accès</button>
+          <button>Synthèse paie</button>
+        </div>
+        <div class="grow" style="flex:1"></div>
+        <span class="muted" style="font-size: 12.5px">Vue partagée par 3 personnes · <a>Gérer</a></span>
+      </div>
+
+      <!-- Summary cards -->
+      <div class="summary-row">
+        <div class="stat-card">
+          <div class="lbl">Heures travaillées</div>
+          <div class="val">1 248<small style="font-size: 13px; color: var(--text-muted); font-weight: 500"> h</small></div>
+          <div class="delta" style="color: var(--success-700)"><svg width="11" height="11"><use href="#i-arrow-up"/></svg>+4,2% vs sem. dernière</div>
+        </div>
+        <div class="stat-card">
+          <div class="lbl">Heures supplémentaires</div>
+          <div class="val">38<small style="font-size: 13px; color: var(--text-muted); font-weight: 500"> h</small></div>
+          <div class="delta" style="color: var(--warning-700)"><svg width="11" height="11"><use href="#i-arrow-up"/></svg>+12% — surveiller</div>
+        </div>
+        <div class="stat-card">
+          <div class="lbl">Retards cumulés</div>
+          <div class="val">4,5<small style="font-size: 13px; color: var(--text-muted); font-weight: 500"> h</small></div>
+          <div class="delta" style="color: var(--success-700)"><svg width="11" height="11"><use href="#i-arrow-down"/></svg>−18% bonne tendance</div>
+        </div>
+        <div class="stat-card">
+          <div class="lbl">Anomalies à corriger</div>
+          <div class="val" style="color: var(--danger-600)">7</div>
+          <div class="delta" style="color: var(--text-muted)">5 oublis sortie · 2 hors créneau</div>
+        </div>
+        <div class="stat-card">
+          <div class="lbl">Taux de conformité</div>
+          <div class="val">94<small style="font-size: 13px; color: var(--text-muted); font-weight: 500">%</small></div>
+          <div class="progress" style="margin-top: 8px"><i style="width: 94%; background: linear-gradient(90deg, #10B981, #059669)"></i></div>
+        </div>
+      </div>
+
+      <div class="report-grid">
+        <!-- ================= Filters side panel ================= -->
+        <div class="report-side">
+          <h3>Filtres du rapport</h3>
+
+          <div class="filter-grp">
+            <label>Granularité</label>
+            <div class="seg">
+              <button>Jour</button>
+              <button class="is-active">Semaine</button>
+              <button>Mois</button>
+            </div>
+          </div>
+
+          <div class="filter-grp">
+            <label>Plage de dates</label>
+            <div class="date-range">
+              <span class="row gap-2"><svg width="13" height="13" style="color: var(--text-muted)"><use href="#i-calendar"/></svg>28 avr → 4 mai</span>
+              <svg width="13" height="13" style="color: var(--text-muted)"><use href="#i-edit"/></svg>
+            </div>
+            <div class="row gap-1" style="margin-top: 8px; flex-wrap: wrap">
+              <span class="chip is-active">Cette semaine</span>
+              <span class="chip">Mois</span>
+              <span class="chip">Trimestre</span>
+            </div>
+          </div>
+
+          <div class="filter-grp">
+            <label>Départements</label>
+            <div class="checkbox-list">
+              <label><input type="checkbox" checked />Production<span class="count">62</span></label>
+              <label><input type="checkbox" checked />Logistique<span class="count">28</span></label>
+              <label><input type="checkbox" />Marketing<span class="count">14</span></label>
+              <label><input type="checkbox" />RH<span class="count">9</span></label>
+              <label><input type="checkbox" />Direction<span class="count">8</span></label>
+              <label><input type="checkbox" />IT<span class="count">7</span></label>
+            </div>
+          </div>
+
+          <div class="filter-grp">
+            <label>Statut de pointage</label>
+            <div class="checkbox-list">
+              <label><input type="checkbox" checked /><span class="status-pill st-ok">Conforme</span></label>
+              <label><input type="checkbox" checked /><span class="status-pill st-late">Retard</span></label>
+              <label><input type="checkbox" checked /><span class="status-pill st-miss">Manquant</span></label>
+              <label><input type="checkbox" /><span class="status-pill st-rest">Repos</span></label>
+              <label><input type="checkbox" /><span class="status-pill st-anom">Anomalie</span></label>
+            </div>
+          </div>
+
+          <div class="filter-grp">
+            <label>Quart</label>
+            <select class="select" style="width: 100%">
+              <option>Tous les quarts</option>
+              <option>Matin (6h-14h)</option>
+              <option>Jour (8h-17h)</option>
+              <option>Soir (14h-22h)</option>
+              <option>Nuit (22h-6h)</option>
+            </select>
+          </div>
+
+          <div class="row gap-2" style="margin-top: 16px">
+            <button class="btn btn--ghost btn--sm" style="flex: 1">Réinitialiser</button>
+            <button class="btn btn--primary btn--sm" style="flex: 1; justify-content: center">Appliquer</button>
+          </div>
+        </div>
+
+        <!-- ================= Report table ================= -->
+        <div class="card" style="overflow: hidden">
+          <div class="toolbar">
+            <strong style="font-size: 14px; color: var(--text-strong)">Détail des pointages</strong>
+            <span class="badge badge--neutral">96 lignes</span>
+            <div class="grow"></div>
+            <span class="row gap-2" style="font-size: 12.5px; color: var(--text-muted)">
+              <svg width="14" height="14"><use href="#i-clock"/></svg>Mis à jour il y a 2 min
+            </span>
+            <button class="btn btn--ghost btn--sm">Colonnes</button>
+            <button class="btn btn--secondary btn--sm">Vue compacte</button>
+          </div>
+
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Employé</th>
+                <th>Département</th>
+                <th>Quart prévu</th>
+                <th>Pointage réel</th>
+                <th class="num">Écart</th>
+                <th>Statut</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong class="strong">Lun 28 avr</strong></td>
+                <td>
+                  <div class="row-emp">
+                    <div class="avatar avatar--xs" style="background: #DCFCE7; color: #047857">SE</div>
+                    <strong>Salma El Hattab</strong>
+                  </div>
+                </td>
+                <td>Marketing</td>
+                <td class="mono">08:00 → 17:00</td>
+                <td style="min-width: 220px">
+                  <div class="timebar">
+                    <div class="planned" style="left: 33%; right: 8%"></div>
+                    <div class="actual" style="left: 33%; width: 60%"></div>
+                  </div>
+                  <small class="muted mono" style="font-size: 11px">07:58 → 17:02</small>
+                </td>
+                <td class="num strong">+02 min</td>
+                <td><span class="status-pill st-ok"><svg width="11" height="11"><use href="#i-check"/></svg>Conforme</span></td>
+                <td><button class="iconbtn"><svg width="16" height="16"><use href="#i-more"/></svg></button></td>
+              </tr>
+
+              <tr>
+                <td><strong class="strong">Lun 28 avr</strong></td>
+                <td>
+                  <div class="row-emp">
+                    <div class="avatar avatar--xs" style="background: #FFE4E6; color: #BE185D">RM</div>
+                    <strong>Rachid Mansouri</strong>
+                  </div>
+                </td>
+                <td>Production</td>
+                <td class="mono">06:00 → 14:00</td>
+                <td style="min-width: 220px">
+                  <div class="timebar">
+                    <div class="planned" style="left: 25%; right: 25%"></div>
+                    <div class="actual late" style="left: 28%; width: 47%"></div>
+                  </div>
+                  <small class="muted mono" style="font-size: 11px">06:42 → 14:00</small>
+                </td>
+                <td class="num strong" style="color: var(--warning-700)">−42 min</td>
+                <td><span class="status-pill st-late"><svg width="11" height="11"><use href="#i-clock"/></svg>Retard</span></td>
+                <td><button class="iconbtn"><svg width="16" height="16"><use href="#i-more"/></svg></button></td>
+              </tr>
+
+              <tr>
+                <td><strong class="strong">Mar 29 avr</strong></td>
+                <td>
+                  <div class="row-emp">
+                    <div class="avatar avatar--xs" style="background: #FEF3C7; color: #B45309">AB</div>
+                    <strong>Amine Berrada</strong>
+                  </div>
+                </td>
+                <td>Logistique</td>
+                <td class="mono">14:00 → 22:00</td>
+                <td style="min-width: 220px">
+                  <div class="timebar">
+                    <div class="planned" style="left: 58%; right: 8%"></div>
+                    <div class="actual short" style="left: 58%; width: 30%"></div>
+                  </div>
+                  <small class="muted mono" style="font-size: 11px">14:02 → ··:··</small>
+                </td>
+                <td class="num strong" style="color: var(--danger-600)">Manque sortie</td>
+                <td><span class="status-pill st-miss"><svg width="11" height="11"><use href="#i-alert"/></svg>Manquant</span></td>
+                <td><button class="btn btn--secondary btn--sm">Corriger</button></td>
+              </tr>
+
+              <tr>
+                <td><strong class="strong">Mer 30 avr</strong></td>
+                <td>
+                  <div class="row-emp">
+                    <div class="avatar avatar--xs" style="background: #DBEAFE; color: #1D4ED8">FK</div>
+                    <strong>Fatima Kabbaj</strong>
+                  </div>
+                </td>
+                <td>Direction</td>
+                <td class="mono">09:00 → 18:00</td>
+                <td style="min-width: 220px">
+                  <div class="timebar">
+                    <div class="planned" style="left: 38%; right: 8%"></div>
+                    <div class="actual" style="left: 36%; width: 60%"></div>
+                  </div>
+                  <small class="muted mono" style="font-size: 11px">08:48 → 18:34</small>
+                </td>
+                <td class="num strong" style="color: var(--success-700)">+46 min</td>
+                <td><span class="status-pill st-ok"><svg width="11" height="11"><use href="#i-check"/></svg>Conforme</span></td>
+                <td><button class="iconbtn"><svg width="16" height="16"><use href="#i-more"/></svg></button></td>
+              </tr>
+
+              <tr>
+                <td><strong class="strong">Jeu 1 mai</strong></td>
+                <td>
+                  <div class="row-emp">
+                    <div class="avatar avatar--xs" style="background: #DCFCE7; color: #047857">NL</div>
+                    <strong>Nadia Lahlou</strong>
+                  </div>
+                </td>
+                <td>RH</td>
+                <td class="mono">— Férié —</td>
+                <td style="min-width: 220px">
+                  <div class="muted" style="font-size: 12px; padding: 4px 0">Fête du travail · Aucun pointage attendu</div>
+                </td>
+                <td class="num">—</td>
+                <td><span class="status-pill st-rest">Repos</span></td>
+                <td><button class="iconbtn"><svg width="16" height="16"><use href="#i-more"/></svg></button></td>
+              </tr>
+
+              <tr>
+                <td><strong class="strong">Ven 2 mai</strong></td>
+                <td>
+                  <div class="row-emp">
+                    <div class="avatar avatar--xs" style="background: #F3E8FF; color: #6B21A8">YT</div>
+                    <strong>Youssef Tazi</strong>
+                  </div>
+                </td>
+                <td>Production</td>
+                <td class="mono">22:00 → 06:00</td>
+                <td style="min-width: 220px">
+                  <div class="timebar">
+                    <div class="planned" style="left: 92%; right: 0"></div>
+                    <div class="actual" style="left: 92%; width: 8%"></div>
+                  </div>
+                  <small class="muted mono" style="font-size: 11px">22:00 → 06:08 (entrée hors créneau 03:14)</small>
+                </td>
+                <td class="num strong" style="color: #6B21A8">Activité hors créneau</td>
+                <td><span class="status-pill st-anom"><svg width="11" height="11"><use href="#i-alert"/></svg>Anomalie</span></td>
+                <td><button class="btn btn--secondary btn--sm">Examiner</button></td>
+              </tr>
+
+              <tr>
+                <td><strong class="strong">Sam 3 mai</strong></td>
+                <td>
+                  <div class="row-emp">
+                    <div class="avatar avatar--xs" style="background: #CFFAFE; color: #155E75">MB</div>
+                    <strong>Mehdi Bennani</strong>
+                  </div>
+                </td>
+                <td>Production</td>
+                <td class="mono">06:00 → 14:00</td>
+                <td style="min-width: 220px">
+                  <div class="timebar">
+                    <div class="planned" style="left: 25%; right: 25%"></div>
+                    <div class="actual" style="left: 25%; width: 53%"></div>
+                  </div>
+                  <small class="muted mono" style="font-size: 11px">05:58 → 14:12</small>
+                </td>
+                <td class="num strong" style="color: var(--success-700)">+14 min</td>
+                <td><span class="status-pill st-ok"><svg width="11" height="11"><use href="#i-check"/></svg>Conforme</span></td>
+                <td><button class="iconbtn"><svg width="16" height="16"><use href="#i-more"/></svg></button></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="card__footer">
+            <span>Affichage 1 — 7 sur 96 lignes</span>
+            <div class="row gap-2">
+              <button class="btn btn--ghost btn--sm">Précédent</button>
+              <span class="muted" style="font-size: 12.5px">Page 1 / 14</span>
+              <button class="btn btn--secondary btn--sm">Suivant</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

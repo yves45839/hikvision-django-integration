@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Semantic Tokens</title>
+<link rel="stylesheet" href="_pv.css"/>
+<style>
+  table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 13px; }
+  th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border-subtle); }
+  th { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--fg3); background: var(--bg-muted); }
+  tr:last-child td { border-bottom: none; }
+  td.token { font-family: var(--font-mono); font-size: 12px; color: var(--fg1); }
+  td.value { font-family: var(--font-mono); font-size: 12px; color: var(--fg3); }
+  .chip { display: inline-flex; align-items: center; gap: 8px; }
+  .chip i { display: inline-block; width: 18px; height: 18px; border-radius: 5px; border: 1px solid var(--border-default); }
+  .group-title { font-family: var(--font-display); font-weight: 600; font-size: 13px; color: var(--fg1); padding: 14px 12px 6px; background: transparent; }
+</style>
+</head>
+<body>
+<div class="pv-shell">
+  <div class="pv-head">
+    <div>
+      <p class="pv-eyebrow">Tokens · Semantic</p>
+      <h1 class="pv-title">Semantic colors</h1>
+      <p class="pv-sub">Use these names — never raw hex. They survive theme switches, ramp re-tuning, and dark-mode (planned).</p>
+    </div>
+  </div>
+
+  <div class="pv-card" style="padding: 0">
+    <table>
+      <thead><tr><th style="width:30%">Token</th><th>Sample</th><th style="width:30%">Value</th><th>Where</th></tr></thead>
+      <tbody>
+        <tr><td colspan="4" class="group-title">Backgrounds</td></tr>
+        <tr><td class="token">--bg-app</td><td><span class="chip"><i style="background:#F7F9FC"></i>App canvas</span></td><td class="value">slate-50</td><td>Main scrolling area, page chrome</td></tr>
+        <tr><td class="token">--bg-canvas</td><td><span class="chip"><i style="background:#FBFCFD"></i>Soft canvas</span></td><td class="value">slate-25</td><td>Behind cards, modal backdrop tint</td></tr>
+        <tr><td class="token">--bg-surface</td><td><span class="chip"><i style="background:#FFFFFF"></i>Surface</span></td><td class="value">slate-0</td><td>Cards, table rows, popovers</td></tr>
+        <tr><td class="token">--bg-subtle</td><td><span class="chip"><i style="background:#EFF2F7"></i>Subtle</span></td><td class="value">slate-100</td><td>Hover surfaces, disabled fills</td></tr>
+        <tr><td class="token">--brand-soft</td><td><span class="chip"><i style="background:#EEF4FF"></i>Brand soft</span></td><td class="value">blue-50</td><td>Active sidebar, selected row tint</td></tr>
+        <tr><td class="token">--accent-soft</td><td><span class="chip"><i style="background:#FFF6EC"></i>Accent soft</span></td><td class="value">orange-50</td><td>Anomaly banners, demo strip</td></tr>
+
+        <tr><td colspan="4" class="group-title">Text</td></tr>
+        <tr><td class="token">--fg1</td><td><span class="chip" style="color:#0F172A;font-weight:600">Aa Strongest</span></td><td class="value">slate-900</td><td>Headings, KPI numbers</td></tr>
+        <tr><td class="token">--fg2</td><td><span class="chip" style="color:#1E293B">Aa Body default</span></td><td class="value">slate-800</td><td>Body, table cells</td></tr>
+        <tr><td class="token">--fg3</td><td><span class="chip" style="color:#64748B">Aa Muted</span></td><td class="value">slate-500</td><td>Sub-labels, table headers, helper</td></tr>
+        <tr><td class="token">--fg4</td><td><span class="chip" style="color:#94A3B8">Aa Subtle</span></td><td class="value">slate-400</td><td>Placeholders, separators in text</td></tr>
+        <tr><td class="token">--fg-onbrand</td><td><span class="chip"><i style="background:#2F6BE6"></i>White on brand</span></td><td class="value">#FFFFFF</td><td>Text on brand backgrounds</td></tr>
+
+        <tr><td colspan="4" class="group-title">Borders</td></tr>
+        <tr><td class="token">--border-subtle</td><td><span class="chip"><i style="background:#EFF2F7"></i>Subtle</span></td><td class="value">slate-100</td><td>Table row separators</td></tr>
+        <tr><td class="token">--border-default</td><td><span class="chip"><i style="background:#E4E9F1"></i>Default</span></td><td class="value">slate-150</td><td>Cards, inputs, all default borders</td></tr>
+        <tr><td class="token">--border-strong</td><td><span class="chip"><i style="background:#D6DEE9"></i>Strong</span></td><td class="value">slate-200</td><td>Hovered secondary buttons</td></tr>
+        <tr><td class="token">--border-focus</td><td><span class="chip"><i style="background:#2F6BE6"></i>Focus</span></td><td class="value">blue-500</td><td>Focus ring base</td></tr>
+
+        <tr><td colspan="4" class="group-title">Brand semantic</td></tr>
+        <tr><td class="token">--brand</td><td><span class="chip"><i style="background:#2F6BE6"></i>Primary</span></td><td class="value">blue-500</td><td>Default brand action</td></tr>
+        <tr><td class="token">--brand-hover</td><td><span class="chip"><i style="background:#1F52C7"></i>Hover</span></td><td class="value">blue-600</td><td>Button hover</td></tr>
+        <tr><td class="token">--brand-active</td><td><span class="chip"><i style="background:#173FA1"></i>Active</span></td><td class="value">blue-700</td><td>Button press, selected sidebar text</td></tr>
+        <tr><td class="token">--accent</td><td><span class="chip"><i style="background:#F97316"></i>Accent</span></td><td class="value">orange-500</td><td>Energy moments only</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</body></html>

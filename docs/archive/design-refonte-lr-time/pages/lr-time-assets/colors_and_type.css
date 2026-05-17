@@ -1,0 +1,169 @@
+/* =====================================================================
+   LR Time — Colors & Type
+   Light corporate · deep blue + warm orange accent · slate neutrals
+   Inspired by Stripe / Notion. Inter Tight + Inter + JetBrains Mono.
+   ===================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@500;600;700&family=JetBrains+Mono:wght@500;600&display=swap');
+
+:root {
+  /* ---------- Brand: deep blue ---------- */
+  --lr-blue-50:  #EEF4FF;
+  --lr-blue-100: #DCE7FF;
+  --lr-blue-200: #B7CCFF;
+  --lr-blue-300: #8AAEFF;
+  --lr-blue-400: #5C8DFA;
+  --lr-blue-500: #2F6BE6;   /* Primary brand */
+  --lr-blue-600: #1F52C7;
+  --lr-blue-700: #173FA1;
+  --lr-blue-800: #112E78;
+  --lr-blue-900: #0B1E50;
+
+  /* ---------- Accent: warm orange ---------- */
+  --lr-orange-50:  #FFF6EC;
+  --lr-orange-100: #FFE6CC;
+  --lr-orange-400: #FB923C;
+  --lr-orange-500: #F97316;   /* Accent */
+  --lr-orange-600: #DC5F0A;
+
+  /* ---------- Neutrals: slate ---------- */
+  --slate-0:   #FFFFFF;
+  --slate-25:  #FBFCFD;
+  --slate-50:  #F7F9FC;
+  --slate-100: #EFF2F7;
+  --slate-150: #E4E9F1;
+  --slate-200: #D6DEE9;
+  --slate-300: #B8C3D2;
+  --slate-400: #94A3B8;
+  --slate-500: #64748B;
+  --slate-600: #475569;
+  --slate-700: #334155;
+  --slate-800: #1E293B;
+  --slate-900: #0F172A;
+
+  /* ---------- Status ---------- */
+  --success-50: #ECFDF5; --success-100: #D1FAE5; --success-500: #10B981; --success-600: #059669; --success-700: #047857;
+  --warning-50: #FFFBEB; --warning-100: #FEF3C7; --warning-500: #F59E0B; --warning-700: #B45309;
+  --danger-50:  #FEF2F2; --danger-100:  #FEE2E2; --danger-500:  #EF4444; --danger-600: #DC2626; --danger-700: #B91C1C;
+  --info-50:    #EFF6FF; --info-500: #3B82F6; --info-700: #1D4ED8;
+
+  /* ---------- Semantic backgrounds ---------- */
+  --bg-app:      var(--slate-50);
+  --bg-canvas:   var(--slate-25);
+  --bg-surface:  var(--slate-0);
+  --bg-elevated: var(--slate-0);
+  --bg-subtle:   var(--slate-100);
+  --bg-muted:    var(--slate-50);
+
+  /* ---------- Semantic foregrounds ---------- */
+  --fg1: var(--slate-900);  /* strongest — headings, key numbers */
+  --fg2: var(--slate-800);  /* default body */
+  --fg3: var(--slate-500);  /* muted, helper text */
+  --fg4: var(--slate-400);  /* subtle, placeholders */
+  --fg-onbrand: #FFFFFF;
+
+  /* ---------- Borders ---------- */
+  --border-subtle:  var(--slate-100);
+  --border-default: var(--slate-150);
+  --border-strong:  var(--slate-200);
+  --border-focus:   var(--lr-blue-500);
+
+  /* ---------- Brand semantic ---------- */
+  --brand:        var(--lr-blue-500);
+  --brand-hover:  var(--lr-blue-600);
+  --brand-active: var(--lr-blue-700);
+  --brand-soft:   var(--lr-blue-50);
+  --brand-softer: #F4F8FF;
+  --brand-on:     #FFFFFF;
+
+  --accent:       var(--lr-orange-500);
+  --accent-soft:  var(--lr-orange-50);
+
+  /* ---------- Typography: families ---------- */
+  --font-sans:    'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Inter Tight', 'Inter', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+  /* ---------- Typography: scale ---------- */
+  --fs-display: 40px;
+  --fs-h1: 28px;
+  --fs-h2: 22px;
+  --fs-h3: 18px;
+  --fs-h4: 16px;
+  --fs-body: 14px;
+  --fs-sm: 13px;
+  --fs-xs: 12px;
+  --fs-2xs: 11px;
+
+  --lh-tight: 1.2;
+  --lh-snug: 1.35;
+  --lh-normal: 1.5;
+  --lh-relaxed: 1.65;
+
+  /* ---------- Radii ---------- */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-3xl: 28px;
+  --radius-pill: 999px;
+
+  /* ---------- Spacing (4pt grid) ---------- */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-7: 32px; --space-8: 40px;
+  --space-9: 48px; --space-10: 64px; --space-12: 96px;
+
+  /* ---------- Shadows (Stripe-grade, layered) ---------- */
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 1px rgba(15, 23, 42, 0.03);
+  --shadow-md: 0 4px 8px -2px rgba(15, 23, 42, 0.06), 0 2px 4px -1px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 12px 24px -8px rgba(15, 23, 42, 0.10), 0 4px 8px -4px rgba(15, 23, 42, 0.06);
+  --shadow-xl: 0 24px 48px -12px rgba(15, 23, 42, 0.12), 0 8px 16px -6px rgba(15, 23, 42, 0.07);
+  --shadow-focus: 0 0 0 3px rgba(47, 107, 230, 0.18);
+  --shadow-focus-danger: 0 0 0 3px rgba(239, 68, 68, 0.18);
+
+  /* ---------- Motion ---------- */
+  --ease-out:    cubic-bezier(.2,.7,.2,1);
+  --ease-in-out: cubic-bezier(.4,0,.2,1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+
+  /* ---------- Layout ---------- */
+  --sidebar-w: 248px;
+  --topbar-h: 60px;
+  --content-max: 1440px;
+}
+
+/* =====================================================================
+   Semantic typographic primitives
+   ===================================================================== */
+.t-display {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--fs-display);
+  line-height: var(--lh-tight);
+  letter-spacing: -0.025em;
+  color: var(--fg1);
+}
+.t-h1 { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h1); line-height: var(--lh-tight); letter-spacing: -0.015em; color: var(--fg1); }
+.t-h2 { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h2); line-height: var(--lh-snug); letter-spacing: -0.01em; color: var(--fg1); }
+.t-h3 { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h3); line-height: var(--lh-snug); color: var(--fg1); }
+.t-h4 { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h4); line-height: var(--lh-snug); color: var(--fg1); }
+.t-body { font-family: var(--font-sans); font-weight: 400; font-size: var(--fs-body); line-height: var(--lh-normal); color: var(--fg2); }
+.t-small { font-family: var(--font-sans); font-weight: 400; font-size: var(--fs-sm); line-height: var(--lh-normal); color: var(--fg2); }
+.t-mono { font-family: var(--font-mono); font-weight: 500; font-size: var(--fs-xs); color: var(--fg3); font-feature-settings: "tnum"; }
+.t-eyebrow {
+  font-family: var(--font-sans);
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--brand);
+}
+.t-muted { color: var(--fg3); }
+.t-subtle { color: var(--fg4); }
+.t-strong { color: var(--fg1); font-weight: 600; }
+.t-tnum { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }

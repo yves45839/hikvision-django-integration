@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Brand Colors</title>
+<link rel="stylesheet" href="_pv.css"/>
+<style>
+  .ramp { display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; }
+  .ramp .sw { min-height: 110px; border-radius: 10px; }
+  .ramp .sw__chip { min-height: 70px; }
+  .feature {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+  }
+  .feature__big {
+    border-radius: 16px;
+    padding: 28px;
+    color: white;
+    min-height: 168px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    box-shadow: var(--shadow-md);
+    position: relative;
+    overflow: hidden;
+  }
+  .feature__big.brand { background: linear-gradient(135deg, var(--lr-blue-500) 0%, var(--lr-blue-800) 100%); }
+  .feature__big.accent { background: linear-gradient(135deg, var(--lr-orange-400) 0%, var(--lr-orange-600) 100%); }
+  .feature__big::after {
+    content: ""; position: absolute; right: -40px; top: -40px;
+    width: 180px; height: 180px;
+    background: radial-gradient(closest-side, rgba(255,255,255,.18), transparent 70%);
+  }
+  .feature__big .label { font-size: 11.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; opacity: .8; }
+  .feature__big .name { font-family: var(--font-display); font-weight: 600; font-size: 22px; letter-spacing: -.01em; margin-top: 6px; }
+  .feature__big .hex { font-family: var(--font-mono); font-size: 12px; opacity: .85; }
+  .feature__big .role { font-size: 13px; opacity: .9; max-width: 32ch; }
+</style>
+</head>
+<body>
+<div class="pv-shell">
+  <div class="pv-head">
+    <div>
+      <p class="pv-eyebrow">Colors</p>
+      <h1 class="pv-title">Brand — Deep blue & warm orange</h1>
+      <p class="pv-sub">Blue 500 carries the institutional weight of the product. Orange is reserved for energy moments — alerts, demo banners, the user avatar.</p>
+    </div>
+  </div>
+
+  <div class="feature">
+    <div class="feature__big brand">
+      <div><div class="label">Brand · Primary</div><div class="name">Blue 500</div></div>
+      <div>
+        <div class="hex">#2F6BE6 · oklch(56% .19 256)</div>
+        <div class="role">Buttons, links, sidebar accents, KPI sparkline highlights, logo gradient.</div>
+      </div>
+    </div>
+    <div class="feature__big accent">
+      <div><div class="label">Accent · Action</div><div class="name">Orange 500</div></div>
+      <div>
+        <div class="hex">#F97316</div>
+        <div class="role">Anomalies needing human action. Avatars. Demo-mode banner. Bell dot.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pv-divider"></div>
+
+  <p class="pv-eyebrow" style="margin-bottom: 8px">Blue ramp · 50 → 900</p>
+  <div class="ramp">
+    <div class="sw"><div class="sw__chip" style="background:#EEF4FF"></div><div class="sw__meta"><span class="sw__name">Blue 50</span><span class="sw__hex">#EEF4FF</span></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#DCE7FF"></div><div class="sw__meta"><span class="sw__name">100</span><span class="sw__hex">#DCE7FF</span></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#B7CCFF"></div><div class="sw__meta"><span class="sw__name">200</span><span class="sw__hex">#B7CCFF</span></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#8AAEFF"></div><div class="sw__meta"><span class="sw__name">300</span><span class="sw__hex">#8AAEFF</span></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#5C8DFA"></div><div class="sw__meta"><span class="sw__name">400</span><span class="sw__hex">#5C8DFA</span></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#2F6BE6"></div><div class="sw__meta"><span class="sw__name">500 ★</span><span class="sw__hex">#2F6BE6</span></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#1F52C7"></div><div class="sw__meta"><span class="sw__name">600</span><span class="sw__hex">#1F52C7</span></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#173FA1"></div><div class="sw__meta"><span class="sw__name">700</span><span class="sw__hex">#173FA1</span></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#112E78"></div><div class="sw__meta"><span class="sw__name">800</span><span class="sw__hex">#112E78</span></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#0B1E50"></div><div class="sw__meta"><span class="sw__name">900</span><span class="sw__hex">#0B1E50</span></div></div>
+  </div>
+
+  <div style="height:16px"></div>
+  <p class="pv-eyebrow" style="margin-bottom: 8px">Orange ramp</p>
+  <div class="ramp" style="grid-template-columns: repeat(6, 1fr);">
+    <div class="sw"><div class="sw__chip" style="background:#FFF6EC"></div><div class="sw__meta"><span class="sw__name">Orange 50</span><span class="sw__hex">#FFF6EC</span></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#FFE6CC"></div><div class="sw__meta"><span class="sw__name">100</span><span class="sw__hex">#FFE6CC</span></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#FB923C"></div><div class="sw__meta"><span class="sw__name">400</span><span class="sw__hex">#FB923C</span></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#F97316"></div><div class="sw__meta"><span class="sw__name">500 ★</span><span class="sw__hex">#F97316</span></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#DC5F0A"></div><div class="sw__meta"><span class="sw__name">600</span><span class="sw__hex">#DC5F0A</span></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#9A3F00"></div><div class="sw__meta"><span class="sw__name">800</span><span class="sw__hex">#9A3F00</span></div></div>
+  </div>
+</div>
+</body></html>

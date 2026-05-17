@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Sidebar Item</title>
+<link rel="stylesheet" href="_pv.css"/>
+<style>
+  body { background: #F0F3F8; }
+  .row { display: grid; grid-template-columns: 280px 1fr; gap: 32px; }
+  .sb {
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border-default);
+    border-radius: 16px;
+    padding: 18px 12px;
+    height: 380px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    box-shadow: var(--shadow-sm);
+  }
+  .sb__brand { display: flex; align-items: center; gap: 10px; padding: 4px 10px; }
+  .sb__logo { width: 30px; height: 30px; border-radius: 8px; background: linear-gradient(135deg, var(--lr-blue-500), var(--lr-blue-700)); position: relative; box-shadow: var(--shadow-xs); }
+  .sb__logo::after { content: "L"; position: absolute; inset: 0; display: grid; place-items: center; color: white; font-family: var(--font-display); font-weight: 700; font-size: 16px; }
+  .sb__name { font-family: var(--font-display); font-weight: 600; color: var(--fg1); font-size: 14.5px; }
+  .sb__sub { font-size: 11px; color: var(--fg3); font-family: var(--font-mono); }
+  .sb__group { font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--fg4); padding: 4px 12px; }
+  .item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    color: var(--fg2);
+    font-size: 13.5px; font-weight: 500;
+    cursor: pointer; user-select: none;
+    position: relative;
+    transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+  }
+  .item svg { width: 16px; height: 16px; color: var(--fg3); flex-shrink: 0; transition: color var(--dur-fast); }
+  .item:hover { background: var(--bg-muted); color: var(--fg1); }
+  .item:hover svg { color: var(--fg2); }
+  .item.is-active { background: var(--brand-soft); color: var(--brand-active); font-weight: 600; }
+  .item.is-active svg { color: var(--brand); }
+  .item.is-active::before { content: ""; position: absolute; left: -12px; top: 6px; bottom: 6px; width: 3px; background: var(--brand); border-radius: 0 3px 3px 0; }
+  .item .count { margin-left: auto; min-width: 20px; height: 18px; padding: 0 6px; border-radius: 999px; background: var(--accent); color: white; font-size: 10.5px; font-weight: 600; display: grid; place-items: center; }
+
+  .doc { padding: 22px; background: var(--bg-surface); border-radius: 16px; border: 1px solid var(--border-default); }
+  .doc h3 { font-family: var(--font-display); font-weight: 600; margin: 0 0 6px; color: var(--fg1); font-size: 15px; }
+  .doc p { margin: 0; color: var(--fg3); font-size: 13px; line-height: 1.55; }
+  .doc ul { margin: 12px 0 0; padding-left: 18px; color: var(--fg2); font-size: 13px; line-height: 1.7; }
+  .doc code { font-family: var(--font-mono); font-size: 11.5px; background: var(--bg-subtle); padding: 1px 6px; border-radius: 4px; color: var(--fg1); }
+</style>
+</head>
+<body>
+<div class="pv-shell">
+  <div class="pv-head">
+    <div>
+      <p class="pv-eyebrow">Components · Navigation</p>
+      <h1 class="pv-title">Sidebar item</h1>
+      <p class="pv-sub">248 px sticky sidebar. Active = brand-soft fill, brand-active text, and a 3 px left accent. Hover = bg-muted.</p>
+    </div>
+  </div>
+
+  <div class="row">
+    <aside class="sb">
+      <div class="sb__brand">
+        <div class="sb__logo"></div>
+        <div>
+          <div class="sb__name">LR Time</div>
+          <div class="sb__sub">ACME-CASA</div>
+        </div>
+      </div>
+      <div>
+        <div class="sb__group">Pilotage</div>
+        <div class="item is-active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Tableau de bord</div>
+        <div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>Employés</div>
+        <div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/></svg>Appareils <span class="count">3</span></div>
+        <div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Planning</div>
+      </div>
+      <div>
+        <div class="sb__group">Analyse</div>
+        <div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 16V10M12 16V6M17 16v-4"/></svg>Rapports</div>
+        <div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Surveillance</div>
+      </div>
+    </aside>
+
+    <div class="doc">
+      <h3>States, in order</h3>
+      <p>Sidebar uses three states. Disabled is rare — prefer hiding the item entirely.</p>
+      <ul>
+        <li><strong>Default</strong> — <code>color: var(--fg2)</code>, icon <code>--fg3</code>.</li>
+        <li><strong>Hover</strong> — fill <code>--bg-muted</code>, text <code>--fg1</code>, icon <code>--fg2</code>.</li>
+        <li><strong>Active</strong> — fill <code>--brand-soft</code>, text + icon <code>--brand-active</code>, 3 px left accent.</li>
+      </ul>
+      <p style="margin-top:14px"><strong>Group labels</strong> are uppercase eyebrows (10.5 px, .1em letter-spacing, <code>--fg4</code>) — never decorated, never collapsible by default.</p>
+      <p style="margin-top:14px"><strong>Counts</strong> sit right-aligned in the row, in <code>--accent</code> (orange-500) on white. Use them only when the count is actionable (3 anomalies, 12 unread events).</p>
+    </div>
+  </div>
+</div>
+</body></html>

@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Table Row</title>
+<link rel="stylesheet" href="_pv.css"/>
+<style>
+  body { background: #F0F3F8; }
+  .table {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: 16px;
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+  .thead {
+    display: grid;
+    grid-template-columns: 26px 2fr 1.4fr 1fr 1.2fr 1fr 60px;
+    gap: 16px;
+    padding: 12px 20px;
+    background: var(--bg-muted);
+    border-bottom: 1px solid var(--border-default);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--fg3);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 26px 2fr 1.4fr 1fr 1.2fr 1fr 60px;
+    gap: 16px;
+    padding: 12px 20px;
+    align-items: center;
+    border-bottom: 1px solid var(--border-subtle);
+    transition: background var(--dur-fast) var(--ease-out);
+    font-size: 13.5px;
+    color: var(--fg2);
+    position: relative;
+  }
+  .row:last-child { border-bottom: 0; }
+  .row:hover { background: var(--bg-muted); }
+  .row.is-selected { background: var(--brand-soft); }
+  .row.is-selected::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--brand); }
+  .check { width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid var(--border-strong); display: inline-grid; place-items: center; cursor: pointer; }
+  .check.is-on { background: var(--brand); border-color: var(--brand); }
+  .check.is-on::after { content: ""; width: 8px; height: 4px; border-left: 2px solid white; border-bottom: 2px solid white; transform: rotate(-45deg) translate(0, -1px); }
+
+  .who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .av { width: 28px; height: 28px; border-radius: 999px; background: linear-gradient(135deg, #FED7AA, #F97316); color: white; font-size: 11px; font-weight: 600; display: grid; place-items: center; flex-shrink: 0; }
+  .who__nm { color: var(--fg1); font-weight: 500; }
+  .who__role { color: var(--fg3); font-size: 12px; }
+  .mono { font-family: var(--font-mono); font-size: 12.5px; color: var(--fg2); }
+  .badge { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 10px; border-radius: 999px; font-size: 11.5px; font-weight: 600; border: 1px solid; }
+  .badge .dot { width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
+  .b-ok { background: var(--success-50); border-color: #BBF7D0; color: var(--success-700); }
+  .b-warn { background: var(--warning-50); border-color: #FDE68A; color: var(--warning-700); }
+  .b-bad { background: var(--danger-50); border-color: #FECACA; color: var(--danger-700); }
+  .more { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 6px; color: var(--fg3); cursor: pointer; }
+  .more:hover { background: var(--bg-subtle); color: var(--fg1); }
+</style>
+</head>
+<body>
+<div class="pv-shell">
+  <div class="pv-head">
+    <div>
+      <p class="pv-eyebrow">Components · Table</p>
+      <h1 class="pv-title">Table row</h1>
+      <p class="pv-sub">Selected row gets a 3-px brand accent on the left + brand-soft tint. Headers are uppercase eyebrow style.</p>
+    </div>
+  </div>
+
+  <div class="table">
+    <div class="thead">
+      <div></div>
+      <div>Employé</div>
+      <div>Site</div>
+      <div>Pointage</div>
+      <div>Statut</div>
+      <div>Lecteur</div>
+      <div></div>
+    </div>
+
+    <div class="row">
+      <span class="check is-on"></span>
+      <div class="who"><div class="av">NA</div><div><div class="who__nm">Nadia Amrani</div><div class="who__role">Production · Hall A</div></div></div>
+      <div>Casablanca</div>
+      <div class="mono">08:02:14</div>
+      <div><span class="badge b-ok"><span class="dot"></span>Ponctuel</span></div>
+      <div class="mono">DS-K1T343</div>
+      <div class="more">⋯</div>
+    </div>
+    <div class="row is-selected">
+      <span class="check is-on"></span>
+      <div class="who"><div class="av" style="background:linear-gradient(135deg,#BFDBFE,#2F6BE6)">YB</div><div><div class="who__nm">Youssef Benali</div><div class="who__role">Sécurité · Hall B</div></div></div>
+      <div>Casablanca</div>
+      <div class="mono">08:14:22</div>
+      <div><span class="badge b-warn"><span class="dot"></span>Retard 14 min</span></div>
+      <div class="mono">DS-K1T343</div>
+      <div class="more">⋯</div>
+    </div>
+    <div class="row">
+      <span class="check"></span>
+      <div class="who"><div class="av" style="background:linear-gradient(135deg,#FBCFE8,#DB2777)">SE</div><div><div class="who__nm">Sara El Idrissi</div><div class="who__role">RH · Siège</div></div></div>
+      <div>Rabat</div>
+      <div class="mono">—</div>
+      <div><span class="badge b-bad"><span class="dot"></span>Absente</span></div>
+      <div class="mono">—</div>
+      <div class="more">⋯</div>
+    </div>
+    <div class="row">
+      <span class="check"></span>
+      <div class="who"><div class="av" style="background:linear-gradient(135deg,#A7F3D0,#059669)">MK</div><div><div class="who__nm">Mehdi Kabbaj</div><div class="who__role">Production · Hall A</div></div></div>
+      <div>Casablanca</div>
+      <div class="mono">07:58:01</div>
+      <div><span class="badge b-ok"><span class="dot"></span>Ponctuel</span></div>
+      <div class="mono">DS-K1T343</div>
+      <div class="more">⋯</div>
+    </div>
+  </div>
+</div>
+</body></html>

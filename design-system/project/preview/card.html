@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Card</title>
+<link rel="stylesheet" href="_pv.css"/>
+<style>
+  body { background: #F0F3F8; }
+  .row { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; }
+  .card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: 16px;
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+  .card__hd { padding: 18px 20px 12px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .card__title { font-family: var(--font-display); font-weight: 600; font-size: 15px; color: var(--fg1); margin: 0 0 2px; letter-spacing: -.005em; }
+  .card__sub { font-size: 12.5px; color: var(--fg3); margin: 0; }
+  .card__bd { padding: 12px 20px 20px; }
+  .card__ft { padding: 12px 20px; border-top: 1px solid var(--border-subtle); background: var(--bg-muted); display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; color: var(--fg3); }
+
+  .live {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 22px; padding: 0 10px;
+    border-radius: 999px;
+    font-size: 11.5px; font-weight: 600;
+    background: var(--success-50); border: 1px solid #BBF7D0; color: var(--success-700);
+  }
+  .live .dot { width: 6px; height: 6px; border-radius: 999px; background: var(--success-500); }
+  @keyframes lring {
+    0% { box-shadow: 0 0 0 0 rgba(16,185,129,.55); }
+    70% { box-shadow: 0 0 0 7px rgba(16,185,129,0); }
+    100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+  }
+  .live .dot { animation: lring 1.6s var(--ease-out) infinite; }
+
+  .meta { display: flex; flex-direction: column; gap: 12px; }
+  .meta .item { display: grid; grid-template-columns: 100px 1fr; gap: 12px; align-items: baseline; }
+  .meta .k { font-size: 11px; color: var(--fg3); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+  .meta .v { font-size: 13.5px; color: var(--fg1); font-weight: 500; }
+  .mono { font-family: var(--font-mono); font-size: 12.5px; color: var(--fg2); }
+
+  .cta {
+    background: linear-gradient(135deg, var(--lr-blue-500) 0%, var(--lr-blue-800) 100%);
+    color: white;
+    border-radius: 20px;
+    padding: 28px 28px 24px;
+    box-shadow: var(--shadow-md);
+    position: relative; overflow: hidden;
+  }
+  .cta::after { content: ""; position: absolute; right: -60px; top: -60px; width: 220px; height: 220px; background: radial-gradient(closest-side, rgba(255,255,255,.18), transparent 70%); }
+  .cta h3 { font-family: var(--font-display); font-weight: 600; font-size: 20px; letter-spacing: -.01em; margin: 0; }
+  .cta p { color: rgba(255,255,255,.78); font-size: 13.5px; line-height: 1.5; margin: 8px 0 18px; max-width: 38ch; }
+  .cta button {
+    background: white; color: var(--lr-blue-700);
+    height: 38px; padding: 0 18px; border-radius: 8px; border: 0;
+    font-weight: 600; font-size: 13.5px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+  }
+  .cta .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; opacity: .8; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<div class="pv-shell">
+  <div class="pv-head">
+    <div>
+      <p class="pv-eyebrow">Components · Card</p>
+      <h1 class="pv-title">Card · canonical anatomy</h1>
+      <p class="pv-sub">White surface, 1 px border, 16 px radius, --shadow-sm. Header (title + sub + actions), body, optional footer with timestamp.</p>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="card">
+      <div class="card__hd">
+        <div>
+          <h3 class="card__title">Caméra Hall A · DS-K1T343MFWX</h3>
+          <p class="card__sub">Site Casablanca — entrée principale</p>
+        </div>
+        <span class="live"><span class="dot"></span>Live</span>
+      </div>
+      <div class="card__bd">
+        <div class="meta">
+          <div class="item"><span class="k">Adresse</span><span class="v mono">192.168.10.42 · TLS</span></div>
+          <div class="item"><span class="k">Firmware</span><span class="v mono">6.2.4 · à jour</span></div>
+          <div class="item"><span class="k">Pointages</span><span class="v">87 aujourd'hui — 0 anomalies</span></div>
+          <div class="item"><span class="k">Dernier ping</span><span class="v">il y a 12 secondes</span></div>
+        </div>
+      </div>
+      <div class="card__ft">
+        <span>Tenant <code class="mono">ACME-CASA</code></span>
+        <span>Synchronisé 09:47:13</span>
+      </div>
+    </div>
+
+    <div class="cta">
+      <div class="eyebrow">Pour aller plus loin</div>
+      <h3>Activez la biométrie sur 4 lecteurs supplémentaires</h3>
+      <p>Réduisez les anomalies de pointage de 38% et automatisez l'export paie en moins de 10 minutes.</p>
+      <button>Configurer maintenant
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+</body></html>

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Radii</title>
+<link rel="stylesheet" href="_pv.css"/>
+<style>
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .demo {
+    aspect-ratio: 1.4 / 1;
+    background: var(--brand-soft);
+    border: 1px solid var(--lr-blue-200);
+    display: flex; align-items: flex-end; justify-content: flex-start;
+    padding: 14px;
+    color: var(--brand-active);
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .meta { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; }
+  .meta .nm { font-size: 12.5px; font-weight: 600; color: var(--fg1); }
+  .meta .px { font-family: var(--font-mono); font-size: 11px; color: var(--fg3); }
+  .meta .role { font-size: 12px; color: var(--fg3); }
+</style>
+</head>
+<body>
+<div class="pv-shell">
+  <div class="pv-head">
+    <div>
+      <p class="pv-eyebrow">Spacing · Radii</p>
+      <h1 class="pv-title">Corner radii</h1>
+      <p class="pv-sub">Cards land at 16 px. The rule of nesting: outer is always rounder than inner.</p>
+    </div>
+  </div>
+  <div class="grid">
+    <div>
+      <div class="demo" style="border-radius: 4px">xs</div>
+      <div class="meta"><span class="nm">--radius-xs</span><span class="px">4 px</span><span class="role">Small chips, dividers</span></div>
+    </div>
+    <div>
+      <div class="demo" style="border-radius: 6px">sm</div>
+      <div class="meta"><span class="nm">--radius-sm</span><span class="px">6 px</span><span class="role">Tight buttons, sidebar icon wrappers</span></div>
+    </div>
+    <div>
+      <div class="demo" style="border-radius: 8px">md ★</div>
+      <div class="meta"><span class="nm">--radius-md</span><span class="px">8 px</span><span class="role">Default — buttons, inputs, chips</span></div>
+    </div>
+    <div>
+      <div class="demo" style="border-radius: 12px">lg</div>
+      <div class="meta"><span class="nm">--radius-lg</span><span class="px">12 px</span><span class="role">Large buttons, badges</span></div>
+    </div>
+    <div>
+      <div class="demo" style="border-radius: 16px">xl ★</div>
+      <div class="meta"><span class="nm">--radius-xl</span><span class="px">16 px</span><span class="role">Cards, KPI tiles, modals</span></div>
+    </div>
+    <div>
+      <div class="demo" style="border-radius: 20px">2xl</div>
+      <div class="meta"><span class="nm">--radius-2xl</span><span class="px">20 px</span><span class="role">CTA banners</span></div>
+    </div>
+    <div>
+      <div class="demo" style="border-radius: 28px">3xl</div>
+      <div class="meta"><span class="nm">--radius-3xl</span><span class="px">28 px</span><span class="role">Hero containers, spotlight</span></div>
+    </div>
+    <div>
+      <div class="demo" style="border-radius: 999px">pill</div>
+      <div class="meta"><span class="nm">--radius-pill</span><span class="px">999 px</span><span class="role">Status badges, filter chips, count pills</span></div>
+    </div>
+  </div>
+</div>
+</body></html>

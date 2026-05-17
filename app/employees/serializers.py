@@ -582,6 +582,18 @@ class DepartmentSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at", "effective_planning", "effective_work_shift"]
+        extra_kwargs = {
+            "code": {"required": False, "allow_blank": True},
+        }
+
+    def get_validators(self):
+        # Remove the UniqueTogetherValidator for (organization, code) — the model's
+        # save() auto-generates a unique code when none is provided, so this
+        # validator would wrongly reject blank submissions before save() can run.
+        return [
+            v for v in super().get_validators()
+            if not (hasattr(v, "fields") and set(v.fields) == {"organization", "code"})
+        ]
 
     def get_effective_planning(self, obj):
         planning = obj.get_effective_planning()

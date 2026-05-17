@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Inputs</title>
+<link rel="stylesheet" href="_pv.css"/>
+<style>
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 24px; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  label { font-size: 12px; font-weight: 600; color: var(--fg2); }
+  .hint { font-size: 11.5px; color: var(--fg3); }
+  .err { font-size: 11.5px; color: var(--danger-700); }
+  .input, .select, .textarea {
+    width: 100%;
+    height: 40px;
+    padding: 0 12px;
+    border: 1px solid var(--border-default);
+    background: var(--bg-surface);
+    border-radius: 8px;
+    font-family: var(--font-sans);
+    font-size: 13.5px;
+    color: var(--fg1);
+    transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+  }
+  .input::placeholder { color: var(--fg4); }
+  .input:hover, .select:hover, .textarea:hover { border-color: var(--border-strong); }
+  .input:focus, .select:focus, .textarea:focus { outline: none; border-color: var(--brand); box-shadow: var(--shadow-focus); }
+  .input.is-error { border-color: var(--danger-500); }
+  .input.is-error:focus { box-shadow: var(--shadow-focus-danger); }
+  .textarea { height: auto; padding: 10px 12px; min-height: 84px; resize: vertical; }
+  .input-wrap { position: relative; }
+  .input-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--fg3); pointer-events: none; }
+  .input-wrap .input { padding-left: 36px; }
+
+  .check { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; font-size: 13.5px; color: var(--fg2); }
+  .check input { appearance: none; width: 18px; height: 18px; border: 1.5px solid var(--border-strong); border-radius: 5px; background: var(--bg-surface); display: inline-grid; place-items: center; cursor: pointer; }
+  .check input:checked { background: var(--brand); border-color: var(--brand); }
+  .check input:checked::after { content: ""; width: 10px; height: 5px; border-left: 2px solid white; border-bottom: 2px solid white; transform: rotate(-45deg) translate(1px, -1px); }
+  .check input:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
+
+  .switch { width: 36px; height: 20px; border-radius: 999px; background: var(--slate-300); position: relative; cursor: pointer; transition: background var(--dur-base) var(--ease-out); }
+  .switch::after { content: ""; position: absolute; left: 2px; top: 2px; width: 16px; height: 16px; background: white; border-radius: 999px; box-shadow: var(--shadow-sm); transition: transform var(--dur-base) var(--ease-out); }
+  .switch.is-on { background: var(--brand); }
+  .switch.is-on::after { transform: translateX(16px); }
+
+  .seg { display: inline-flex; padding: 3px; background: var(--bg-subtle); border-radius: 8px; gap: 2px; }
+  .seg button { border: 0; background: transparent; height: 30px; padding: 0 14px; font-size: 12.5px; font-weight: 500; color: var(--fg2); border-radius: 6px; cursor: pointer; transition: background var(--dur-fast), color var(--dur-fast); }
+  .seg button.is-active { background: var(--bg-surface); color: var(--fg1); box-shadow: var(--shadow-xs); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="pv-shell">
+  <div class="pv-head">
+    <div>
+      <p class="pv-eyebrow">Components · Forms</p>
+      <h1 class="pv-title">Inputs & controls</h1>
+      <p class="pv-sub">Inputs are 40 px tall (mobile-friendly), 8 px radius, 1 px border. Focus is a 3-px ring — never a 2-px border swap.</p>
+    </div>
+  </div>
+
+  <div class="pv-card">
+    <div class="grid">
+      <div class="field">
+        <label>Nom de l'appareil</label>
+        <input class="input" type="text" placeholder="Ex. Caméra Hall A" value="Caméra Hall A"/>
+        <span class="hint">Visible dans le tableau de bord et les rapports.</span>
+      </div>
+
+      <div class="field">
+        <label>Adresse IP</label>
+        <input class="input" type="text" placeholder="192.168.10.42" style="font-family: var(--font-mono); font-size: 13px"/>
+        <span class="hint">IPv4 ou IPv6, accessible depuis la gateway.</span>
+      </div>
+
+      <div class="field">
+        <label>Recherche</label>
+        <div class="input-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input class="input" type="text" placeholder="Rechercher un employé, un site…"/>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Site</label>
+        <select class="select">
+          <option>Casablanca — Hall A</option>
+          <option>Casablanca — Production</option>
+          <option>Rabat — Siège</option>
+        </select>
+      </div>
+
+      <div class="field" style="grid-column: span 2">
+        <label>Note</label>
+        <textarea class="textarea" placeholder="Décrivez l'incident…">Reader DS-K1T343MFWX a refusé 3 badges entre 09:42 et 09:47.</textarea>
+      </div>
+
+      <div class="field">
+        <label>Mot de passe (avec erreur)</label>
+        <input class="input is-error" type="password" value="••••"/>
+        <span class="err">Mot de passe trop court — minimum 12 caractères.</span>
+      </div>
+
+      <div class="field">
+        <label>État (focus)</label>
+        <input class="input" type="text" value="2F6BE6 ring active" style="border-color: var(--brand); box-shadow: var(--shadow-focus)"/>
+        <span class="hint">Focus ring = box-shadow, never a border-width change.</span>
+      </div>
+    </div>
+
+    <div class="pv-divider"></div>
+
+    <div style="display: flex; gap: 32px; align-items: center; flex-wrap: wrap;">
+      <label class="check"><input type="checkbox" checked/> Notifier sur Slack</label>
+      <label class="check"><input type="checkbox"/> Inclure dans l'export CSV</label>
+      <div style="display:inline-flex; gap: 8px; align-items: center; color: var(--fg2); font-size: 13.5px;"><div class="switch is-on"></div> Mode démo</div>
+      <div class="seg" role="tablist">
+        <button class="is-active">Jour</button>
+        <button>Semaine</button>
+        <button>Mois</button>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>

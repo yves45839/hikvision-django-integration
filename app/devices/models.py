@@ -1,4 +1,5 @@
 from django.db import models
+from devices.encryption import encrypt_value, decrypt_value
 from django.contrib.auth import get_user_model
 from tenants.models import Tenant
 
@@ -27,10 +28,21 @@ class Device(models.Model):
     protocol = models.CharField(max_length=50, blank=True, default='')
     status = models.CharField(max_length=30, blank=True, default='')
     device_username = models.CharField(max_length=150, blank=True, default='')
-    device_password = models.CharField(max_length=255, blank=True, default='')
+    device_password_encrypted = models.CharField(max_length=500, blank=True, default='')
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+
+    @property
+    def device_password(self):
+        """0.6: Decrypt device password on access."""
+        return decrypt_value(self.device_password_encrypted)
+    
+    @device_password.setter
+    def device_password(self, value):
+        """0.6: Encrypt device password on assignment."""
+        self.device_password_encrypted = encrypt_value(value)
+    
     def __str__(self):
         return self.name or self.device_id or self.dev_index
 
@@ -118,7 +130,7 @@ class DeviceOnboardingJob(models.Model):
     dev_name = models.CharField(max_length=255)
     dev_type = models.CharField(max_length=64, default="AccessControl")
     device_username = models.CharField(max_length=150, blank=True, default="")
-    device_password = models.CharField(max_length=255, blank=True, default="")
+    device_password_encrypted = models.CharField(max_length=500, blank=True, default="")
 
     started_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
@@ -132,5 +144,16 @@ class DeviceOnboardingJob(models.Model):
             models.Index(fields=["created_at"]),
         ]
 
+
+    @property
+    def device_password(self):
+        """0.6: Decrypt device password on access."""
+        return decrypt_value(self.device_password_encrypted)
+    
+    @device_password.setter
+    def device_password(self, value):
+        """0.6: Encrypt device password on assignment."""
+        self.device_password_encrypted = encrypt_value(value)
+    
     def __str__(self):
         return f"{self.id}:{self.tenant.code}:{self.sn}:{self.status}"

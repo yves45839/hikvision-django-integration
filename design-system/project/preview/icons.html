@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Icons</title>
+<link rel="stylesheet" href="_pv.css"/>
+<style>
+  body { background: #F0F3F8; }
+  .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; }
+  .ic {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: 10px;
+    padding: 14px 8px 10px;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    transition: background var(--dur-fast), border-color var(--dur-fast);
+  }
+  .ic:hover { background: var(--brand-soft); border-color: var(--lr-blue-200); }
+  .ic svg { width: 22px; height: 22px; color: var(--fg1); }
+  .ic span { font-family: var(--font-mono); font-size: 10.5px; color: var(--fg3); text-align: center; }
+
+  .sizes { display: flex; gap: 18px; align-items: center; padding: 18px; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: 16px; box-shadow: var(--shadow-sm); }
+  .sizes div { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .sizes svg { color: var(--brand); }
+  .sizes small { font-family: var(--font-mono); font-size: 11px; color: var(--fg3); }
+</style>
+</head>
+<body>
+<div class="pv-shell">
+  <div class="pv-head">
+    <div>
+      <p class="pv-eyebrow">Brand · Iconography</p>
+      <h1 class="pv-title">Icons — Lucide, 1.6 px stroke</h1>
+      <p class="pv-sub">All icons inherit <code>currentColor</code>. In production use <code>lucide-react</code>; in mockups use <code>assets/icons.svg</code> with <code>&lt;use href&gt;</code>.</p>
+    </div>
+  </div>
+
+  <div class="sizes" style="margin-bottom: 18px">
+    <div><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></svg><small>13 — chips</small></div>
+    <div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></svg><small>16 ★ default</small></div>
+    <div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></svg><small>18 — KPI tile</small></div>
+    <div><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></svg><small>20 — hero</small></div>
+    <div><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></svg><small>28 — empty state</small></div>
+    <div style="margin-left:auto;color:var(--fg3);font-size:12.5px;max-width:36ch">Stroke 1.6 px, rounded caps & joins, monochrome currentColor. Never PNG.</div>
+  </div>
+
+  <div class="grid" id="icons"></div>
+</div>
+<script>
+  const icons = [
+    'i-dashboard','i-users','i-user','i-cpu','i-chart','i-calendar','i-shield','i-settings',
+    'i-bell','i-search','i-plus','i-chevron-down','i-chevron-right','i-arrow-ur','i-arrow-dr','i-clock',
+    'i-user-x','i-alert','i-check-circle','i-check','i-x','i-x-circle','i-more','i-eye',
+    'i-zap','i-target','i-camera','i-fingerprint','i-building','i-filter','i-download','i-refresh',
+    'i-logout','i-wifi','i-trending','i-door','i-file'
+  ];
+  const root = document.getElementById('icons');
+  for (const id of icons) {
+    const el = document.createElement('div');
+    el.className = 'ic';
+    el.innerHTML = `<svg><use href="../assets/icons.svg#${id}"/></svg><span>${id.replace('i-','')}</span>`;
+    root.appendChild(el);
+  }
+</script>
+</body></html>

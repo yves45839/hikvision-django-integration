@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Badges</title>
+<link rel="stylesheet" href="_pv.css"/>
+<style>
+  .grid { display: flex; flex-direction: column; gap: 18px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .row__label { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--fg3); width: 120px; flex-shrink: 0; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 22px; padding: 0 10px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 600;
+    line-height: 1;
+    border: 1px solid;
+  }
+  .badge .dot { width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
+  .badge--ok { background: var(--success-50); border-color: #BBF7D0; color: var(--success-700); }
+  .badge--warn { background: var(--warning-50); border-color: #FDE68A; color: var(--warning-700); }
+  .badge--bad { background: var(--danger-50); border-color: #FECACA; color: var(--danger-700); }
+  .badge--info { background: var(--info-50); border-color: #BFDBFE; color: var(--info-700); }
+  .badge--brand { background: var(--brand-soft); border-color: var(--lr-blue-200); color: var(--brand-active); }
+  .badge--neutral { background: var(--bg-subtle); border-color: var(--border-default); color: var(--fg2); }
+  .badge--accent { background: var(--accent-soft); border-color: #FFE6CC; color: #9A3F00; }
+
+  /* live pulse */
+  @keyframes lring {
+    0% { box-shadow: 0 0 0 0 rgba(16,185,129,.55); }
+    70% { box-shadow: 0 0 0 7px rgba(16,185,129,0); }
+    100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+  }
+  .badge--ok .dot { animation: lring 1.6s var(--ease-out) infinite; background: var(--success-500); }
+
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 28px; padding: 0 12px;
+    border-radius: 999px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    font-size: 12.5px; color: var(--fg2); font-weight: 500;
+    cursor: pointer;
+    transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+  }
+  .chip:hover { background: var(--bg-subtle); border-color: var(--border-strong); }
+  .chip.is-active { background: var(--brand-soft); border-color: var(--lr-blue-300); color: var(--brand-active); }
+  .chip svg { width: 12px; height: 12px; }
+
+  .count {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 18px; height: 18px; padding: 0 5px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: white;
+    font-size: 11px; font-weight: 600;
+  }
+</style>
+</head>
+<body>
+<div class="pv-shell">
+  <div class="pv-head">
+    <div>
+      <p class="pv-eyebrow">Components · Badges</p>
+      <h1 class="pv-title">Badges, chips & counts</h1>
+      <p class="pv-sub">All capsules. Status badges always carry a colored dot — the dot pulses when the data is live.</p>
+    </div>
+  </div>
+
+  <div class="pv-card grid">
+    <div class="row">
+      <span class="row__label">Status</span>
+      <span class="badge badge--ok"><span class="dot"></span>Actif · 12 s</span>
+      <span class="badge badge--warn"><span class="dot"></span>Retard · 14 min</span>
+      <span class="badge badge--bad"><span class="dot"></span>Hors ligne</span>
+      <span class="badge badge--info"><span class="dot"></span>Mise à jour</span>
+      <span class="badge badge--brand"><span class="dot"></span>Synchronisation</span>
+    </div>
+
+    <div class="row">
+      <span class="row__label">Tag / role</span>
+      <span class="badge badge--neutral">Production</span>
+      <span class="badge badge--neutral">RH</span>
+      <span class="badge badge--neutral">Sécurité</span>
+      <span class="badge badge--accent">Demo</span>
+      <span class="badge badge--brand">Tenant ACME-CASA</span>
+    </div>
+
+    <div class="row">
+      <span class="row__label">Filter chips</span>
+      <span class="chip is-active">Tous · 163</span>
+      <span class="chip">Présents <span class="count" style="background: var(--success-500)">142</span></span>
+      <span class="chip">Retards <span class="count" style="background: var(--warning-500)">9</span></span>
+      <span class="chip">Absents <span class="count" style="background: var(--danger-500)">12</span></span>
+      <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 5h18l-7 9v6l-4-2v-4z"/></svg>Filtres avancés</span>
+    </div>
+
+    <div class="row">
+      <span class="row__label">Counts</span>
+      <span class="count">3</span>
+      <span class="count" style="background: var(--brand)">12</span>
+      <span class="count" style="background: var(--success-500)">+24</span>
+      <span class="count" style="background: var(--danger-500)">99+</span>
+    </div>
+  </div>
+</div>
+</body></html>

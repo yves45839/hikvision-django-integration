@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>LR Time — Blobby Loaders v1</title>
+<style>
+  :root{
+    --orange:#FF6A1A;
+    --orange-soft:#FFB07A;
+    --blue:#1A4FFF;
+    --blue-soft:#7AA0FF;
+    --bg:#F6F1EA;
+    --ink:#1B1B1F;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font-family:"Inter","Helvetica Neue",system-ui,sans-serif}
+  header{padding:32px 40px 8px}
+  header h1{margin:0;font-size:18px;letter-spacing:.12em;text-transform:uppercase;font-weight:600}
+  header p{margin:4px 0 0;font-size:13px;opacity:.55}
+  .grid{
+    display:flex;flex-wrap:wrap;gap:18px;
+    padding:24px 40px 60px;
+  }
+  .cell{
+    width:200px;height:200px;
+    background:#fff;
+    border-radius:18px;
+    display:flex;align-items:center;justify-content:center;
+    position:relative;overflow:hidden;
+    box-shadow:0 1px 0 rgba(0,0,0,.04), 0 6px 24px -16px rgba(0,0,0,.18);
+  }
+  .cell .label{
+    position:absolute;left:10px;bottom:8px;
+    font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+    opacity:.35;
+  }
+  .lr{
+    font-family:"Inter",system-ui,sans-serif;
+    font-weight:600;letter-spacing:.04em;
+    fill:var(--ink);
+  }
+
+  /* ---------- 1. Morphing single blob ---------- */
+  @keyframes morph1 {
+    0%,100%{ d: path("M100,30 C150,30 170,70 170,100 C170,140 140,170 100,170 C60,170 30,140 30,100 C30,60 60,30 100,30 Z"); }
+    33%   { d: path("M100,25 C160,40 165,75 175,110 C170,150 125,168 95,172 C55,170 32,135 28,98 C30,55 65,28 100,25 Z"); }
+    66%   { d: path("M100,35 C145,28 178,68 168,108 C172,148 130,178 95,168 C55,172 22,140 35,98 C25,60 60,32 100,35 Z"); }
+  }
+  @keyframes spinSlow { to { transform: rotate(360deg);} }
+  .blob1 .shape{ animation: morph1 6s ease-in-out infinite; transform-origin:center;}
+  .blob1 svg{ animation: spinSlow 18s linear infinite; transform-origin:center;}
+
+  /* ---------- 2. Two metaballs merging ---------- */
+  @keyframes meta-a { 0%,100%{transform:translate(0,0)} 50%{transform:translate(38px,-6px)} }
+  @keyframes meta-b { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-38px,6px)} }
+  .blob2 .ma{ animation: meta-a 2.6s ease-in-out infinite; transform-origin:center;}
+  .blob2 .mb{ animation: meta-b 2.6s ease-in-out infinite; transform-origin:center;}
+
+  /* ---------- 3. Orbital droplets ---------- */
+  @keyframes orbitA{ to{ transform:rotate(360deg);} }
+  @keyframes orbitB{ to{ transform:rotate(-360deg);} }
+  .blob3 .ringA{ animation: orbitA 3s linear infinite; transform-origin:100px 100px;}
+  .blob3 .ringB{ animation: orbitB 4.8s linear infinite; transform-origin:100px 100px;}
+  @keyframes pulse3 { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
+  .blob3 .core{ animation: pulse3 2.4s ease-in-out infinite; transform-origin:100px 100px;}
+
+  /* ---------- 4. Wobble + breath ---------- */
+  @keyframes morph4 {
+    0%,100%{ d: path("M100,40 C140,30 165,75 160,105 C160,145 125,165 95,160 C55,165 35,125 40,95 C40,55 70,40 100,40 Z"); }
+    50%   { d: path("M100,35 C145,38 170,75 162,115 C155,150 120,170 90,162 C50,160 32,125 38,90 C45,55 70,30 100,35 Z"); }
+  }
+  .blob4 .shape{ animation: morph4 3.2s ease-in-out infinite;}
+
+  /* ---------- 5. Drop forming and falling ---------- */
+  @keyframes dripPath {
+    0%   { d: path("M100,70 C115,70 115,90 115,98 C115,108 108,112 100,112 C92,112 85,108 85,98 C85,90 85,70 100,70 Z"); }
+    40%  { d: path("M100,55 C118,55 118,90 118,108 C118,122 110,130 100,130 C90,130 82,122 82,108 C82,90 82,55 100,55 Z"); }
+    70%  { d: path("M100,42 C122,42 122,100 118,135 C115,150 108,158 100,158 C92,158 85,150 82,135 C78,100 78,42 100,42 Z"); }
+    100% { d: path("M100,170 C108,170 110,170 110,170 C110,170 108,170 100,170 C92,170 90,170 90,170 C90,170 92,170 100,170 Z"); opacity:0;}
+  }
+  .blob5 .drop{ animation: dripPath 2.4s cubic-bezier(.55,.05,.6,1) infinite;}
+
+  /* ---------- 6. Lava-lamp stack ---------- */
+  @keyframes lavaUp { 0%{transform:translateY(40px) scale(.6); opacity:0} 15%{opacity:1} 80%{opacity:1} 100%{transform:translateY(-160px) scale(1.1); opacity:0} }
+  .blob6 .ball{ animation: lavaUp 3.6s ease-in-out infinite;}
+  .blob6 .b2{ animation-delay:1.2s;}
+  .blob6 .b3{ animation-delay:2.4s;}
+
+  /* ---------- 7. Splash / radial blooms ---------- */
+  @keyframes bloom { 0%{transform:scale(.2);opacity:0} 30%{opacity:1} 100%{transform:scale(1.4);opacity:0}}
+  .blob7 .ring{ transform-origin:100px 100px; animation: bloom 2.4s ease-out infinite;}
+  .blob7 .r2{ animation-delay:.8s;}
+  .blob7 .r3{ animation-delay:1.6s;}
+
+  /* ---------- 8. Yin/yang braid ---------- */
+  @keyframes spinFast { to{transform:rotate(360deg)} }
+  .blob8 .yy{ animation: spinFast 4s linear infinite; transform-origin:100px 100px;}
+  @keyframes wob8 { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05,.95)} }
+  .blob8 .wob{ animation: wob8 2.8s ease-in-out infinite; transform-origin:100px 100px;}
+
+  /* ---------- 9. Liquid pendulum ---------- */
+  @keyframes swing { 0%,100%{transform:rotate(-22deg)} 50%{transform:rotate(22deg)} }
+  .blob9 .arm{ animation: swing 2.2s ease-in-out infinite; transform-origin:100px 30px;}
+  @keyframes morphTip {
+    0%,100%{ d: path("M100,135 C120,135 130,150 130,160 C130,178 115,185 100,185 C85,185 70,178 70,160 C70,150 80,135 100,135 Z");}
+    50%   { d: path("M100,130 C124,130 132,150 132,164 C132,180 115,188 100,188 C85,188 68,180 68,164 C68,150 76,130 100,130 Z");}
+  }
+  .blob9 .tip{ animation: morphTip 2.2s ease-in-out infinite;}
+
+  /* ---------- 10. Concentric breathing rings ---------- */
+  @keyframes breath { 0%,100%{transform:scale(1)} 50%{transform:scale(1.12)} }
+  .blob10 g{ transform-origin:100px 100px; animation: breath 3s ease-in-out infinite;}
+  .blob10 .r2{ animation-delay:.4s;}
+  .blob10 .r3{ animation-delay:.8s;}
+
+  /* ---------- 11. Rolling stone ---------- */
+  @keyframes roll { 0%{transform:translateX(-90px) rotate(0)} 100%{transform:translateX(90px) rotate(360deg)} }
+  .blob11 .rock{ animation: roll 2.6s ease-in-out infinite alternate; transform-origin:center; transform-box:fill-box;}
+  @keyframes rockMorph{
+    0%,100%{ d: path("M100,80 C125,75 130,95 132,110 C130,128 115,128 100,128 C85,128 72,125 70,110 C72,92 80,82 100,80 Z");}
+    50%   { d: path("M100,82 C120,78 132,98 128,115 C127,128 112,130 100,128 C84,130 70,122 72,108 C72,90 82,80 100,82 Z");}
+  }
+  .blob11 .rmorph{ animation: rockMorph 1.6s ease-in-out infinite;}
+
+  /* ---------- 12. Goo ribbon ---------- */
+  @keyframes ribbon {
+    0%   { d: path("M20,100 C50,60 90,140 120,100 C150,60 180,140 200,100");}
+    50%  { d: path("M20,100 C50,140 90,60 120,100 C150,140 180,60 200,100");}
+    100% { d: path("M20,100 C50,60 90,140 120,100 C150,60 180,140 200,100");}
+  }
+  .blob12 .ribb{ animation: ribbon 2.8s ease-in-out infinite;}
+  @keyframes dashShift { to { stroke-dashoffset: -64; } }
+  .blob12 .ribb2{ animation: dashShift 2s linear infinite, ribbon 2.8s ease-in-out infinite;}
+
+</style>
+</head>
+<body>
+
+<header>
+  <h1>LR Time — Loaders, Prototype 1</h1>
+  <p>Indeterminate, organic, 200×200. Orange &amp; blue.</p>
+</header>
+
+<div class="grid">
+
+<!-- 1 -->
+<div class="cell">
+  <svg class="blob1" width="200" height="200" viewBox="0 0 200 200">
+    <defs>
+      <linearGradient id="g1" x1="0" x2="1" y1="0" y2="1">
+        <stop offset="0" stop-color="#FF6A1A"/>
+        <stop offset="1" stop-color="#1A4FFF"/>
+      </linearGradient>
+    </defs>
+    <path class="shape" fill="url(#g1)" d="M100,30 C150,30 170,70 170,100 C170,140 140,170 100,170 C60,170 30,140 30,100 C30,60 60,30 100,30 Z"/>
+    <text class="lr" x="100" y="106" text-anchor="middle" font-size="22" fill="#fff">LR Time</text>
+  </svg>
+  <span class="label">01 · gradient morph</span>
+</div>
+
+<!-- 2 -->
+<div class="cell">
+  <svg class="blob2" width="200" height="200" viewBox="0 0 200 200">
+    <defs>
+      <filter id="goo2">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="b"/>
+        <feColorMatrix in="b" mode="matrix" values="
+          1 0 0 0 0
+          0 1 0 0 0
+          0 0 1 0 0
+          0 0 0 22 -10" result="g"/>
+        <feBlend in="SourceGraphic" in2="g"/>
+      </filter>
+    </defs>
+    <g filter="url(#goo2)">
+      <circle class="ma" cx="80"  cy="100" r="34" fill="#FF6A1A"/>
+      <circle class="mb" cx="120" cy="100" r="34" fill="#1A4FFF"/>
+    </g>
+    <text class="lr" x="100" y="106" text-anchor="middle" font-size="18">LR Time</text>
+  </svg>
+  <span class="label">02 · metaball merge</span>
+</div>
+
+<!-- 3 -->
+<div class="cell">
+  <svg class="blob3" width="200" height="200" viewBox="0 0 200 200">
+    <g class="ringA">
+      <circle cx="100" cy="36" r="10" fill="#FF6A1A"/>
+      <circle cx="100" cy="164" r="10" fill="#FF6A1A"/>
+    </g>
+    <g class="ringB">
+      <circle cx="36" cy="100" r="7" fill="#1A4FFF"/>
+      <circle cx="164" cy="100" r="7" fill="#1A4FFF"/>
+    </g>
+    <circle class="core" cx="100" cy="100" r="26" fill="#1A4FFF"/>
+    <text class="lr" x="100" y="106" text-anchor="middle" font-size="12" fill="#fff">LR Time</text>
+  </svg>
+  <span class="label">03 · orbit droplets</span>
+</div>
+
+<!-- 4 -->
+<div class="cell">
+  <svg class="blob4" width="200" height="200" viewBox="0 0 200 200">
+    <path class="shape" fill="none" stroke="#1A4FFF" stroke-width="6" stroke-linejoin="round"
+      d="M100,40 C140,30 165,75 160,105 C160,145 125,165 95,160 C55,165 35,125 40,95 C40,55 70,40 100,40 Z"/>
+    <path class="shape" fill="#FF6A1A" opacity=".9"
+      d="M100,40 C140,30 165,75 160,105 C160,145 125,165 95,160 C55,165 35,125 40,95 C40,55 70,40 100,40 Z"
+      transform="translate(6 6)"/>
+    <text class="lr" x="100" y="108" text-anchor="middle" font-size="20" fill="#fff">LR Time</text>
+  </svg>
+  <span class="label">04 · double wobble</span>
+</div>
+
+<!-- 5 -->
+<div class="cell">
+  <svg class="blob5" width="200" height="200" viewBox="0 0 200 200">
+    <ellipse cx="100" cy="180" rx="40" ry="6" fill="#1A4FFF" opacity=".15"/>
+    <path class="drop" fill="#FF6A1A"
+      d="M100,70 C115,70 115,90 115,98 C115,108 108,112 100,112 C92,112 85,108 85,98 C85,90 85,70 100,70 Z"/>
+    <text class="lr" x="100" y="40" text-anchor="middle" font-size="14" fill="#1A4FFF">LR Time</text>
+  </svg>
+  <span class="label">05 · forming drop</span>
+</div>
+
+<!-- 6 -->
+<div class="cell">
+  <svg class="blob6" width="200" height="200" viewBox="0 0 200 200">
+    <defs>
+      <filter id="goo6">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="5"/>
+        <feColorMatrix mode="matrix" values="
+          1 0 0 0 0
+          0 1 0 0 0
+          0 0 1 0 0
+          0 0 0 20 -9"/>
+      </filter>
+    </defs>
+    <g filter="url(#goo6)">
+      <circle class="ball b1" cx="100" cy="160" r="18" fill="#FF6A1A"/>
+      <circle class="ball b2" cx="100" cy="160" r="22" fill="#1A4FFF"/>
+      <circle class="ball b3" cx="100" cy="160" r="16" fill="#FF6A1A"/>
+    </g>
+    <text class="lr" x="100" y="106" text-anchor="middle" font-size="14">LR Time</text>
+  </svg>
+  <span class="label">06 · lava lamp</span>
+</div>
+
+<!-- 7 -->
+<div class="cell">
+  <svg class="blob7" width="200" height="200" viewBox="0 0 200 200">
+    <circle class="ring r1" cx="100" cy="100" r="28" fill="none" stroke="#FF6A1A" stroke-width="3"/>
+    <circle class="ring r2" cx="100" cy="100" r="28" fill="none" stroke="#1A4FFF" stroke-width="3"/>
+    <circle class="ring r3" cx="100" cy="100" r="28" fill="none" stroke="#FF6A1A" stroke-width="3"/>
+    <circle cx="100" cy="100" r="22" fill="#1A4FFF"/>
+    <text class="lr" x="100" y="105" text-anchor="middle" font-size="13" fill="#fff">LR Time</text>
+  </svg>
+  <span class="label">07 · bloom</span>
+</div>
+
+<!-- 8 -->
+<div class="cell">
+  <svg class="blob8" width="200" height="200" viewBox="0 0 200 200">
+    <g class="wob">
+      <g class="yy">
+        <path d="M100,40 a60,60 0 0 1 0,120 a30,30 0 0 1 0,-60 a30,30 0 0 0 0,-60 z" fill="#1A4FFF"/>
+        <path d="M100,40 a60,60 0 0 0 0,120 a30,30 0 0 0 0,-60 a30,30 0 0 1 0,-60 z" fill="#FF6A1A"/>
+        <circle cx="100" cy="70" r="8" fill="#FF6A1A"/>
+        <circle cx="100" cy="130" r="8" fill="#1A4FFF"/>
+      </g>
+    </g>
+    <text class="lr" x="100" y="190" text-anchor="middle" font-size="11" opacity=".55">LR Time</text>
+  </svg>
+  <span class="label">08 · braid</span>
+</div>
+
+<!-- 9 -->
+<div class="cell">
+  <svg class="blob9" width="200" height="200" viewBox="0 0 200 200">
+    <g class="arm">
+      <line x1="100" y1="30" x2="100" y2="135" stroke="#1A4FFF" stroke-width="3" stroke-linecap="round"/>
+      <path class="tip" fill="#FF6A1A"
+        d="M100,135 C120,135 130,150 130,160 C130,178 115,185 100,185 C85,185 70,178 70,160 C70,150 80,135 100,135 Z"/>
+    </g>
+    <circle cx="100" cy="30" r="5" fill="#1A4FFF"/>
+    <text class="lr" x="100" y="20" text-anchor="middle" font-size="11" opacity=".5">LR Time</text>
+  </svg>
+  <span class="label">09 · pendulum drop</span>
+</div>
+
+<!-- 10 -->
+<div class="cell">
+  <svg class="blob10" width="200" height="200" viewBox="0 0 200 200">
+    <g class="r1"><path d="M100,55 C140,50 152,90 150,108 C148,138 122,152 100,148 C70,150 50,128 52,100 C52,70 75,55 100,55 Z" fill="none" stroke="#1A4FFF" stroke-width="3"/></g>
+    <g class="r2"><path d="M100,68 C130,65 142,90 138,108 C138,128 120,138 100,135 C78,138 65,120 65,100 C65,78 80,68 100,68 Z" fill="none" stroke="#FF6A1A" stroke-width="3"/></g>
+    <g class="r3"><path d="M100,82 C118,80 124,92 122,102 C122,118 110,124 100,122 C88,124 80,114 80,102 C80,90 90,82 100,82 Z" fill="#FF6A1A"/></g>
+    <text class="lr" x="100" y="106" text-anchor="middle" font-size="11" fill="#fff">LR Time</text>
+  </svg>
+  <span class="label">10 · breathing rings</span>
+</div>
+
+<!-- 11 -->
+<div class="cell">
+  <svg class="blob11" width="200" height="200" viewBox="0 0 200 200">
+    <line x1="0" y1="140" x2="200" y2="140" stroke="#1A4FFF" stroke-width="2" opacity=".25"/>
+    <g class="rock">
+      <path class="rmorph" fill="#FF6A1A"
+        d="M100,80 C125,75 130,95 132,110 C130,128 115,128 100,128 C85,128 72,125 70,110 C72,92 80,82 100,80 Z"/>
+    </g>
+    <text class="lr" x="100" y="50" text-anchor="middle" font-size="14" fill="#1A4FFF">LR Time</text>
+  </svg>
+  <span class="label">11 · rolling stone</span>
+</div>
+
+<!-- 12 -->
+<div class="cell">
+  <svg class="blob12" width="200" height="200" viewBox="0 0 200 200">
+    <path class="ribb" d="M20,100 C50,60 90,140 120,100 C150,60 180,140 200,100"
+      fill="none" stroke="#FF6A1A" stroke-width="10" stroke-linecap="round"/>
+    <path class="ribb2" d="M20,100 C50,60 90,140 120,100 C150,60 180,140 200,100"
+      fill="none" stroke="#1A4FFF" stroke-width="3" stroke-linecap="round"
+      stroke-dasharray="6 10"/>
+    <text class="lr" x="100" y="160" text-anchor="middle" font-size="14">LR Time</text>
+  </svg>
+  <span class="label">12 · goo ribbon</span>
+</div>
+
+</div>
+</body>
+</html>

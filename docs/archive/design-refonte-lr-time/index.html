@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LR Time · Refonte UX/UI 2026</title>
+<link rel="stylesheet" href="tokens.css" />
+<style>
+  body { background: linear-gradient(180deg, #F4F8FF 0%, var(--slate-25) 280px); }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 36px 28px 80px; }
+
+  .topbar-mini {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 0 32px;
+  }
+  .brand-mark { display: flex; align-items: center; gap: 12px; }
+  .brand-mark .logo {
+    width: 38px; height: 38px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--lr-blue-500), var(--lr-blue-700));
+    display: grid; place-items: center; color: #fff;
+    box-shadow: var(--shadow-sm);
+  }
+  .brand-mark .name {
+    font-family: var(--font-display); font-weight: 700; font-size: 17px;
+    color: var(--text-strong);
+  }
+  .brand-mark .name small { display: block; font-size: 11px; color: var(--text-muted); font-weight: 500; letter-spacing: .04em; text-transform: uppercase; }
+
+  .hero {
+    text-align: center;
+    padding: 24px 0 48px;
+  }
+  .hero .eyebrow { margin-bottom: 18px; }
+  .hero h1 {
+    font-size: 56px; line-height: 1.05; letter-spacing: -.025em;
+    max-width: 18ch; margin: 0 auto;
+  }
+  .hero h1 .grad {
+    background: linear-gradient(90deg, var(--lr-blue-500), var(--lr-orange-500));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero p.lead {
+    font-size: 18px; color: var(--text-default); margin: 18px auto 0;
+    max-width: 60ch; line-height: 1.55;
+  }
+  .hero .cta-row {
+    margin-top: 28px;
+    display: flex; gap: 10px; justify-content: center;
+  }
+
+  .stats-row {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
+    margin: 8px 0 36px;
+  }
+  .stat-pill {
+    background: var(--bg-surface); border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl); padding: 18px 20px;
+    text-align: center;
+    box-shadow: var(--shadow-xs);
+  }
+  .stat-pill strong {
+    display: block; font-family: var(--font-display);
+    font-size: 32px; color: var(--text-strong); font-variant-numeric: tabular-nums;
+    letter-spacing: -.015em;
+  }
+  .stat-pill span { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; display: block; }
+
+  .section-title {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 14px; padding-top: 32px;
+  }
+  .section-title h2 { font-size: 22px; }
+  .section-title small { color: var(--text-muted); font-size: 13px; }
+
+  .pages-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;
+  }
+  .page-card {
+    display: grid; grid-template-columns: 100px 1fr;
+    gap: 18px;
+    padding: 20px; align-items: stretch;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+    text-decoration: none;
+    color: inherit;
+  }
+  .page-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); border-color: var(--lr-blue-200); }
+  .page-card .thumb {
+    background: linear-gradient(135deg, var(--brand-soft), #fff);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    display: grid; place-items: center;
+    color: var(--brand);
+  }
+  .page-card .thumb svg { width: 40px; height: 40px; }
+  .page-card .meta { display: flex; flex-direction: column; gap: 6px; }
+  .page-card .num {
+    font-family: var(--font-mono); font-size: 11.5px;
+    color: var(--brand); letter-spacing: .04em; font-weight: 600;
+  }
+  .page-card h3 { font-size: 17px; }
+  .page-card p { font-size: 13.5px; color: var(--text-muted); margin: 0; line-height: 1.5; }
+  .page-card .arrow {
+    margin-top: 8px; display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 600; color: var(--brand);
+  }
+
+  .docs-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px;
+  }
+  .doc-card {
+    background: linear-gradient(135deg, #F4F8FF, #fff 60%);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    padding: 24px;
+    box-shadow: var(--shadow-sm);
+    text-decoration: none; color: inherit;
+    transition: box-shadow var(--dur-fast), border-color var(--dur-fast);
+  }
+  .doc-card:hover { border-color: var(--lr-blue-300); box-shadow: var(--shadow-md); }
+  .doc-card h3 { font-size: 18px; margin-bottom: 6px; }
+  .doc-card p { color: var(--text-muted); font-size: 13.5px; line-height: 1.5; }
+  .doc-card .arrow {
+    margin-top: 14px; display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13.5px; font-weight: 600; color: var(--brand);
+  }
+
+  footer.foot {
+    margin-top: 52px; padding-top: 22px;
+    border-top: 1px solid var(--border-default);
+    text-align: center; color: var(--text-muted); font-size: 12.5px;
+  }
+
+  @media (max-width: 720px) {
+    .hero h1 { font-size: 36px; }
+    .pages-grid, .docs-grid, .stats-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 12 12 4l9 8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 10v10h14V10" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-cpu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 11a3 3 0 1 0 0-6"/><path d="M22 20a5 5 0 0 0-5-5"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v16h16"/><path d="M8 14l3-3 3 3 5-7"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/><path d="M9 13h7M9 17h5"/></symbol>
+  <symbol id="i-palette" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21a9 9 0 1 1 9-9 4 4 0 0 1-4 4h-2a2 2 0 0 0-2 2 4 4 0 0 1-1 3z"/><circle cx="7" cy="11" r="1"/><circle cx="11" cy="6" r="1"/><circle cx="16" cy="9" r="1"/></symbol>
+</svg>
+
+<div class="wrap">
+  <div class="topbar-mini">
+    <div class="brand-mark">
+      <div class="logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M5 4h3v12h8v3H5V4z" fill="currentColor"/></svg></div>
+      <div class="name">LR Time<small>Refonte UX/UI · Mai 2026</small></div>
+    </div>
+    <div class="row gap-2">
+      <a class="btn btn--secondary btn--sm" href="brief.html"><svg width="13" height="13"><use href="#i-doc"/></svg>Brief complet</a>
+      <a class="btn btn--primary btn--sm" href="pages/dashboard.html">Voir le résultat <svg width="13" height="13"><use href="#i-arrow-right"/></svg></a>
+    </div>
+  </div>
+
+  <header class="hero">
+    <span class="eyebrow"><span class="dot" style="width:6px;height:6px;border-radius:50%;background:var(--brand)"></span>Refonte SaaS · light corporate · Stripe / Notion</span>
+    <h1>Une suite RH plus claire,<br/><span class="grad">plus rapide, plus humaine.</span></h1>
+    <p class="lead">
+      Cinq pages refondues, un design system unifié, six sprints de livraison.
+      Cette refonte donne à LR Time une signature visuelle de SaaS premium —
+      sobre, lisible, fiable.
+    </p>
+    <div class="cta-row">
+      <a class="btn btn--primary btn--lg" href="brief.html">Lire le brief complet</a>
+      <a class="btn btn--secondary btn--lg" href="pages/dashboard.html">Démarrer la visite</a>
+    </div>
+  </header>
+
+  <div class="stats-row">
+    <div class="stat-pill"><strong>5</strong><span>Pages refondues</span></div>
+    <div class="stat-pill"><strong>1</strong><span>Design system unifié</span></div>
+    <div class="stat-pill"><strong>6</strong><span>Sprints de 2 semaines</span></div>
+    <div class="stat-pill"><strong>WCAG AA</strong><span>Accessibilité native</span></div>
+  </div>
+
+  <div class="section-title">
+    <h2>Les 5 maquettes navigables</h2>
+    <small>Cliquez pour explorer chaque page en taille réelle</small>
+  </div>
+
+  <div class="pages-grid">
+    <a class="page-card" href="pages/dashboard.html">
+      <div class="thumb"><svg><use href="#i-home"/></svg></div>
+      <div class="meta">
+        <span class="num">PAGE 01 · /</span>
+        <h3>Tableau de bord</h3>
+        <p>Hero présence, KPI, flux d'accès en direct, actions prioritaires, graphique 7 jours, congés à venir.</p>
+        <span class="arrow">Ouvrir <svg width="13" height="13"><use href="#i-arrow-right"/></svg></span>
+      </div>
+    </a>
+
+    <a class="page-card" href="pages/devices.html">
+      <div class="thumb"><svg><use href="#i-cpu"/></svg></div>
+      <div class="meta">
+        <span class="num">PAGE 02 · /devices</span>
+        <h3>Appareils Hikvision</h3>
+        <p>Vue d'ensemble flotte, santé réseau, cartes typées, alertes contextuelles, console externe par appareil.</p>
+        <span class="arrow">Ouvrir <svg width="13" height="13"><use href="#i-arrow-right"/></svg></span>
+      </div>
+    </a>
+
+    <a class="page-card" href="pages/employees.html">
+      <div class="thumb"><svg><use href="#i-users"/></svg></div>
+      <div class="meta">
+        <span class="num">PAGE 03 · /employees</span>
+        <h3>Annuaire des employés</h3>
+        <p>Organigramme drag-drop, table ergonomique, drawer biométrie tri-tuiles, filtres en chips persistants.</p>
+        <span class="arrow">Ouvrir <svg width="13" height="13"><use href="#i-arrow-right"/></svg></span>
+      </div>
+    </a>
+
+    <a class="page-card" href="pages/reports.html">
+      <div class="thumb"><svg><use href="#i-chart"/></svg></div>
+      <div class="meta">
+        <span class="num">PAGE 04 · /reports</span>
+        <h3>Rapports de présence</h3>
+        <p>Synthèse paie, filtres latéraux, table avec timebar prévu vs. réel, statuts colorés explicites, export CSV/PDF.</p>
+        <span class="arrow">Ouvrir <svg width="13" height="13"><use href="#i-arrow-right"/></svg></span>
+      </div>
+    </a>
+
+    <a class="page-card" href="pages/planning.html">
+      <div class="thumb"><svg><use href="#i-calendar"/></svg></div>
+      <div class="meta">
+        <span class="num">PAGE 05 · /planning</span>
+        <h3>Planning d'équipe</h3>
+        <p>Couverture par jour, calendrier employé × semaine, palette draggable, conflits visuels, auto-planification.</p>
+        <span class="arrow">Ouvrir <svg width="13" height="13"><use href="#i-arrow-right"/></svg></span>
+      </div>
+    </a>
+
+    <div class="page-card" style="background: var(--brand-softer); border-color: var(--lr-blue-100); cursor: default">
+      <div class="thumb" style="background: linear-gradient(135deg, #2F6BE6, #112E78); color: #fff"><svg><use href="#i-palette"/></svg></div>
+      <div class="meta">
+        <span class="num">À VENIR · ROADMAP</span>
+        <h3>Modules complémentaires</h3>
+        <p>Mobile manager, application kiosque pour les agents de production, intégration paie native — phases 7 à 9.</p>
+        <span class="arrow" style="opacity: .5">Backlog produit</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">
+    <h2>Documentation de la refonte</h2>
+    <small>Tout le raisonnement design et la roadmap d'exécution</small>
+  </div>
+
+  <div class="docs-grid">
+    <a class="doc-card" href="brief.html">
+      <h3>Brief UX/UI complet</h3>
+      <p>Contexte, personas, identité de marque LR Time, design system, principes UX, audit page par page, roadmap des 6 sprints, critères d'acceptation mesurables.</p>
+      <span class="arrow">Lire le brief <svg width="13" height="13"><use href="#i-arrow-right"/></svg></span>
+    </a>
+    <a class="doc-card" href="brief.html#roadmap">
+      <h3>Roadmap des sprints</h3>
+      <p>Six sprints de deux semaines : fondations design system, shell + dashboard, devices, employees, reports, planning + auto-planification. Squad et dépendances détaillées.</p>
+      <span class="arrow">Voir la roadmap <svg width="13" height="13"><use href="#i-arrow-right"/></svg></span>
+    </a>
+  </div>
+
+  <footer class="foot">
+    LR Time — Workforce Suite · Brief de refonte v1.0 · Préparé pour Yves Roland · Mai 2026
+  </footer>
+</div>
+</body>
+</html>

@@ -9,3 +9,9 @@ class AttendanceEvent(models.Model):
     timestamp = models.DateTimeField()
     event_type = models.CharField(max_length=50)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['tenant', 'created_at']),
+            models.Index(fields=['device', 'timestamp']),
+        ]

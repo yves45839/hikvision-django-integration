@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>LR Time — Metaball merge, variantes de contraste</title>
+<style>
+  :root{
+    --orange:#FF6A1A;
+    --blue:#1A4FFF;
+    --ink:#0E1430;
+    --bg:#F6F1EA;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font-family:"Inter","Helvetica Neue",system-ui,sans-serif}
+  header{padding:28px 40px 4px}
+  header h1{margin:0;font-size:18px;letter-spacing:.12em;text-transform:uppercase;font-weight:600}
+  header p{margin:4px 0 0;font-size:13px;opacity:.55}
+
+  .grid{
+    display:flex;flex-wrap:wrap;gap:18px;
+    padding:24px 40px 60px;
+  }
+  .cell{
+    width:200px;height:200px;
+    background:#fff;
+    border-radius:18px;
+    display:flex;align-items:center;justify-content:center;
+    position:relative;overflow:hidden;
+    box-shadow:0 1px 0 rgba(0,0,0,.04), 0 6px 24px -16px rgba(0,0,0,.18);
+  }
+  .cell .label{
+    position:absolute;left:10px;bottom:8px;
+    font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+    opacity:.45;
+  }
+  .cell .tag{
+    position:absolute;right:10px;top:8px;
+    font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+    opacity:.4;
+  }
+
+  /* shared metaball animation */
+  @keyframes meta-a { 0%,100%{transform:translate(0,0)} 50%{transform:translate(34px,-4px)} }
+  @keyframes meta-b { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-34px,4px)} }
+  .ma{ animation: meta-a 2.6s ease-in-out infinite; transform-origin:center;}
+  .mb{ animation: meta-b 2.6s ease-in-out infinite; transform-origin:center;}
+
+  .lr{
+    font-family:"Inter",system-ui,sans-serif;
+    font-weight:700;letter-spacing:.04em;
+  }
+
+  /* spotlight feature row */
+  .feature{
+    margin:6px 40px 0;
+    background:#fff;
+    border-radius:22px;
+    padding:18px 22px;
+    display:flex;align-items:center;gap:24px;
+    box-shadow:0 1px 0 rgba(0,0,0,.04), 0 6px 24px -16px rgba(0,0,0,.18);
+  }
+  .feature .big{ width:260px;height:200px;display:flex;align-items:center;justify-content:center}
+  .feature .meta{ font-size:13px; line-height:1.55; opacity:.7;}
+  .feature .meta strong{ color:var(--ink); font-weight:600;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>LR Time — Metaball merge · contraste</h1>
+  <p>Le même loader, six réglages typographiques. Cherchez celui qui reste lisible quand les blobs s'écartent.</p>
+</header>
+
+<div class="feature">
+  <div class="big">
+    <!-- recommandé : halo + texte plus large + blobs plus charnus -->
+    <svg width="260" height="200" viewBox="0 0 260 200">
+      <defs>
+        <filter id="gooBig">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="7" result="b"/>
+          <feColorMatrix in="b" mode="matrix" values="
+            1 0 0 0 0
+            0 1 0 0 0
+            0 0 1 0 0
+            0 0 0 24 -11" result="g"/>
+          <feBlend in="SourceGraphic" in2="g"/>
+        </filter>
+      </defs>
+      <g filter="url(#gooBig)">
+        <circle class="ma" cx="100"  cy="100" r="44" fill="#FF6A1A"/>
+        <circle class="mb" cx="160"  cy="100" r="44" fill="#1A4FFF"/>
+      </g>
+      <text class="lr" x="130" y="108" text-anchor="middle" font-size="26"
+            fill="#fff" stroke="#0E1430" stroke-width="3" stroke-opacity=".55"
+            paint-order="stroke fill" stroke-linejoin="round">
+        LR Time
+      </text>
+    </svg>
+  </div>
+  <div class="meta">
+    <strong>Recommandé · A.</strong> Texte blanc 700, halo encre semi-transparent
+    via <code>paint-order: stroke fill</code>. Reste lisible que les blobs
+    soient pleins ou écartés ; le halo donne un “poids” organique sans casser
+    la matière du loader.
+  </div>
+</div>
+
+<div class="grid">
+
+  <!-- A. halo encre (recommandé) -->
+  <div class="cell">
+    <svg width="200" height="200" viewBox="0 0 200 200">
+      <defs>
+        <filter id="gooA">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="6"/>
+          <feColorMatrix mode="matrix" values="
+            1 0 0 0 0
+            0 1 0 0 0
+            0 0 1 0 0
+            0 0 0 22 -10"/>
+        </filter>
+      </defs>
+      <g filter="url(#gooA)">
+        <circle class="ma" cx="80"  cy="100" r="38" fill="#FF6A1A"/>
+        <circle class="mb" cx="120" cy="100" r="38" fill="#1A4FFF"/>
+      </g>
+      <text class="lr" x="100" y="106" text-anchor="middle" font-size="20"
+            fill="#fff" stroke="#0E1430" stroke-width="2.5" stroke-opacity=".6"
+            paint-order="stroke fill" stroke-linejoin="round">LR Time</text>
+    </svg>
+    <span class="tag">A · recommandé</span>
+    <span class="label">halo encre</span>
+  </div>
+
+  <!-- B. blob "ardoise" en troisième metaball -->
+  <div class="cell">
+    <svg width="200" height="200" viewBox="0 0 200 200">
+      <defs>
+        <filter id="gooB">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="6"/>
+          <feColorMatrix mode="matrix" values="
+            1 0 0 0 0
+            0 1 0 0 0
+            0 0 1 0 0
+            0 0 0 22 -10"/>
+        </filter>
+      </defs>
+      <g filter="url(#gooB)">
+        <circle class="ma" cx="80"  cy="100" r="38" fill="#FF6A1A"/>
+        <circle class="mb" cx="120" cy="100" r="38" fill="#1A4FFF"/>
+        <ellipse cx="100" cy="100" rx="44" ry="20" fill="#0E1430"/>
+      </g>
+      <text class="lr" x="100" y="106" text-anchor="middle" font-size="18"
+            fill="#fff">LR Time</text>
+    </svg>
+    <span class="label">scène ardoise</span>
+  </div>
+
+  <!-- C. chip blanc derrière le texte -->
+  <div class="cell">
+    <svg width="200" height="200" viewBox="0 0 200 200">
+      <defs>
+        <filter id="gooC">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="6"/>
+          <feColorMatrix mode="matrix" values="
+            1 0 0 0 0
+            0 1 0 0 0
+            0 0 1 0 0
+            0 0 0 22 -10"/>
+        </filter>
+      </defs>
+      <g filter="url(#gooC)">
+        <circle class="ma" cx="80"  cy="100" r="38" fill="#FF6A1A"/>
+        <circle class="mb" cx="120" cy="100" r="38" fill="#1A4FFF"/>
+      </g>
+      <rect x="62" y="92" width="76" height="22" rx="11" fill="#fff" opacity=".92"/>
+      <text class="lr" x="100" y="108" text-anchor="middle" font-size="14"
+            fill="#0E1430">LR Time</text>
+    </svg>
+    <span class="label">chip blanc</span>
+  </div>
+
+  <!-- D. texte hors zone, au-dessus -->
+  <div class="cell">
+    <svg width="200" height="200" viewBox="0 0 200 200">
+      <defs>
+        <filter id="gooD">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="6"/>
+          <feColorMatrix mode="matrix" values="
+            1 0 0 0 0
+            0 1 0 0 0
+            0 0 1 0 0
+            0 0 0 22 -10"/>
+        </filter>
+      </defs>
+      <text class="lr" x="100" y="46" text-anchor="middle" font-size="18"
+            fill="#0E1430">LR Time</text>
+      <g filter="url(#gooD)" transform="translate(0 18)">
+        <circle class="ma" cx="80"  cy="100" r="34" fill="#FF6A1A"/>
+        <circle class="mb" cx="120" cy="100" r="34" fill="#1A4FFF"/>
+      </g>
+    </svg>
+    <span class="label">texte hors zone</span>
+  </div>
+
+  <!-- E. blanc bold simple, gros -->
+  <div class="cell">
+    <svg width="200" height="200" viewBox="0 0 200 200">
+      <defs>
+        <filter id="gooE">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="6"/>
+          <feColorMatrix mode="matrix" values="
+            1 0 0 0 0
+            0 1 0 0 0
+            0 0 1 0 0
+            0 0 0 22 -10"/>
+        </filter>
+      </defs>
+      <g filter="url(#gooE)">
+        <circle class="ma" cx="80"  cy="100" r="42" fill="#FF6A1A"/>
+        <circle class="mb" cx="120" cy="100" r="42" fill="#1A4FFF"/>
+      </g>
+      <text class="lr" x="100" y="107" text-anchor="middle" font-size="22"
+            fill="#fff" font-weight="800">LR Time</text>
+    </svg>
+    <span class="label">blanc lourd</span>
+  </div>
+
+  <!-- F. découpe (knock-out) -->
+  <div class="cell">
+    <svg width="200" height="200" viewBox="0 0 200 200">
+      <defs>
+        <filter id="gooF">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="6"/>
+          <feColorMatrix mode="matrix" values="
+            1 0 0 0 0
+            0 1 0 0 0
+            0 0 1 0 0
+            0 0 0 22 -10"/>
+        </filter>
+        <mask id="cutF">
+          <rect width="200" height="200" fill="#fff"/>
+          <text x="100" y="107" text-anchor="middle" font-size="22"
+                font-weight="800" fill="#000"
+                font-family="Inter,system-ui,sans-serif" letter-spacing=".04em">
+            LR Time
+          </text>
+        </mask>
+      </defs>
+      <g filter="url(#gooF)" mask="url(#cutF)">
+        <circle class="ma" cx="80"  cy="100" r="42" fill="#FF6A1A"/>
+        <circle class="mb" cx="120" cy="100" r="42" fill="#1A4FFF"/>
+      </g>
+    </svg>
+    <span class="label">découpe</span>
+  </div>
+
+</div>
+
+</body>
+</html>

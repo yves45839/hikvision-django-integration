@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1440" />
+  <title>LR Time — Personnes</title>
+
+  <!-- Lr Time Prototype assets (handoff from claude.ai/design) -->
+  <link rel="stylesheet" href="lr-time-assets/styles.css" />
+  <link rel="stylesheet" href="lr-time-assets/people.css" />
+
+  <style>
+    /* SVG sprite host (icons.svg) — kept off-screen */
+    #icon-host { position: absolute; width: 0; height: 0; overflow: hidden; }
+  </style>
+</head>
+<body>
+  <!-- SVG sprite is fetched at runtime from icons.svg -->
+  <div id="icon-host"></div>
+
+  <!-- React mount point -->
+  <div id="root"></div>
+
+  <!-- React + Babel via CDN (same setup as the prototype) -->
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+
+  <!-- Inject the SVG icon sprite -->
+  <script>
+    fetch('lr-time-assets/icons.svg')
+      .then(r => r.text())
+      .then(svg => { document.getElementById('icon-host').innerHTML = svg; });
+  </script>
+
+  <!-- Prototype source files (data + components) -->
+  <script src="lr-time-src/data.js"></script>
+  <script type="text/babel" src="lr-time-src/icons.jsx"></script>
+  <script type="text/babel" src="lr-time-src/Sidebar.jsx"></script>
+  <script type="text/babel" src="lr-time-src/Topbar.jsx"></script>
+  <script type="text/babel" src="lr-time-src/TreeNode.jsx"></script>
+  <script type="text/babel" src="lr-time-src/PeopleScreen.jsx"></script>
+
+  <!-- App shell -->
+  <script type="text/babel">
+    /* global React, ReactDOM, Sidebar, Topbar, PeopleScreen */
+    const App = () => {
+      const [active, setActive] = React.useState('people');
+      return (
+        <div className="app" data-screen-label="01 Personnes">
+          <Sidebar active={active} onNav={setActive} />
+          <div className="app__main">
+            <Topbar crumbs={['Pilotage', 'Personnes']} />
+            <div className="app__content">
+              <PeopleScreen />
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    /* Wait until every component module has been compiled and registered. */
+    const waitFor = (names) => new Promise(resolve => {
+      const tick = () => names.every(n => window[n]) ? resolve() : setTimeout(tick, 30);
+      tick();
+    });
+    waitFor(['Sidebar', 'Topbar', 'TreeNode', 'PeopleScreen', 'I', 'deptHelpers']).then(() => {
+      ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    });
+  </script>
+</body>
+</html>

@@ -41,6 +41,23 @@ from tenants.serializers import (
     OrganizationUserCreateSerializer,
 )
 from tenants.services import ROLE_RANK, has_organization_role, resolve_tenant
+from tenants.emails import send_password_reset_email
+
+
+def _request_lang(request) -> str:
+    """Pick FR or EN from the request, falling back to the project default."""
+    accept = str(request.META.get("HTTP_ACCEPT_LANGUAGE", "") or "").lower()
+    if accept.startswith("en"):
+        return "en"
+    if accept.startswith("fr"):
+        return "fr"
+    explicit = str(request.data.get("lang") or request.data.get("language") or "").lower()
+    if explicit.startswith("en"):
+        return "en"
+    if explicit.startswith("fr"):
+        return "fr"
+    default = str(getattr(settings, "LANGUAGE_CODE", "fr") or "fr")[:2].lower()
+    return "en" if default == "en" else "fr"
 
 
 User = get_user_model()
@@ -467,16 +484,16 @@ def request_password_reset_api(request):
         otp_code=_generate_otp_code(),
     )
 
-    reset_body = _build_password_reset_body(
-        token=reset_token.token,
-        otp_code=reset_token.otp_code,
-        expires_at=reset_token.expires_at,
-    )
+    reset_link = _frontend_token_link("auth/reset-password", str(reset_token.token))
     try:
-        _send_auth_email(
+        send_password_reset_email(
             to_email=user.email,
-            subject="Reinitialisation du mot de passe Label CI",
-            body=reset_body,
+            otp_code=reset_token.otp_code,
+            reset_link=reset_link,
+            expires_at=reset_token.expires_at,
+            first_name=getattr(user, "first_name", "") or "",
+            user_email=user.email,
+            lang=_request_lang(request),
         )
     except Exception as exc:
         logger.exception("Failed to send password reset email identifier=%s", identifier)

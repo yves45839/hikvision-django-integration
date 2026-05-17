@@ -18,7 +18,8 @@ from tenants.auth_views import (
     resend_email_verification_api,
     verify_email_api,
 )
-
+from tenants.gdpr_views import UserDataExportView, UserDeleteView
+from tenants.dpa_views import DPADownloadView
 
 urlpatterns = [
     path("auth/client-signup/", client_signup_api, name="auth-client-signup"),
@@ -31,6 +32,7 @@ urlpatterns = [
     path("auth/password-reset/request/", request_password_reset_api, name="auth-password-reset-request"),
     path("auth/password-reset/confirm/", confirm_password_reset_api, name="auth-password-reset-confirm"),
     path("auth/payment-callback/", payment_callback_api, name="auth-payment-callback"),
+    path("auth/me/organizations/", my_organizations_api, name="auth-my-organizations"),
     path(
         "auth/organizations/<int:organization_id>/invite/",
         create_organization_invitation_api,
@@ -51,6 +53,9 @@ urlpatterns = [
         assign_custom_role_api,
         name="auth-org-role-assign",
     ),
-    path("auth/invitations/accept/", accept_organization_invitation_api, name="auth-invite-accept"),
-    path("auth/me/organizations/", my_organizations_api, name="auth-me-organizations"),
+    path("auth/invitations/accept/", accept_organization_invitation_api, name="auth-invitations-accept"),
+    # RGPD endpoints
+    path("auth/me/export/", UserDataExportView.as_view(), name="auth-me-export"),
+    path("auth/me/", UserDeleteView.as_view(), name="auth-me-delete"),
+    path("auth/dpa/", DPADownloadView.as_view(), name="auth-dpa"),
 ]

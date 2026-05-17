@@ -49,6 +49,10 @@ class Device(models.Model):
 
 
 class RawEvent(models.Model):
+    """
+    PHASE 11.3 — Déduplication robuste
+    Utilise dedupe_key unique pour éviter les doublons d'événements.
+    """
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="hik_raw_events")
     device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name="raw_events", null=True, blank=True)
     dev_index = models.CharField(max_length=64)
@@ -72,7 +76,11 @@ class RawEvent(models.Model):
         indexes = [
             models.Index(fields=["tenant", "dev_index", "event_datetime"]),
             models.Index(fields=["event_type"]),
+            models.Index(fields=["dedupe_key"]),  # Index pour accès rapide à dedupe_key
         ]
+
+    def __str__(self):
+        return f"{self.event_type}@{self.dev_index}:{self.event_datetime}"
 
 
 class AttendanceLog(models.Model):

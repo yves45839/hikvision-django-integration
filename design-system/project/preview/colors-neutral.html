@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Neutral Colors</title>
+<link rel="stylesheet" href="_pv.css"/>
+<style>
+  .ramp { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .ramp .sw { min-height: 110px; border-radius: 10px; }
+  .ramp .sw__chip { min-height: 70px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
+  .demo {
+    border-radius: 16px;
+    border: 1px solid var(--border-default);
+    overflow: hidden;
+  }
+  .demo__hd {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border-default);
+    background: var(--bg-surface);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .demo__hd h3 { font-family: var(--font-display); font-weight: 600; margin: 0; font-size: 14px; color: var(--fg1); }
+  .demo__hd small { color: var(--fg3); font-size: 11.5px; font-family: var(--font-mono); }
+  .demo__bd { padding: 22px; }
+  .stack { display: flex; flex-direction: column; gap: 4px; }
+  .stack .a { color: var(--fg1); font-weight: 600; font-size: 14.5px; }
+  .stack .b { color: var(--fg2); font-size: 13.5px; }
+  .stack .c { color: var(--fg3); font-size: 12.5px; }
+  .stack .d { color: var(--fg4); font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="pv-shell">
+  <div class="pv-head">
+    <div>
+      <p class="pv-eyebrow">Colors · Neutral</p>
+      <h1 class="pv-title">Slate spine — surfaces & text</h1>
+      <p class="pv-sub">Slate, slightly cool, with a faint warm bias on slate-25 to keep large surfaces from feeling sterile.</p>
+    </div>
+  </div>
+
+  <p class="pv-eyebrow" style="margin-bottom: 8px">Slate scale</p>
+  <div class="ramp">
+    <div class="sw"><div class="sw__chip" style="background:#FFFFFF;border-bottom:1px solid var(--border-subtle)"></div><div class="sw__meta"><span class="sw__name">Slate 0</span><span class="sw__hex">#FFFFFF</span></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#FBFCFD"></div><div class="sw__meta"><span class="sw__name">25 / canvas</span><span class="sw__hex">#FBFCFD</span></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#F7F9FC"></div><div class="sw__meta"><span class="sw__name">50 / app</span><span class="sw__hex">#F7F9FC</span></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#EFF2F7"></div><div class="sw__meta"><span class="sw__name">100</span><span class="sw__hex">#EFF2F7</span></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#E4E9F1"></div><div class="sw__meta"><span class="sw__name">150 / border</span><span class="sw__hex">#E4E9F1</span></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#D6DEE9"></div><div class="sw__meta"><span class="sw__name">200</span><span class="sw__hex">#D6DEE9</span></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#B8C3D2"></div><div class="sw__meta"><span class="sw__name">300</span><span class="sw__hex">#B8C3D2</span></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#94A3B8"></div><div class="sw__meta"><span class="sw__name">400 / fg4</span><span class="sw__hex">#94A3B8</span></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#64748B"></div><div class="sw__meta"><span class="sw__name">500 / fg3</span><span class="sw__hex">#64748B</span></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#475569"></div><div class="sw__meta"><span class="sw__name">600</span><span class="sw__hex">#475569</span></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#334155"></div><div class="sw__meta"><span class="sw__name">700</span><span class="sw__hex">#334155</span></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#1E293B"></div><div class="sw__meta"><span class="sw__name">800 / fg2</span><span class="sw__hex">#1E293B</span></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#0F172A"></div><div class="sw__meta"><span class="sw__name">900 / fg1</span><span class="sw__hex">#0F172A</span></div></div>
+    <div class="sw"><div class="sw__chip" style="background:linear-gradient(135deg,#FBFCFD,#EFF2F7)"></div><div class="sw__meta"><span class="sw__name">app gradient</span><span class="sw__hex">25 → 100</span></div></div>
+  </div>
+
+  <div class="row">
+    <div class="demo" style="background: var(--bg-app)">
+      <div class="demo__hd"><h3>App background — slate-50</h3><small>--bg-app</small></div>
+      <div class="demo__bd">
+        <div class="stack">
+          <span class="a">fg1 · #0F172A — primary heading</span>
+          <span class="b">fg2 · #1E293B — body copy default</span>
+          <span class="c">fg3 · #64748B — muted helper / sub-labels</span>
+          <span class="d">fg4 · #94A3B8 — placeholders, hints</span>
+        </div>
+      </div>
+    </div>
+    <div class="demo" style="background: var(--bg-surface)">
+      <div class="demo__hd"><h3>Surface — slate-0</h3><small>--bg-surface</small></div>
+      <div class="demo__bd">
+        <div class="stack">
+          <span class="a">fg1 · #0F172A — card title</span>
+          <span class="b">fg2 · #1E293B — body</span>
+          <span class="c">fg3 · #64748B — muted</span>
+          <span class="d">fg4 · #94A3B8 — subtle</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>

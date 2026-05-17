@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LR Time · Brief de refonte UX/UI</title>
+<link rel="stylesheet" href="tokens.css" />
+<style>
+  body { background: var(--slate-25); }
+  .brief-shell {
+    max-width: 1080px; margin: 0 auto;
+    padding: 0 var(--space-7);
+  }
+  .brief-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 0; margin-bottom: 8px;
+    border-bottom: 1px solid var(--border-default);
+  }
+  .brief-topbar .brand {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--font-display); font-weight: 700;
+  }
+  .brief-topbar .brand .logo {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--lr-blue-500), var(--lr-blue-700));
+    display: grid; place-items: center; color: #fff;
+  }
+  .brief-topbar nav { display: flex; gap: 18px; font-size: 13px; }
+  .brief-topbar nav a { color: var(--text-muted); font-weight: 500; }
+  .brief-topbar nav a:hover { color: var(--text-strong); }
+
+  .hero-brief {
+    padding: 48px 0 24px;
+    border-bottom: 1px solid var(--border-default);
+    margin-bottom: 32px;
+  }
+  .hero-brief .eyebrow { margin-bottom: 14px; }
+  .hero-brief h1 {
+    font-size: 44px; line-height: 1.1; letter-spacing: -.025em;
+    max-width: 22ch;
+  }
+  .hero-brief p.lead {
+    font-size: 18px; line-height: 1.55; color: var(--text-default);
+    margin-top: 14px; max-width: 65ch;
+  }
+  .hero-meta { display: flex; flex-wrap: wrap; gap: 32px; margin-top: 28px; }
+  .hero-meta div strong { display: block; font-family: var(--font-display); font-size: 22px; color: var(--text-strong); }
+  .hero-meta div span { color: var(--text-muted); font-size: 12.5px; }
+
+  section { padding: 24px 0; }
+  section h2 {
+    font-size: 26px; letter-spacing: -.015em;
+    margin-bottom: 8px;
+  }
+  section .lead {
+    color: var(--text-muted); font-size: 15px; max-width: 60ch;
+  }
+  section h3 {
+    font-size: 18px; margin: 24px 0 8px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  section h3 .num {
+    font-family: var(--font-mono); font-size: 12px;
+    background: var(--brand-soft); color: var(--brand-active);
+    padding: 2px 8px; border-radius: 6px; font-weight: 600;
+  }
+  section p { margin-top: 8px; line-height: 1.65; }
+
+  .principles-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px;
+    margin-top: 18px;
+  }
+  .principle {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    padding: 18px 20px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .principle .glyph {
+    width: 36px; height: 36px; border-radius: var(--radius-md);
+    background: var(--brand-soft); color: var(--brand);
+    display: grid; place-items: center;
+  }
+  .principle h4 { font-size: 15px; }
+  .principle p { color: var(--text-muted); font-size: 13.5px; margin: 0; }
+
+  .audit-grid {
+    display: grid; grid-template-columns: 1fr;
+    gap: 14px; margin-top: 18px;
+  }
+  .audit-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+  }
+  .audit-card header {
+    display: grid; grid-template-columns: auto 1fr auto; gap: 14px;
+    align-items: center;
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--border-subtle);
+    background: linear-gradient(135deg, #F4F8FF, #fff 60%);
+  }
+  .audit-card header .num {
+    font-family: var(--font-display); font-size: 22px;
+    color: var(--brand); width: 40px; height: 40px;
+    border-radius: 10px; background: #fff; border: 1px solid var(--lr-blue-100);
+    display: grid; place-items: center; font-weight: 700;
+  }
+  .audit-card header h4 { font-size: 17px; }
+  .audit-card header span { font-size: 12.5px; color: var(--text-muted); }
+  .audit-card .body { padding: 18px 22px; }
+  .audit-row {
+    display: grid; grid-template-columns: 130px 1fr; gap: 16px;
+    padding: 8px 0;
+  }
+  .audit-row + .audit-row { border-top: 1px dashed var(--border-subtle); }
+  .audit-row strong {
+    font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--text-muted); font-weight: 600; padding-top: 4px;
+  }
+  .audit-row p, .audit-row ul { font-size: 13.5px; line-height: 1.55; color: var(--text-default); margin: 0; }
+  .audit-row ul { padding-left: 18px; }
+  .audit-row ul li { margin-bottom: 2px; }
+
+  /* Color swatches */
+  .swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin: 14px 0 8px; }
+  .swatch {
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+  }
+  .swatch .chip-color { height: 56px; border-radius: 6px; margin-bottom: 8px; box-shadow: var(--shadow-xs); }
+  .swatch strong { display: block; font-size: 12.5px; }
+  .swatch code { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-muted); }
+
+  .typography {
+    background: var(--bg-surface); border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl); padding: 24px;
+    margin-top: 14px;
+  }
+  .typography .stack { display: grid; gap: 12px; }
+  .typography .row-type {
+    display: grid; grid-template-columns: 80px 1fr auto; align-items: baseline;
+    gap: 16px; padding: 10px 0;
+    border-bottom: 1px dashed var(--border-subtle);
+  }
+  .typography .row-type:last-child { border-bottom: 0; }
+  .typography .row-type code { color: var(--text-muted); font-size: 12px; }
+
+  /* Sprint cards */
+  .roadmap { display: grid; grid-template-columns: 1fr; gap: 14px; margin-top: 14px; }
+  .sprint {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    transition: box-shadow var(--dur-fast), transform var(--dur-fast);
+  }
+  .sprint:hover { box-shadow: var(--shadow-md); }
+  .sprint-head {
+    display: grid; grid-template-columns: auto 1fr auto; gap: 16px;
+    align-items: center;
+    padding: 18px 22px;
+    background: var(--slate-25);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .sprint-head .num {
+    width: 44px; height: 44px; border-radius: 10px;
+    display: grid; place-items: center;
+    background: var(--brand);
+    color: #fff;
+    font-family: var(--font-display); font-weight: 700; font-size: 15px;
+  }
+  .sprint-head h4 { font-size: 17px; }
+  .sprint-head .meta { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; }
+  .sprint-body { padding: 16px 22px; }
+  .sprint-body h5 {
+    font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--text-muted); font-weight: 600; margin: 12px 0 6px;
+  }
+  .sprint-body ul { padding-left: 18px; margin: 0; }
+  .sprint-body ul li { font-size: 13.5px; margin-bottom: 4px; line-height: 1.5; color: var(--text-default); }
+
+  /* CTA bottom */
+  .cta-card {
+    background: linear-gradient(135deg, #2F6BE6 0%, #1F52C7 60%, #112E78 100%);
+    color: #fff;
+    border-radius: var(--radius-2xl);
+    padding: 40px;
+    margin: 32px 0 64px;
+    display: grid; grid-template-columns: 1fr auto;
+    align-items: center; gap: 24px;
+    position: relative; overflow: hidden;
+  }
+  .cta-card::after {
+    content: ""; position: absolute; right: -100px; top: -100px;
+    width: 320px; height: 320px; border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(255,255,255,.15), transparent 70%);
+  }
+  .cta-card h3 { color: #fff; font-size: 24px; }
+  .cta-card p { color: rgba(255,255,255,.85); margin-top: 6px; font-size: 14.5px; max-width: 50ch; }
+  .cta-card .actions { display: flex; gap: 8px; }
+  .cta-card .btn--primary { background: #fff; color: var(--brand-active); }
+  .cta-card .btn--ghost { color: #fff; border: 1px solid rgba(255,255,255,.3); }
+  .cta-card .btn--ghost:hover { background: rgba(255,255,255,.1); }
+
+  .toc {
+    position: sticky; top: 0; background: rgba(255,255,255,.92);
+    backdrop-filter: blur(6px); z-index: 5;
+    padding: 10px 0; border-bottom: 1px solid var(--border-default);
+    margin-bottom: 16px;
+  }
+  .toc-inner { display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; max-width: 1080px; margin: 0 auto; padding: 0 var(--space-7); }
+  .toc-inner a { color: var(--text-muted); font-weight: 500; }
+  .toc-inner a:hover { color: var(--brand); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6l8-3z"/></symbol>
+  <symbol id="i-rule" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v6H3z"/><path d="M3 15h12v6H3z"/></symbol>
+  <symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></symbol>
+</svg>
+
+<nav class="toc">
+  <div class="toc-inner">
+    <a href="#contexte">01 Contexte</a>
+    <a href="#identite">02 Identité</a>
+    <a href="#principes">03 Principes</a>
+    <a href="#system">04 Design System</a>
+    <a href="#audit">05 Audit des 5 pages</a>
+    <a href="#maquettes">06 Maquettes</a>
+    <a href="#roadmap">07 Roadmap sprints</a>
+    <a href="#kpi">08 Critères d'acceptation</a>
+  </div>
+</nav>
+
+<div class="brief-shell">
+
+  <!-- ============== HERO ============== -->
+  <section class="hero-brief">
+    <span class="eyebrow"><span class="dot" style="width:6px;height:6px;border-radius:50%;background:var(--brand)"></span>Brief de refonte UX/UI · v1.0 · Mai 2026</span>
+    <h1>Une nouvelle expérience SaaS pour LR Time.</h1>
+    <p class="lead">
+      Repenser la suite de pilotage RH et contrôle d'accès LR Time autour de cinq pages clés.
+      Direction visuelle <strong>« light corporate »</strong>, inspirée des standards Stripe et Notion.
+      Objectif : moins de bruit, plus de décision, une marque qui inspire la confiance.
+    </p>
+    <div class="hero-meta">
+      <div><strong>5</strong><span>pages refondues</span></div>
+      <div><strong>1</strong><span>design system unifié</span></div>
+      <div><strong>6</strong><span>sprints de 2 semaines</span></div>
+      <div><strong>WCAG AA</strong><span>contraste & accessibilité</span></div>
+    </div>
+  </section>
+
+  <!-- ============== 01 CONTEXTE ============== -->
+  <section id="contexte">
+    <h2>01 · Contexte & enjeux</h2>
+    <p class="lead">
+      LR Time est une suite SaaS de supervision de la présence et du contrôle d'accès, branchée sur l'écosystème Hikvision (lecteurs biométriques, tourniquets, caméras IA). Les utilisateurs cibles — directeurs RH, superviseurs sécurité, responsables de site — viennent y chercher un diagnostic rapide, des décisions claires et des exports irréprochables vers la paie.
+    </p>
+
+    <h3><span class="num">DOULEUR</span> Pourquoi refondre maintenant ?</h3>
+    <p>L'audit du code Next.js révèle six points de friction critiques :</p>
+    <ol>
+      <li><strong>Densité excessive</strong> — six sections empilées par page, hiérarchie urgent / important confuse, impression d'écran « tableau de bord d'avion ».</li>
+      <li><strong>Dualité du fond sombre</strong> — le mode actuel mélange dark agressif et accents néon, peu rassurant pour des décideurs RH.</li>
+      <li><strong>Modales imbriquées</strong> — l'enrôlement biométrique enchaîne 3 dialogs (visage / empreinte / carte) sans guidage.</li>
+      <li><strong>Tables larges et illisibles</strong> — 12 + colonnes sur Employés et Rapports, scroll horizontal forcé.</li>
+      <li><strong>États vides et de chargement absents</strong> — l'utilisateur ne sait pas si les données sont fraîches, en démo, ou en cours de calcul.</li>
+      <li><strong>Inconsistance UI</strong> — deux patterns de création de département, deux styles de boutons, des espacements aléatoires.</li>
+    </ol>
+
+    <h3><span class="num">CIBLE</span> Personas servis par la refonte</h3>
+    <div class="principles-grid">
+      <div class="principle">
+        <div class="glyph"><svg width="18" height="18"><use href="#i-target"/></svg></div>
+        <h4>Yves · Directeur RH</h4>
+        <p>Veut un diagnostic en 5 secondes le matin. Valide, exporte, signe.</p>
+      </div>
+      <div class="principle">
+        <div class="glyph"><svg width="18" height="18"><use href="#i-shield"/></svg></div>
+        <h4>Karim · Superviseur sécurité</h4>
+        <p>Surveille la flotte d'appareils, intervient sur les anomalies, garde un œil sur le flux d'accès en direct.</p>
+      </div>
+      <div class="principle">
+        <div class="glyph"><svg width="18" height="18"><use href="#i-eye"/></svg></div>
+        <h4>Imane · Gestionnaire de planning</h4>
+        <p>Compose les semaines, équilibre les quarts, gère les conflits et les heures supplémentaires.</p>
+      </div>
+      <div class="principle">
+        <div class="glyph"><svg width="18" height="18"><use href="#i-zap"/></svg></div>
+        <h4>Ahmed · Manager de proximité</h4>
+        <p>Valide les pointages anomaliques de son équipe, arbitre les demandes de congés en mobilité.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============== 02 IDENTITÉ ============== -->
+  <section id="identite">
+    <h2>02 · Identité de marque LR Time</h2>
+    <p class="lead">Une marque B2B de confiance : bleu profond institutionnel, accent orange chaleureux, neutres slate. La typographie Inter Tight donne un caractère « display » subtil sans casser la lisibilité d'Inter sur le contenu opérationnel.</p>
+
+    <h3><span class="num">COULEUR</span> Palette principale</h3>
+    <div class="swatches">
+      <div class="swatch"><div class="chip-color" style="background: #2F6BE6"></div><strong>Brand 500</strong><code>#2F6BE6</code></div>
+      <div class="swatch"><div class="chip-color" style="background: #1F52C7"></div><strong>Brand 600</strong><code>#1F52C7</code></div>
+      <div class="swatch"><div class="chip-color" style="background: #173FA1"></div><strong>Brand 700</strong><code>#173FA1</code></div>
+      <div class="swatch"><div class="chip-color" style="background: #DCE7FF"></div><strong>Brand 100</strong><code>#DCE7FF</code></div>
+      <div class="swatch"><div class="chip-color" style="background: #F97316"></div><strong>Accent 500</strong><code>#F97316</code></div>
+      <div class="swatch"><div class="chip-color" style="background: #FFF6EC"></div><strong>Accent 50</strong><code>#FFF6EC</code></div>
+    </div>
+
+    <h3><span class="num">COULEUR</span> Statuts & neutres</h3>
+    <div class="swatches">
+      <div class="swatch"><div class="chip-color" style="background: #10B981"></div><strong>Success</strong><code>#10B981</code></div>
+      <div class="swatch"><div class="chip-color" style="background: #F59E0B"></div><strong>Warning</strong><code>#F59E0B</code></div>
+      <div class="swatch"><div class="chip-color" style="background: #EF4444"></div><strong>Danger</strong><code>#EF4444</code></div>
+      <div class="swatch"><div class="chip-color" style="background: #0F172A"></div><strong>Slate 900</strong><code>#0F172A</code></div>
+      <div class="swatch"><div class="chip-color" style="background: #64748B"></div><strong>Slate 500</strong><code>#64748B</code></div>
+      <div class="swatch"><div class="chip-color" style="background: #F7F9FC; border:1px solid #E4E9F1"></div><strong>App BG</strong><code>#F7F9FC</code></div>
+    </div>
+
+    <h3><span class="num">TYPO</span> Hiérarchie typographique</h3>
+    <div class="typography">
+      <div class="stack">
+        <div class="row-type">
+          <code>Display</code>
+          <h1 style="font-size: 36px; margin: 0">Une nouvelle vision RH.</h1>
+          <code>Inter Tight 600 · 36 / 1.1</code>
+        </div>
+        <div class="row-type">
+          <code>H1</code>
+          <h1 style="margin: 0">Tableau de bord</h1>
+          <code>Inter Tight 600 · 28 / 1.2</code>
+        </div>
+        <div class="row-type">
+          <code>H2</code>
+          <h2 style="margin: 0">Couverture du jour 87%</h2>
+          <code>Inter Tight 600 · 22 / 1.35</code>
+        </div>
+        <div class="row-type">
+          <code>Body</code>
+          <p style="margin: 0">142 employés présents sur 163 attendus — objectif hebdo 90%.</p>
+          <code>Inter 400 · 14 / 1.5</code>
+        </div>
+        <div class="row-type">
+          <code>Mono</code>
+          <span class="mono">192.168.1.42 · v3.4.1 · 09:42:11</span>
+          <code>JetBrains Mono 500 · 12 / 1.4</code>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============== 03 PRINCIPES ============== -->
+  <section id="principes">
+    <h2>03 · Sept principes UX directeurs</h2>
+    <p class="lead">Chaque arbitrage de design doit pouvoir être justifié par l'un de ces principes. Ils guident à la fois la hiérarchie visuelle et les micro-interactions.</p>
+
+    <div class="principles-grid">
+      <div class="principle">
+        <div class="glyph"><svg width="18" height="18"><use href="#i-target"/></svg></div>
+        <h4>1 · Décision en 5 secondes</h4>
+        <p>Chaque page répond à <em>une</em> question dominante. Les KPI les plus actionnables sont en haut à gauche, dans le champ de balayage F.</p>
+      </div>
+      <div class="principle">
+        <div class="glyph"><svg width="18" height="18"><use href="#i-eye"/></svg></div>
+        <h4>2 · Hiérarchie par contraste, pas par densité</h4>
+        <p>Trois niveaux de profondeur visuelle (background, surface, élevée). Le poids vient du texte et de l'accent couleur, pas de la sur-bordure.</p>
+      </div>
+      <div class="principle">
+        <div class="glyph"><svg width="18" height="18"><use href="#i-shield"/></svg></div>
+        <h4>3 · Confiance par défaut</h4>
+        <p>Indication systématique de la fraîcheur des données, du mode démo, et de l'état de connexion HikCentral. Aucune métrique sans son contexte.</p>
+      </div>
+      <div class="principle">
+        <div class="glyph"><svg width="18" height="18"><use href="#i-zap"/></svg></div>
+        <h4>4 · Optimisme des interactions</h4>
+        <p>Mise à jour optimiste sur drag-drop et corrections. Sonner toast en cas d'erreur. Jamais de spinner bloquant pour un changement local.</p>
+      </div>
+      <div class="principle">
+        <div class="glyph"><svg width="18" height="18"><use href="#i-rule"/></svg></div>
+        <h4>5 · Tables qui respirent</h4>
+        <p>Maximum 7 colonnes visibles par défaut. Le reste est accessible via le drawer de détail. Ligne sélectionnée = 3 px d'accent à gauche.</p>
+      </div>
+      <div class="principle">
+        <div class="glyph"><svg width="18" height="18"><use href="#i-target"/></svg></div>
+        <h4>6 · Empty states didactiques</h4>
+        <p>Chaque liste vide enseigne la prochaine action. Connecter HikCentral, importer un CSV, créer un quart — un seul CTA primaire.</p>
+      </div>
+      <div class="principle" style="grid-column: span 2">
+        <div class="glyph"><svg width="18" height="18"><use href="#i-eye"/></svg></div>
+        <h4>7 · Accessibilité native (WCAG AA)</h4>
+        <p>Contraste 4.5:1 minimum sur le texte courant, 3:1 sur les composants UI. Tous les états interactifs ont un anneau de focus visible (3 px brand soft). Tabulation au clavier complète, raccourcis ⌘K / N / R documentés.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============== 04 DESIGN SYSTEM ============== -->
+  <section id="system">
+    <h2>04 · Design system — fondamentaux</h2>
+    <p class="lead">Tokens centralisés dans <code>tokens.css</code>. Tous les composants des cinq maquettes consomment ces variables — un seul point de vérité pour la marque.</p>
+
+    <h3><span class="num">SPACE</span> Grille 4-pt</h3>
+    <p>Espacement géré par échelle 4 / 8 / 12 / 16 / 20 / 24 / 32 / 40 / 48 / 64. Aucune valeur arbitraire en CSS in-line. Gouttière de page : 28 px desktop, 16 px tablette, 12 px mobile.</p>
+
+    <h3><span class="num">RADIUS</span> Géométrie</h3>
+    <p>4 / 6 / 8 / 12 / 16 / 20 / 28 px. Boutons 8 px, cartes 16 px, hero 28 px. Toujours plus rond à l'extérieur qu'à l'intérieur (rule of nesting).</p>
+
+    <h3><span class="num">SHADOW</span> Élévations</h3>
+    <p>Cinq paliers d'ombre, toujours en deux couches (large blur + petite définition). Le focus se signale par un anneau bleu translucide (3 px, 18% opacité), jamais par changement de bordure.</p>
+
+    <h3><span class="num">MOTION</span> Mouvement</h3>
+    <p>Trois durées (120 / 200 / 320 ms) et deux courbes (ease-out par défaut, ease-in-out pour les transitions de page). Pas d'animation au-delà de 320 ms — rien ne doit ralentir l'utilisateur.</p>
+  </section>
+
+  <!-- ============== 05 AUDIT DES PAGES ============== -->
+  <section id="audit">
+    <h2>05 · But précis de chacune des 5 pages</h2>
+    <p class="lead">Issu de l'audit du code Next.js. Pour chaque page : la question dominante, les sections retenues, les irritants supprimés, les irritants traités.</p>
+
+    <div class="audit-grid">
+
+      <!-- 1 Dashboard -->
+      <article class="audit-card">
+        <header>
+          <div class="num">1</div>
+          <div>
+            <h4>Tableau de bord — l'écran du matin</h4>
+            <span>Route : <code>/</code> · 1<sup>re</sup> impression de la marque</span>
+          </div>
+          <a class="btn btn--secondary btn--sm" href="pages/dashboard.html">Voir la maquette <svg width="12" height="12"><use href="#i-arrow-right"/></svg></a>
+        </header>
+        <div class="body">
+          <div class="audit-row">
+            <strong>Question dominante</strong>
+            <p>« Que dois-je faire en priorité avant 11h pour que l'équipe tourne ? »</p>
+          </div>
+          <div class="audit-row">
+            <strong>Sections clés</strong>
+            <ul>
+              <li>Hero de présence du jour avec couverture % et 5 sous-stats actionnables.</li>
+              <li>4 KPI : taux de présence, anomalies, heures supp., appareils en ligne — chacun avec delta jour-à-jour et lien vers le détail.</li>
+              <li>Flux d'accès en direct (badge / empreinte / face) avec horodatage à la seconde.</li>
+              <li>Pile d'actions prioritaires triée par urgence (rouge → bleu).</li>
+              <li>Graphique de présence 7 jours (ligne + objectif + heures supp. en bars).</li>
+              <li>Santé des appareils + congés à venir en colonne droite.</li>
+            </ul>
+          </div>
+          <div class="audit-row">
+            <strong>Supprimé</strong>
+            <p>Le « ManagerHero » verbeux remplacé par un en-tête plus court et une note de couverture concrète. Les 4 KPI ronds replacés en cartes carrées avec barre de progression linéaire — plus lisibles d'un balayage.</p>
+          </div>
+          <div class="audit-row">
+            <strong>Ajouté</strong>
+            <p>Indicateur permanent <em>HikCentral connecté</em> en topbar, animation de pulsation discrète, tooltip sur le graphique au point Mardi (jour courant), call-to-action « Valider présence » dans le hero.</p>
+          </div>
+        </div>
+      </article>
+
+      <!-- 2 Devices -->
+      <article class="audit-card">
+        <header>
+          <div class="num">2</div>
+          <div>
+            <h4>Appareils — la salle de contrôle</h4>
+            <span>Route : <code>/devices</code> · supervision de la flotte Hikvision</span>
+          </div>
+          <a class="btn btn--secondary btn--sm" href="pages/devices.html">Voir la maquette <svg width="12" height="12"><use href="#i-arrow-right"/></svg></a>
+        </header>
+        <div class="body">
+          <div class="audit-row">
+            <strong>Question dominante</strong>
+            <p>« Quels appareils risquent de bloquer l'accès maintenant et lesquels demandent une intervention ? »</p>
+          </div>
+          <div class="audit-row">
+            <strong>Sections clés</strong>
+            <ul>
+              <li>Vue d'ensemble du parc avec compteurs en ligne / dégradés / hors ligne et lectures par heure.</li>
+              <li>Bandeau santé réseau (latence, pertes paquets, firmware à jour).</li>
+              <li>Tabs filtrés par statut + recherche + filtres Type & Site.</li>
+              <li>Cartes appareils avec icône typée (empreinte / tourniquet / caméra / badge), spécifications, état de connectivité animé, accès console externe.</li>
+              <li>Bandeaux d'alerte contextuelle pour les états dégradés ou hors ligne (cause probable + actions).</li>
+            </ul>
+          </div>
+          <div class="audit-row">
+            <strong>Supprimé</strong>
+            <p>Le typage par <code>model.toLowerCase().includes('finger')</code> remplacé par un attribut explicite. Le « Refresh » global remplacé par une action contextuelle par carte.</p>
+          </div>
+          <div class="audit-row">
+            <strong>Ajouté</strong>
+            <p>Indicateur de pulsation par appareil (« Actif il y a 12 s ») et carte dédiée à la santé réseau global. Boutons Reconnecter / Notifier IT exposés directement sur la carte hors ligne.</p>
+          </div>
+        </div>
+      </article>
+
+      <!-- 3 Employees -->
+      <article class="audit-card">
+        <header>
+          <div class="num">3</div>
+          <div>
+            <h4>Employés — l'annuaire vivant</h4>
+            <span>Route : <code>/employees</code> · CRUD, biométrie, accès</span>
+          </div>
+          <a class="btn btn--secondary btn--sm" href="pages/employees.html">Voir la maquette <svg width="12" height="12"><use href="#i-arrow-right"/></svg></a>
+        </header>
+        <div class="body">
+          <div class="audit-row">
+            <strong>Question dominante</strong>
+            <p>« Qui peut accéder à quoi, et qui n'est pas encore prêt à pointer demain ? »</p>
+          </div>
+          <div class="audit-row">
+            <strong>Sections clés</strong>
+            <ul>
+              <li>Layout 3 colonnes : organigramme à gauche (drag-drop pour réaffecter), table centrale, drawer de détail à droite (sticky).</li>
+              <li>Bandeau de stats (effectif, départements, groupes d'accès, biométrie incomplète).</li>
+              <li>Table 7 colonnes max : photo + nom, département coloré, quart, groupe d'accès, biométrie tri-icônes (V/E/C), statut, menu.</li>
+              <li>Drawer dédié à la fiche employé : avatar agrandi, biométrie 3 tuiles, activité d'accès récente, raccourci « Réenrôler ».</li>
+              <li>Filtres en chips persistants (Actifs, Production…) avec compteur sur le bouton Filtres.</li>
+            </ul>
+          </div>
+          <div class="audit-row">
+            <strong>Supprimé</strong>
+            <p>Les 12+ colonnes initiales. Les 3 modales empilées de biométrie remplacées par un assistant unique « Réenrôler la biométrie » avec étapes guidées (à concevoir au sprint 4).</p>
+          </div>
+          <div class="audit-row">
+            <strong>Ajouté</strong>
+            <p>Stat strip de qualité (« 5 biométries incomplètes » est une action déguisée). Drag-drop visuel : surbrillance du département cible, micro-toast « Nadia déplacée vers RH ».</p>
+          </div>
+        </div>
+      </article>
+
+      <!-- 4 Reports -->
+      <article class="audit-card">
+        <header>
+          <div class="num">4</div>
+          <div>
+            <h4>Rapports — l'audit avant paie</h4>
+            <span>Route : <code>/reports</code> · cycle de validation hebdomadaire</span>
+          </div>
+          <a class="btn btn--secondary btn--sm" href="pages/reports.html">Voir la maquette <svg width="12" height="12"><use href="#i-arrow-right"/></svg></a>
+        </header>
+        <div class="body">
+          <div class="audit-row">
+            <strong>Question dominante</strong>
+            <p>« Quels pointages dois-je corriger avant de signer le CSV de paie ? »</p>
+          </div>
+          <div class="audit-row">
+            <strong>Sections clés</strong>
+            <ul>
+              <li>Tabs de rapports (présence, heures supp., anomalies, conformité accès, synthèse paie).</li>
+              <li>Bandeau de 5 cartes synthèse avec deltas vs. semaine précédente.</li>
+              <li>Side panel filtres : granularité (jour/sem/mois), date range, départements, statuts coloré, quart.</li>
+              <li>Table avec timebar visuelle qui superpose <em>quart prévu</em> (hachuré) et <em>pointage réel</em> (bloc plein) — l'écart se voit immédiatement.</li>
+              <li>Actions par ligne : « Corriger » (anomalies) ou « Examiner » (activité hors créneau).</li>
+            </ul>
+          </div>
+          <div class="audit-row">
+            <strong>Supprimé</strong>
+            <p>Le formulaire correction texte-only à 5 champs (arrivée, départ, pause, supp., notes) remplacé par un éditeur sur la timebar : poignées draggables avec valeurs synchronisées.</p>
+          </div>
+          <div class="audit-row">
+            <strong>Ajouté</strong>
+            <p>Statuts colorés explicites (Conforme / Retard / Manquant / Repos / Anomalie) avec légende permanente dans le filtre. Programmation d'envoi du rapport (« chaque vendredi 17h »).</p>
+          </div>
+        </div>
+      </article>
+
+      <!-- 5 Planning -->
+      <article class="audit-card">
+        <header>
+          <div class="num">5</div>
+          <div>
+            <h4>Planning — la composition de la semaine</h4>
+            <span>Route : <code>/planning</code> · drag-drop, conflits, couverture</span>
+          </div>
+          <a class="btn btn--secondary btn--sm" href="pages/planning.html">Voir la maquette <svg width="12" height="12"><use href="#i-arrow-right"/></svg></a>
+        </header>
+        <div class="body">
+          <div class="audit-row">
+            <strong>Question dominante</strong>
+            <p>« Ma semaine est-elle couverte, sans conflit, et conforme aux objectifs de capacité ? »</p>
+          </div>
+          <div class="audit-row">
+            <strong>Sections clés</strong>
+            <ul>
+              <li>Bandeau de couverture sur 7 jours avec jauges colorées (rouge si &lt;70%, ambre si &lt;85%, vert sinon) et capacité par département.</li>
+              <li>Calendrier semaine en grille employé × jour, quarts colorés par type (matin / jour / soir / nuit / repos / congé / conflit).</li>
+              <li>Cellules vides explicites « + Affecter » avec hover bleu — pas de zones grises ambiguës.</li>
+              <li>Side rail palette de quarts draggables (gradient de la couleur du quart) + liste des conflits actifs.</li>
+              <li>CTA Auto-planifier (algorithme contraint) et Copier la semaine pour répéter rapidement un schéma.</li>
+            </ul>
+          </div>
+          <div class="audit-row">
+            <strong>Supprimé</strong>
+            <p>Le wizard de création multi-étape mal scopé (employé vs. département). Une seule entrée : on glisse un quart sur une cellule, on choisit ensuite la portée (cet employé / ce département) dans un mini-popover.</p>
+          </div>
+          <div class="audit-row">
+            <strong>Ajouté</strong>
+            <p>Détection visuelle des conflits (cellule rouge animée + carte conflit dédiée). Affichage explicite des quarts en heures supp. (« Soir + heures supp. »). Bouton Auto-planifier (sprint 5).</p>
+          </div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============== 06 MAQUETTES ============== -->
+  <section id="maquettes">
+    <h2>06 · Maquettes navigables</h2>
+    <p class="lead">Cinq fichiers HTML autonomes, partageant <code>tokens.css</code>. Ouvrez-les dans n'importe quel navigateur, redimensionnez la fenêtre, comparez aux écrans actuels.</p>
+
+    <div class="links-grid">
+      <a class="link-card" href="pages/dashboard.html">
+        <span class="num">PAGE 01</span>
+        <h3>Tableau de bord</h3>
+        <p>Hero présence, KPIs, flux d'accès en direct, actions prioritaires, graphique 7 jours, santé appareils, congés.</p>
+        <span class="arrow">Ouvrir <svg width="13" height="13"><use href="#i-arrow-right"/></svg></span>
+      </a>
+      <a class="link-card" href="pages/devices.html">
+        <span class="num">PAGE 02</span>
+        <h3>Appareils</h3>
+        <p>Vue d'ensemble flotte, santé réseau, cartes typées, alertes contextuelles, console externe par appareil.</p>
+        <span class="arrow">Ouvrir <svg width="13" height="13"><use href="#i-arrow-right"/></svg></span>
+      </a>
+      <a class="link-card" href="pages/employees.html">
+        <span class="num">PAGE 03</span>
+        <h3>Employés</h3>
+        <p>Organigramme, table 7 colonnes, drawer biométrie tri-tuiles, filtres en chips, drag-drop entre départements.</p>
+        <span class="arrow">Ouvrir <svg width="13" height="13"><use href="#i-arrow-right"/></svg></span>
+      </a>
+      <a class="link-card" href="pages/reports.html">
+        <span class="num">PAGE 04</span>
+        <h3>Rapports</h3>
+        <p>Synthèse paie, filtres latéraux, table avec timebar prévu vs. réel, statuts colorés explicites, export CSV/PDF.</p>
+        <span class="arrow">Ouvrir <svg width="13" height="13"><use href="#i-arrow-right"/></svg></span>
+      </a>
+      <a class="link-card" href="pages/planning.html">
+        <span class="num">PAGE 05</span>
+        <h3>Planning</h3>
+        <p>Couverture par jour, calendrier employé × semaine, palette de quarts draggables, conflits visuels, auto-planification.</p>
+        <span class="arrow">Ouvrir <svg width="13" height="13"><use href="#i-arrow-right"/></svg></span>
+      </a>
+    </div>
+  </section>
+
+  <!-- ============== 07 ROADMAP SPRINTS ============== -->
+  <section id="roadmap">
+    <h2>07 · Roadmap — 6 sprints de 2 semaines</h2>
+    <p class="lead">Cycle de 12 semaines, livraisons incrémentales, chaque sprint produit un artefact testable. Squad recommandée : 1 product designer, 2 front Next.js, 1 PM, 1 QA mi-temps.</p>
+
+    <div class="roadmap">
+
+      <!-- Sprint 1 -->
+      <article class="sprint">
+        <div class="sprint-head">
+          <div class="num">S1</div>
+          <div>
+            <h4>Fondations design system</h4>
+            <div class="meta">Semaines 1-2 · Designer + 1 front · Aucune dépendance</div>
+          </div>
+          <span class="badge badge--brand">Foundations</span>
+        </div>
+        <div class="sprint-body">
+          <h5>Objectifs</h5>
+          <ul>
+            <li>Tokens CSS (couleurs, radius, ombres, espacements, typo) consolidés et publiés en package interne.</li>
+            <li>Refactor de la palette Tailwind v4 du projet (<code>app/globals.css</code>) pour aligner sur les variables LR Time light corporate.</li>
+            <li>Catalogue Storybook des 12 atomes : Button, Badge, Input, Select, Avatar, Card, Tabs, Tooltip, Dialog, Drawer, Toolbar, Toast.</li>
+          </ul>
+          <h5>Livrables</h5>
+          <ul>
+            <li><code>@lr-time/design-tokens</code> v1.0 publié</li>
+            <li>Storybook accessible aux stakeholders</li>
+            <li>Audit de contraste WCAG AA passé sur tous les atomes</li>
+          </ul>
+        </div>
+      </article>
+
+      <!-- Sprint 2 -->
+      <article class="sprint">
+        <div class="sprint-head">
+          <div class="num">S2</div>
+          <div>
+            <h4>Shell applicatif & Tableau de bord</h4>
+            <div class="meta">Semaines 3-4 · 1 designer + 2 fronts · Dépend de S1</div>
+          </div>
+          <span class="badge badge--brand">Page 1</span>
+        </div>
+        <div class="sprint-body">
+          <h5>Objectifs</h5>
+          <ul>
+            <li>Refonte du shell : <code>app-sidebar.tsx</code>, <code>header.tsx</code>, breadcrumbs unifiés, raccourci ⌘K command palette.</li>
+            <li>Refonte complète de la page <code>/</code> (hero présence, KPI cards, flux d'accès live, priorités, chart 7 jours).</li>
+            <li>Indicateur permanent <em>HikCentral connecté / Mode démo</em> — mise en cohérence du <code>statusDetails.sources</code>.</li>
+            <li>Optimistic UI sur la validation d'actions prioritaires.</li>
+          </ul>
+          <h5>Livrables</h5>
+          <ul>
+            <li>Page d'accueil livrée en preview pour 5 utilisateurs internes</li>
+            <li>Time-to-first-decision mesuré (objectif &lt; 5 s sur 90% des sessions)</li>
+            <li>Lighthouse Performance ≥ 92 sur la home</li>
+          </ul>
+        </div>
+      </article>
+
+      <!-- Sprint 3 -->
+      <article class="sprint">
+        <div class="sprint-head">
+          <div class="num">S3</div>
+          <div>
+            <h4>Appareils & santé réseau</h4>
+            <div class="meta">Semaines 5-6 · 1 designer + 2 fronts · Dépend de S1</div>
+          </div>
+          <span class="badge badge--brand">Page 2</span>
+        </div>
+        <div class="sprint-body">
+          <h5>Objectifs</h5>
+          <ul>
+            <li>Refonte de <code>/devices</code> — vue d'ensemble + cartes typées + bandeau santé réseau.</li>
+            <li>Brancher la pulsation par appareil sur les données réelles HikCentral (<code>lastSeen</code>).</li>
+            <li>Diagnostics réels : ping, packet loss, latence, firmware (remplacement du <code>getDiagnosticsSnapshot()</code> mock).</li>
+            <li>Actions inline contextuelles : Reconnecter, Notifier IT, Tester, Console externe.</li>
+          </ul>
+          <h5>Livrables</h5>
+          <ul>
+            <li>Page Appareils en production derrière feature flag</li>
+            <li>Tests E2E Playwright sur 4 scénarios (online, dégradé, offline, ajout par IP)</li>
+          </ul>
+        </div>
+      </article>
+
+      <!-- Sprint 4 -->
+      <article class="sprint">
+        <div class="sprint-head">
+          <div class="num">S4</div>
+          <div>
+            <h4>Employés & enrôlement biométrique</h4>
+            <div class="meta">Semaines 7-8 · 1 designer + 2 fronts · Dépend de S1, S2 (drawer)</div>
+          </div>
+          <span class="badge badge--brand">Page 3</span>
+        </div>
+        <div class="sprint-body">
+          <h5>Objectifs</h5>
+          <ul>
+            <li>Layout 3 colonnes (org tree / table / drawer) avec drag-drop de réaffectation.</li>
+            <li>Réduction de 12 colonnes à 7 + détail dans le drawer ; refactor des 30+ <code>useState</code> en machine d'état.</li>
+            <li>Assistant unique d'enrôlement biométrique — wizard à 3 étapes (Visage → Empreinte → Carte) qui remplace les 3 modales empilées.</li>
+            <li>Import CSV : preview de mapping colonnes + détection des doublons par <code>employeeId</code>.</li>
+          </ul>
+          <h5>Livrables</h5>
+          <ul>
+            <li>Page Employés en production derrière feature flag</li>
+            <li>Tests d'usabilité avec 3 RH : tâches « créer », « réaffecter », « enrôler biométrie »</li>
+          </ul>
+        </div>
+      </article>
+
+      <!-- Sprint 5 -->
+      <article class="sprint">
+        <div class="sprint-head">
+          <div class="num">S5</div>
+          <div>
+            <h4>Rapports & cycle paie</h4>
+            <div class="meta">Semaines 9-10 · 1 designer + 2 fronts · Dépend de S1</div>
+          </div>
+          <span class="badge badge--brand">Page 4</span>
+        </div>
+        <div class="sprint-body">
+          <h5>Objectifs</h5>
+          <ul>
+            <li>Refonte de <code>/reports</code> avec timebar prévu vs. réel.</li>
+            <li>Editor de correction directement sur la timebar (poignées drag) au lieu du formulaire texte.</li>
+            <li>Programmation d'envois récurrents (CSV paie, PDF synthèse) vers email RH.</li>
+            <li>Export PDF avec en-tête LR Time, signature électronique en pied.</li>
+          </ul>
+          <h5>Livrables</h5>
+          <ul>
+            <li>Page Rapports en production</li>
+            <li>Première paie réelle exportée et validée par la comptabilité</li>
+          </ul>
+        </div>
+      </article>
+
+      <!-- Sprint 6 -->
+      <article class="sprint">
+        <div class="sprint-head">
+          <div class="num">S6</div>
+          <div>
+            <h4>Planning & auto-planification</h4>
+            <div class="meta">Semaines 11-12 · 1 designer + 2 fronts + 1 backend · Dépend de S1, S4</div>
+          </div>
+          <span class="badge badge--brand">Page 5</span>
+        </div>
+        <div class="sprint-body">
+          <h5>Objectifs</h5>
+          <ul>
+            <li>Calendrier semaine drag-drop avec palette latérale.</li>
+            <li>Détection en temps réel des conflits (chevauchement, repos non respecté, capacité dépassée).</li>
+            <li>Bouton Auto-planifier — algorithme backend de répartition équilibrée respectant capacité requise et contraintes par employé (préférences, ancienneté, congés).</li>
+            <li>Copier la semaine + Modèles de planning enregistrables.</li>
+          </ul>
+          <h5>Livrables</h5>
+          <ul>
+            <li>Page Planning en production</li>
+            <li>Auto-planification testée sur 3 sites pilotes (Casablanca, Tanger, Rabat)</li>
+            <li>Suite des 5 pages refondues 100% accessible WCAG AA</li>
+          </ul>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============== 08 KPI ACCEPTATION ============== -->
+  <section id="kpi">
+    <h2>08 · Critères d'acceptation</h2>
+    <p class="lead">Indicateurs mesurables qui valident la réussite de la refonte au-delà du goût.</p>
+
+    <div class="principles-grid">
+      <div class="principle">
+        <div class="glyph"><svg width="18" height="18"><use href="#i-target"/></svg></div>
+        <h4>Time-to-decision &lt; 5 s</h4>
+        <p>Sur 90% des sessions matinales, le directeur RH identifie sa priorité du jour en moins de 5 secondes (étude eye-tracking).</p>
+      </div>
+      <div class="principle">
+        <div class="glyph"><svg width="18" height="18"><use href="#i-zap"/></svg></div>
+        <h4>Lighthouse ≥ 92</h4>
+        <p>Performance, accessibilité, bonnes pratiques et SEO ≥ 92 sur les 5 pages, mesuré en CI à chaque PR.</p>
+      </div>
+      <div class="principle">
+        <div class="glyph"><svg width="18" height="18"><use href="#i-shield"/></svg></div>
+        <h4>WCAG AA — 100%</h4>
+        <p>Zéro erreur axe-core sur les 5 pages. Contraste 4.5:1 mini, navigation clavier complète, focus visible.</p>
+      </div>
+      <div class="principle">
+        <div class="glyph"><svg width="18" height="18"><use href="#i-eye"/></svg></div>
+        <h4>NPS interne ≥ 40</h4>
+        <p>Mesuré auprès des 12 utilisateurs pilotes 30 jours après le déploiement complet (S6 + 4).</p>
+      </div>
+      <div class="principle" style="grid-column: span 2">
+        <div class="glyph"><svg width="18" height="18"><use href="#i-rule"/></svg></div>
+        <h4>Réduction du support de 30%</h4>
+        <p>Tickets « comment faire X » sur les 5 pages refondues divisés par 1,4 sur le trimestre suivant le déploiement, grâce aux empty states didactiques et aux tooltips contextuels.</p>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ============== CTA ============== -->
+  <div class="cta-card">
+    <div>
+      <h3>Prêt à lancer le sprint 1 ?</h3>
+      <p>Alignement squad, validation des tokens, kick-off conjoint design × front. Le brief tient en une réunion d'1 h 30.</p>
+    </div>
+    <div class="actions">
+      <a class="btn btn--primary btn--lg" href="pages/dashboard.html">Voir le résultat cible <svg width="14" height="14"><use href="#i-arrow-right"/></svg></a>
+      <a class="btn btn--ghost btn--lg" href="index.html">Retour à l'index</a>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

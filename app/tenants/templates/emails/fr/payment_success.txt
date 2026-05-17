@@ -1,0 +1,26 @@
+{% extends "emails/base.txt" %}
+
+{% block content %}
+PAIEMENT CONFIRMÉ
+-----------------
+
+Bonjour{% if first_name %} {{ first_name }}{% endif %},
+
+Nous confirmons la réception de votre paiement. Merci !
+
+Détails :{% if invoice_number %}
+  N° de facture     : {{ invoice_number }}{% endif %}{% if plan_name %}
+  Offre             : {{ plan_name }}{% endif %}{% if tenant_name %}
+  Compte            : {{ tenant_name }}{% endif %}{% if paid_at %}
+  Date de paiement  : {{ paid_at|date:"d/m/Y H:i" }}{% endif %}{% if period_start and period_end %}
+  Période couverte  : {{ period_start|date:"d/m/Y" }} – {{ period_end|date:"d/m/Y" }}{% endif %}{% if amount %}
+  Montant payé      : {{ amount }} {{ currency|default:"EUR"|upper }}{% endif %}
+{% if invoice_url %}
+Facture en ligne : {{ invoice_url }}{% endif %}{% if invoice_pdf %}
+Facture PDF      : {{ invoice_pdf }}{% endif %}
+
+Votre service est désormais actif. Vous retrouverez l'historique complet
+de vos factures dans votre espace de facturation.
+
+Pour toute question concernant ce paiement, contactez notre équipe support.
+{% endblock %}

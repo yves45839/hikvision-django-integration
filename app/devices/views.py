@@ -29,6 +29,7 @@ from .serializers import (
 from .services.onboarding import create_job, process_job, schedule_job
 
 
+from audit.utils import audit_log
 class DeviceViewSet(viewsets.ModelViewSet):
     @staticmethod
     def _to_bool(value, default: bool = False) -> bool:
@@ -142,7 +143,15 @@ class DeviceViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         tenant = serializer.validated_data.get("tenant")
         self._require_tenant_scope(tenant)
-        serializer.save(owner=self.request.user)
+        device = serializer.save(owner=self.request.user)
+        # 0.5: Log device creation in audit log
+        audit_log(
+            actor=self.request.user,
+            action="create_device",
+            target_obj=device,
+            request=self.request,
+            tenant_code=tenant.code if tenant else "",
+        )
 
     def _can_manage_device(self, user, device: Device) -> bool:
         if not user or not user.is_authenticated:

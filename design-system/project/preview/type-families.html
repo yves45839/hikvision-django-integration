@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Type Families</title>
+<link rel="stylesheet" href="_pv.css"/>
+<style>
+  .fam { display: grid; grid-template-columns: 200px 1fr; gap: 24px; padding: 22px; border-bottom: 1px solid var(--border-subtle); }
+  .fam:last-child { border-bottom: 0; }
+  .fam__name { font-family: var(--font-display); font-weight: 600; font-size: 16px; color: var(--fg1); }
+  .fam__role { color: var(--fg3); font-size: 12.5px; line-height: 1.45; margin-top: 6px; }
+  .fam__role code { font-family: var(--font-mono); font-size: 11px; background: var(--bg-subtle); padding: 1px 6px; border-radius: 4px; }
+  .specimen .big { font-size: 64px; line-height: 1; letter-spacing: -0.025em; color: var(--fg1); }
+  .specimen .glyphs { font-size: 14px; color: var(--fg2); margin-top: 12px; letter-spacing: 0; }
+  .weights { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 10px; color: var(--fg2); }
+  .weights span { font-size: 14px; }
+  .display { font-family: var(--font-display); }
+  .body { font-family: var(--font-sans); }
+  .mono { font-family: var(--font-mono); }
+</style>
+</head>
+<body>
+<div class="pv-shell">
+  <div class="pv-head">
+    <div>
+      <p class="pv-eyebrow">Type · Families</p>
+      <h1 class="pv-title">Three families, three jobs</h1>
+    </div>
+  </div>
+
+  <div class="pv-card" style="padding: 0">
+    <div class="fam">
+      <div>
+        <div class="fam__name">Inter Tight</div>
+        <div class="fam__role">Display only — page titles, KPI numbers, card headings. Slightly compressed for that "premium dashboard" feel.</div>
+        <div class="fam__role" style="margin-top:8px"><code>--font-display</code></div>
+      </div>
+      <div class="specimen">
+        <div class="big display" style="font-weight:600">Aa Tg 142</div>
+        <div class="glyphs display">ABCDEFGHIJKLMNOPQRSTUVWXYZ&nbsp;&nbsp;abcdefghijklmnopqrstuvwxyz&nbsp;&nbsp;0123456789</div>
+        <div class="weights display">
+          <span style="font-weight:500">Medium 500</span>
+          <span style="font-weight:600">SemiBold 600 ★</span>
+          <span style="font-weight:700">Bold 700</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="fam">
+      <div>
+        <div class="fam__name">Inter</div>
+        <div class="fam__role">Body, UI, labels, tables. The full neutral workhorse. Every weight enabled.</div>
+        <div class="fam__role" style="margin-top:8px"><code>--font-sans</code></div>
+      </div>
+      <div class="specimen">
+        <div class="big body" style="font-weight:500">Aa Pointage</div>
+        <div class="glyphs body">ABCDEFGHIJKLMNOPQRSTUVWXYZ&nbsp;&nbsp;abcdefghijklmnopqrstuvwxyz&nbsp;&nbsp;0123456789</div>
+        <div class="weights body">
+          <span style="font-weight:400">Regular 400</span>
+          <span style="font-weight:500">Medium 500</span>
+          <span style="font-weight:600">SemiBold 600</span>
+          <span style="font-weight:700">Bold 700</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="fam">
+      <div>
+        <div class="fam__name">JetBrains Mono</div>
+        <div class="fam__role">Technical strings only — IP addresses, firmware versions, IDs, timestamps, codes. Tabular numerals on by default.</div>
+        <div class="fam__role" style="margin-top:8px"><code>--font-mono</code></div>
+      </div>
+      <div class="specimen">
+        <div class="big mono" style="font-weight:500;font-size:48px">09:47:13</div>
+        <div class="glyphs mono">192.168.10.42&nbsp;&nbsp;DS-K1T343MFWX&nbsp;&nbsp;fw 6.2.4&nbsp;&nbsp;tenant: ACME-CASA</div>
+        <div class="weights mono">
+          <span style="font-weight:500">Medium 500 ★</span>
+          <span style="font-weight:600">SemiBold 600</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>

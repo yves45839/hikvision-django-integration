@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LR Time · Employés</title>
+<link rel="stylesheet" href="../tokens.css" />
+<style>
+  .emp-layout { display: grid; grid-template-columns: 260px 1fr 360px; gap: 20px; }
+
+  /* Org tree */
+  .tree {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    padding: 14px 12px;
+    box-shadow: var(--shadow-sm);
+    height: fit-content;
+    position: sticky; top: 80px;
+  }
+  .tree h3 { font-size: 13px; padding: 4px 8px 8px; }
+  .tree-node { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+  .tree-node:hover { background: var(--slate-50); }
+  .tree-node.is-active { background: var(--brand-soft); color: var(--brand-active); font-weight: 600; }
+  .tree-node .count { margin-left: auto; font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .tree-node.is-active .count { color: var(--brand); font-weight: 600; }
+  .tree-children { padding-left: 14px; border-left: 1px dashed var(--border-strong); margin-left: 12px; }
+  .caret { width: 14px; height: 14px; color: var(--text-muted); transition: transform 150ms; }
+  .tree-node.is-open .caret { transform: rotate(90deg); }
+  .tree-add {
+    margin-top: 6px; padding: 7px 8px;
+    color: var(--brand); font-size: 12.5px; font-weight: 600;
+    display: flex; align-items: center; gap: 6px;
+    border-top: 1px dashed var(--border-default); padding-top: 12px;
+  }
+
+  /* Drawer */
+  .drawer {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+    height: fit-content;
+    position: sticky; top: 80px;
+  }
+  .drawer__header {
+    padding: 20px;
+    background: linear-gradient(135deg, #F4F8FF 0%, #fff 70%);
+    border-bottom: 1px solid var(--border-subtle);
+    border-top-left-radius: var(--radius-xl);
+    border-top-right-radius: var(--radius-xl);
+    text-align: center;
+  }
+  .drawer__avatar {
+    width: 72px; height: 72px; border-radius: 50%;
+    background: linear-gradient(135deg, #DCE7FF, #2F6BE6);
+    color: #fff; font-size: 24px; font-weight: 700; font-family: var(--font-display);
+    display: grid; place-items: center; margin: 0 auto 10px;
+    border: 4px solid #fff; box-shadow: var(--shadow-md);
+  }
+  .drawer__name { font-family: var(--font-display); font-size: 16px; font-weight: 600; color: var(--text-strong); }
+  .drawer__role { color: var(--text-muted); font-size: 13px; margin-top: 2px; }
+  .drawer__section { padding: 14px 20px; border-bottom: 1px solid var(--border-subtle); }
+  .drawer__section:last-child { border-bottom: 0; }
+  .drawer__section h4 {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--text-muted); margin-bottom: 8px; font-weight: 600;
+  }
+  .drawer__row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; padding: 4px 0; }
+  .drawer__row span { color: var(--text-muted); }
+  .drawer__row strong { color: var(--text-strong); font-weight: 500; }
+
+  .biometric-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .bio-tile {
+    background: var(--slate-50);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    padding: 10px;
+    text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+  .bio-tile.is-set { background: var(--success-50); border-color: var(--success-100); }
+  .bio-tile.is-warn { background: var(--warning-50); border-color: var(--warning-100); }
+  .bio-tile .glyph { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: #fff; color: var(--text-muted); }
+  .bio-tile.is-set .glyph { background: #fff; color: var(--success-700); }
+  .bio-tile.is-warn .glyph { background: #fff; color: var(--warning-700); }
+  .bio-tile small { font-size: 10.5px; color: var(--text-muted); font-weight: 500; }
+  .bio-tile.is-set small { color: var(--success-700); }
+  .bio-tile.is-warn small { color: var(--warning-700); }
+
+  /* Table */
+  .table tbody td { padding: 12px var(--space-4); }
+  .row-emp { display: flex; align-items: center; gap: 10px; }
+  .row-emp .meta line-height-1 { line-height: 1.2; }
+  .row-emp strong { font-size: 13.5px; color: var(--text-strong); display: block; }
+  .row-emp small { font-size: 12px; color: var(--text-muted); }
+  .table tr.is-selected { background: var(--brand-softer); }
+  .table tr.is-selected td:first-child { box-shadow: inset 3px 0 0 var(--brand); }
+
+  /* Stat strip */
+  .stat-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+  .stat {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    padding: 12px 14px;
+  }
+  .stat .num { font-family: var(--font-display); font-size: 20px; font-weight: 600; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+  .stat .lbl { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12 12 4l9 8"/><path d="M5 10v10h14V10"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 11a3 3 0 1 0 0-6"/><path d="M22 20a5 5 0 0 0-5-5"/></symbol>
+  <symbol id="i-cpu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v16h16"/><path d="M8 14l3-3 3 3 5-7"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 9 19.3a1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.7 9a1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 9H3c0-1 3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 1 1 5.7 1.4c-.7 1.1-2.3 1.6-2.8 2.6-.2.5-.2 1 .1 1.5"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6l8-3z"/></symbol>
+  <symbol id="i-finger" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11v3"/><path d="M8 11a4 4 0 0 1 8 0v2"/><path d="M5 13a7 7 0 0 1 14 0c0 2-.5 4-1.5 5"/><path d="M9 18c.5 1 1 1.5 1.5 2"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h4l2-3h6l2 3h4v11H3z"/><circle cx="12" cy="13" r="3.5"/></symbol>
+  <symbol id="i-card" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M7 15h4"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M5 3h14"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 9v6l-4-2v-4z"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="18" cy="12" r="1"/></symbol>
+  <symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></symbol>
+  <symbol id="i-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7 13 13 0 0 0 .7 2.8 2 2 0 0 1-.4 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.8 2z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L21 6"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-7.5-7-12a7 7 0 1 1 14 0c0 4.5-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 21h20L12 3z"/><path d="M12 9v5"/><path d="M12 17h.01"/></symbol>
+</svg>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="sidebar__brand">
+      <div class="logo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 4h3v12h8v3H5V4z" fill="currentColor"/></svg></div>
+      <div class="name">LR Time<small>Workforce Suite</small></div>
+    </div>
+    <div class="sidebar__group">
+      <div class="sidebar__label">Pilotage</div>
+      <a class="sidebar__item"><svg class="icon" width="18" height="18"><use href="#i-home"/></svg>Tableau de bord</a>
+      <a class="sidebar__item"><svg class="icon" width="18" height="18"><use href="#i-chart"/></svg>Rapports<span class="badge">12</span></a>
+      <a class="sidebar__item"><svg class="icon" width="18" height="18"><use href="#i-calendar"/></svg>Planning</a>
+    </div>
+    <div class="sidebar__group">
+      <div class="sidebar__label">Organisation</div>
+      <a class="sidebar__item is-active"><svg class="icon" width="18" height="18"><use href="#i-users"/></svg>Employés</a>
+      <a class="sidebar__item"><svg class="icon" width="18" height="18"><use href="#i-cpu"/></svg>Appareils<span class="badge">3</span></a>
+      <a class="sidebar__item"><svg class="icon" width="18" height="18"><use href="#i-shield"/></svg>Contrôle d'accès</a>
+    </div>
+    <div class="sidebar__group">
+      <div class="sidebar__label">Compte</div>
+      <a class="sidebar__item"><svg class="icon" width="18" height="18"><use href="#i-settings"/></svg>Paramètres</a>
+      <a class="sidebar__item"><svg class="icon" width="18" height="18"><use href="#i-help"/></svg>Aide & support</a>
+    </div>
+    <div class="sidebar__user">
+      <div class="avatar">YV</div>
+      <div class="meta"><strong>Yves Roland</strong><span>Directeur RH · LR Time</span></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="crumbs">
+        <span>LR Time</span><span class="sep">/</span><span>Organisation</span><span class="sep">/</span><strong>Employés</strong>
+      </div>
+      <div class="topbar__search" style="margin-left: 24px">
+        <svg class="icon" width="14" height="14"><use href="#i-search"/></svg>
+        <span>Rechercher un employé, matricule, badge…</span>
+        <kbd>⌘K</kbd>
+      </div>
+      <div class="topbar__actions">
+        <span class="live-pill"><span class="pulse"></span>Synchronisé</span>
+        <button class="iconbtn"><svg width="18" height="18"><use href="#i-help"/></svg></button>
+        <button class="iconbtn"><svg width="18" height="18"><use href="#i-bell"/></svg><span class="dot"></span></button>
+      </div>
+    </header>
+
+    <div class="content">
+      <div class="page-header">
+        <div class="page-header__title">
+          <span class="page-header__eyebrow">Annuaire · 163 employés actifs</span>
+          <h1>Employés</h1>
+          <p class="page-header__subtitle">Gérez votre organisation, assignez les groupes d'accès, enrôlez la biométrie. Glissez un employé sur un département pour le réaffecter.</p>
+        </div>
+        <div class="page-header__actions">
+          <button class="btn btn--secondary"><svg width="14" height="14"><use href="#i-upload"/></svg>Importer CSV</button>
+          <button class="btn btn--secondary"><svg width="14" height="14"><use href="#i-download"/></svg>Exporter</button>
+          <button class="btn btn--primary"><svg width="14" height="14"><use href="#i-plus"/></svg>Nouvel employé</button>
+        </div>
+      </div>
+
+      <!-- Stats strip -->
+      <div class="stat-strip">
+        <div class="stat">
+          <div class="num">163</div>
+          <div class="lbl">Employés actifs</div>
+        </div>
+        <div class="stat">
+          <div class="num">12</div>
+          <div class="lbl">Départements</div>
+        </div>
+        <div class="stat">
+          <div class="num">8</div>
+          <div class="lbl">Groupes d'accès</div>
+        </div>
+        <div class="stat">
+          <div class="num" style="color: var(--warning-700)">5</div>
+          <div class="lbl">Biométrie incomplète</div>
+        </div>
+      </div>
+
+      <div class="emp-layout">
+        <!-- ============= Org tree ============= -->
+        <div class="tree">
+          <h3>Organisation</h3>
+
+          <div class="tree-node is-active">
+            <svg class="caret"><use href="#i-caret"/></svg>
+            <span>LR Time SA</span>
+            <span class="count">163</span>
+          </div>
+          <div class="tree-children">
+            <div class="tree-node">
+              <svg class="caret"><use href="#i-caret"/></svg>
+              <span>Direction</span>
+              <span class="count">8</span>
+            </div>
+            <div class="tree-node is-open">
+              <svg class="caret"><use href="#i-caret"/></svg>
+              <span>Production</span>
+              <span class="count">62</span>
+            </div>
+            <div class="tree-children">
+              <div class="tree-node"><span style="width:14px"></span><span>Atelier 1</span><span class="count">22</span></div>
+              <div class="tree-node"><span style="width:14px"></span><span>Atelier 2</span><span class="count">20</span></div>
+              <div class="tree-node"><span style="width:14px"></span><span>Atelier 3</span><span class="count">12</span></div>
+              <div class="tree-node"><span style="width:14px"></span><span>Atelier 4</span><span class="count">8</span></div>
+            </div>
+            <div class="tree-node">
+              <svg class="caret"><use href="#i-caret"/></svg>
+              <span>Logistique</span>
+              <span class="count">28</span>
+            </div>
+            <div class="tree-node">
+              <svg class="caret"><use href="#i-caret"/></svg>
+              <span>Marketing</span>
+              <span class="count">14</span>
+            </div>
+            <div class="tree-node">
+              <svg class="caret"><use href="#i-caret"/></svg>
+              <span>RH</span>
+              <span class="count">9</span>
+            </div>
+            <div class="tree-node">
+              <svg class="caret"><use href="#i-caret"/></svg>
+              <span>Comptabilité</span>
+              <span class="count">11</span>
+            </div>
+            <div class="tree-node">
+              <svg class="caret"><use href="#i-caret"/></svg>
+              <span>IT</span>
+              <span class="count">7</span>
+            </div>
+            <div class="tree-node">
+              <svg class="caret"><use href="#i-caret"/></svg>
+              <span>Maintenance</span>
+              <span class="count">12</span>
+            </div>
+            <div class="tree-node">
+              <svg class="caret"><use href="#i-caret"/></svg>
+              <span>Sécurité</span>
+              <span class="count">12</span>
+            </div>
+          </div>
+          <div class="tree-add"><svg width="13" height="13"><use href="#i-plus"/></svg>Ajouter un département</div>
+        </div>
+
+        <!-- ============= Table ============= -->
+        <div class="card" style="overflow: hidden">
+          <div class="toolbar">
+            <div class="row gap-2">
+              <strong style="font-size: 14px; color: var(--text-strong)">Employés</strong>
+              <span class="badge badge--neutral">163 résultats</span>
+            </div>
+            <div class="grow"></div>
+            <div class="input" style="min-width: 240px">
+              <svg class="icon" width="14" height="14"><use href="#i-search"/></svg>
+              <input placeholder="Nom, matricule, email…" />
+            </div>
+            <button class="btn btn--secondary btn--sm"><svg width="13" height="13"><use href="#i-filter"/></svg>Filtres <span class="badge" style="padding: 0 6px; font-size: 10px; background: var(--brand); color: #fff">2</span></button>
+          </div>
+
+          <div class="chips" style="padding: 12px 20px; border-bottom: 1px solid var(--border-subtle)">
+            <span class="chip is-active">Actifs <svg width="11" height="11" class="x"><use href="#i-x"/></svg></span>
+            <span class="chip is-active">Production <svg width="11" height="11" class="x"><use href="#i-x"/></svg></span>
+            <span class="chip">+ Ajouter un filtre</span>
+          </div>
+
+          <table class="table">
+            <thead>
+              <tr>
+                <th style="width: 28px"><input type="checkbox" /></th>
+                <th>Employé</th>
+                <th>Département</th>
+                <th>Quart</th>
+                <th>Groupe d'accès</th>
+                <th>Biométrie</th>
+                <th class="right">Statut</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="is-selected">
+                <td><input type="checkbox" checked /></td>
+                <td>
+                  <div class="row-emp">
+                    <div class="avatar avatar--sm" style="background: #DCFCE7; color: #047857">SE</div>
+                    <div><strong>Salma El Hattab</strong><small>EMP-2841 · salma.e@lrtime.com</small></div>
+                  </div>
+                </td>
+                <td><span class="badge" style="background: #FCE7F3; color: #9D174D">Marketing</span></td>
+                <td>Jour 8h-17h</td>
+                <td><span class="badge badge--brand">Bureaux + Étage 3</span></td>
+                <td>
+                  <div class="row gap-1">
+                    <span class="badge badge--success" title="Visage">V</span>
+                    <span class="badge badge--success" title="Empreinte">E</span>
+                    <span class="badge badge--success" title="Carte">C</span>
+                  </div>
+                </td>
+                <td class="right"><span class="badge badge--success"><span class="dot"></span>Actif</span></td>
+                <td><button class="iconbtn"><svg width="16" height="16"><use href="#i-more"/></svg></button></td>
+              </tr>
+              <tr>
+                <td><input type="checkbox" /></td>
+                <td>
+                  <div class="row-emp">
+                    <div class="avatar avatar--sm" style="background: #FFE4E6; color: #BE185D">RM</div>
+                    <div><strong>Rachid Mansouri</strong><small>EMP-1024 · rachid.m@lrtime.com</small></div>
+                  </div>
+                </td>
+                <td><span class="badge" style="background: #DBEAFE; color: #1E40AF">Production</span></td>
+                <td>Matin 6h-14h</td>
+                <td><span class="badge badge--brand">Atelier 2</span></td>
+                <td>
+                  <div class="row gap-1">
+                    <span class="badge badge--success">V</span>
+                    <span class="badge badge--success">E</span>
+                    <span class="badge badge--neutral" style="opacity: .5">C</span>
+                  </div>
+                </td>
+                <td class="right"><span class="badge badge--success"><span class="dot"></span>Actif</span></td>
+                <td><button class="iconbtn"><svg width="16" height="16"><use href="#i-more"/></svg></button></td>
+              </tr>
+              <tr>
+                <td><input type="checkbox" /></td>
+                <td>
+                  <div class="row-emp">
+                    <div class="avatar avatar--sm" style="background: #FEF3C7; color: #B45309">AB</div>
+                    <div><strong>Amine Berrada</strong><small>EMP-1456 · amine.b@lrtime.com</small></div>
+                  </div>
+                </td>
+                <td><span class="badge" style="background: #FEF3C7; color: #92400E">Logistique</span></td>
+                <td>Soir 14h-22h</td>
+                <td><span class="badge badge--brand">Quai chargement</span></td>
+                <td>
+                  <div class="row gap-1">
+                    <span class="badge badge--warning">V</span>
+                    <span class="badge badge--success">E</span>
+                    <span class="badge badge--success">C</span>
+                  </div>
+                </td>
+                <td class="right"><span class="badge badge--warning"><span class="dot"></span>Suspendu</span></td>
+                <td><button class="iconbtn"><svg width="16" height="16"><use href="#i-more"/></svg></button></td>
+              </tr>
+              <tr>
+                <td><input type="checkbox" /></td>
+                <td>
+                  <div class="row-emp">
+                    <div class="avatar avatar--sm" style="background: #DBEAFE; color: #1D4ED8">FK</div>
+                    <div><strong>Fatima Kabbaj</strong><small>EMP-0042 · fatima.k@lrtime.com</small></div>
+                  </div>
+                </td>
+                <td><span class="badge" style="background: #E0E7FF; color: #3730A3">Direction</span></td>
+                <td>Bureaux 9h-18h</td>
+                <td><span class="badge badge--brand">All Access</span></td>
+                <td>
+                  <div class="row gap-1">
+                    <span class="badge badge--success">V</span>
+                    <span class="badge badge--success">E</span>
+                    <span class="badge badge--success">C</span>
+                  </div>
+                </td>
+                <td class="right"><span class="badge badge--success"><span class="dot"></span>Actif</span></td>
+                <td><button class="iconbtn"><svg width="16" height="16"><use href="#i-more"/></svg></button></td>
+              </tr>
+              <tr>
+                <td><input type="checkbox" /></td>
+                <td>
+                  <div class="row-emp">
+                    <div class="avatar avatar--sm" style="background: #DCFCE7; color: #047857">NL</div>
+                    <div><strong>Nadia Lahlou</strong><small>EMP-3214 · nadia.l@lrtime.com</small></div>
+                  </div>
+                </td>
+                <td><span class="badge" style="background: #FCE7F3; color: #9D174D">RH</span></td>
+                <td>Bureaux 9h-18h</td>
+                <td><span class="badge badge--brand">RH + Direction</span></td>
+                <td>
+                  <div class="row gap-1">
+                    <span class="badge badge--success">V</span>
+                    <span class="badge badge--success">E</span>
+                    <span class="badge badge--success">C</span>
+                  </div>
+                </td>
+                <td class="right"><span class="badge badge--success"><span class="dot"></span>Actif</span></td>
+                <td><button class="iconbtn"><svg width="16" height="16"><use href="#i-more"/></svg></button></td>
+              </tr>
+              <tr>
+                <td><input type="checkbox" /></td>
+                <td>
+                  <div class="row-emp">
+                    <div class="avatar avatar--sm" style="background: #F3E8FF; color: #6B21A8">YT</div>
+                    <div><strong>Youssef Tazi</strong><small>EMP-2105 · youssef.t@lrtime.com</small></div>
+                  </div>
+                </td>
+                <td><span class="badge" style="background: #DBEAFE; color: #1E40AF">Production</span></td>
+                <td>Nuit 22h-6h</td>
+                <td><span class="badge badge--brand">Atelier 4</span></td>
+                <td>
+                  <div class="row gap-1">
+                    <span class="badge badge--neutral" style="opacity:.5">V</span>
+                    <span class="badge badge--neutral" style="opacity:.5">E</span>
+                    <span class="badge badge--success">C</span>
+                  </div>
+                </td>
+                <td class="right"><span class="badge badge--info"><span class="dot"></span>À enrôler</span></td>
+                <td><button class="iconbtn"><svg width="16" height="16"><use href="#i-more"/></svg></button></td>
+              </tr>
+              <tr>
+                <td><input type="checkbox" /></td>
+                <td>
+                  <div class="row-emp">
+                    <div class="avatar avatar--sm" style="background: #CFFAFE; color: #155E75">MB</div>
+                    <div><strong>Mehdi Bennani</strong><small>EMP-1980 · mehdi.b@lrtime.com</small></div>
+                  </div>
+                </td>
+                <td><span class="badge" style="background: #DBEAFE; color: #1E40AF">Production</span></td>
+                <td>Matin 6h-14h</td>
+                <td><span class="badge badge--brand">Atelier 1</span></td>
+                <td>
+                  <div class="row gap-1">
+                    <span class="badge badge--success">V</span>
+                    <span class="badge badge--success">E</span>
+                    <span class="badge badge--success">C</span>
+                  </div>
+                </td>
+                <td class="right"><span class="badge badge--info"><span class="dot"></span>En congé</span></td>
+                <td><button class="iconbtn"><svg width="16" height="16"><use href="#i-more"/></svg></button></td>
+              </tr>
+              <tr>
+                <td><input type="checkbox" /></td>
+                <td>
+                  <div class="row-emp">
+                    <div class="avatar avatar--sm" style="background: #FEE4E2; color: #B42318">IS</div>
+                    <div><strong>Imane Senhaji</strong><small>EMP-0801 · imane.s@lrtime.com</small></div>
+                  </div>
+                </td>
+                <td><span class="badge" style="background: #FCE7F3; color: #9D174D">RH</span></td>
+                <td>Bureaux 9h-18h</td>
+                <td><span class="badge badge--brand">RH + Direction</span></td>
+                <td>
+                  <div class="row gap-1">
+                    <span class="badge badge--success">V</span>
+                    <span class="badge badge--success">E</span>
+                    <span class="badge badge--success">C</span>
+                  </div>
+                </td>
+                <td class="right"><span class="badge badge--success"><span class="dot"></span>Actif</span></td>
+                <td><button class="iconbtn"><svg width="16" height="16"><use href="#i-more"/></svg></button></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="card__footer">
+            <span>1 employé sélectionné · <a>Annuler</a></span>
+            <div class="row gap-2">
+              <button class="btn btn--ghost btn--sm">Affecter au planning</button>
+              <button class="btn btn--ghost btn--sm">Changer le quart</button>
+              <button class="btn btn--secondary btn--sm">Page 1 / 21</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============= Drawer ============= -->
+        <div class="drawer">
+          <div class="drawer__header">
+            <div class="drawer__avatar">SE</div>
+            <div class="drawer__name">Salma El Hattab</div>
+            <div class="drawer__role">Cheffe de projet · Marketing</div>
+            <div class="row gap-2" style="justify-content: center; margin-top: 12px">
+              <button class="btn btn--secondary btn--sm"><svg width="12" height="12"><use href="#i-edit"/></svg>Modifier</button>
+              <button class="btn btn--primary btn--sm">Voir le profil</button>
+            </div>
+          </div>
+
+          <div class="drawer__section">
+            <h4>Coordonnées</h4>
+            <div class="drawer__row"><span class="row gap-1"><svg width="13" height="13" style="color: var(--text-muted)"><use href="#i-mail"/></svg>Email</span><strong>salma.e@lrtime.com</strong></div>
+            <div class="drawer__row"><span class="row gap-1"><svg width="13" height="13" style="color: var(--text-muted)"><use href="#i-phone"/></svg>Téléphone</span><strong>+212 661 23 45 67</strong></div>
+            <div class="drawer__row"><span class="row gap-1"><svg width="13" height="13" style="color: var(--text-muted)"><use href="#i-pin"/></svg>Site</span><strong>Casablanca · Étage 3</strong></div>
+          </div>
+
+          <div class="drawer__section">
+            <h4>Identifiants & Accès</h4>
+            <div class="drawer__row"><span>Matricule</span><strong class="mono">EMP-2841</strong></div>
+            <div class="drawer__row"><span>Numéro de badge</span><strong class="mono">PRX-002841</strong></div>
+            <div class="drawer__row"><span>Quart</span><strong>Jour 8h - 17h</strong></div>
+            <div class="drawer__row"><span>Groupes d'accès</span><strong style="text-align: right">Bureaux<br/>Étage 3 — Direction</strong></div>
+          </div>
+
+          <div class="drawer__section">
+            <h4>Biométrie enrôlée</h4>
+            <div class="biometric-tiles">
+              <div class="bio-tile is-set">
+                <div class="glyph"><svg width="16" height="16"><use href="#i-camera"/></svg></div>
+                <strong style="font-size: 12px; color: var(--text-strong)">Visage</strong>
+                <small>Enrôlé · 12 mars</small>
+              </div>
+              <div class="bio-tile is-set">
+                <div class="glyph"><svg width="16" height="16"><use href="#i-finger"/></svg></div>
+                <strong style="font-size: 12px; color: var(--text-strong)">Empreinte</strong>
+                <small>2 doigts</small>
+              </div>
+              <div class="bio-tile is-set">
+                <div class="glyph"><svg width="16" height="16"><use href="#i-card"/></svg></div>
+                <strong style="font-size: 12px; color: var(--text-strong)">Badge</strong>
+                <small>Actif</small>
+              </div>
+            </div>
+            <button class="btn btn--ghost btn--sm" style="width: 100%; margin-top: 10px; justify-content: center; color: var(--brand)">+ Réenrôler la biométrie</button>
+          </div>
+
+          <div class="drawer__section">
+            <h4>Activité récente</h4>
+            <div class="drawer__row" style="padding: 6px 0; border-bottom: 1px dashed var(--border-subtle)"><span>Aujourd'hui · 09:42</span><strong style="color: var(--success-700)">Entrée RDC</strong></div>
+            <div class="drawer__row" style="padding: 6px 0; border-bottom: 1px dashed var(--border-subtle)"><span>Hier · 18:12</span><strong>Sortie Étage 3</strong></div>
+            <div class="drawer__row" style="padding: 6px 0; border: 0"><span>Hier · 08:55</span><strong>Entrée RDC</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

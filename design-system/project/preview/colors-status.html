@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Status Colors</title>
+<link rel="stylesheet" href="_pv.css"/>
+<style>
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .stat {
+    border-radius: 16px;
+    border: 1px solid var(--border-default);
+    overflow: hidden;
+    background: var(--bg-surface);
+  }
+  .stat__band { height: 84px; display: flex; align-items: flex-end; padding: 12px 14px; color: white; font-family: var(--font-display); font-weight: 600; font-size: 14px; letter-spacing: -.005em; }
+  .stat__bd { padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .stat .pill {
+    align-self: flex-start;
+    height: 24px; padding: 0 10px;
+    border-radius: 999px;
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600;
+    border: 1px solid;
+  }
+  .stat .pill .dot { width: 7px; height: 7px; border-radius: 999px; background: currentColor; }
+  .stat .desc { font-size: 12.5px; color: var(--fg3); line-height: 1.45; }
+  .stat code { font-family: var(--font-mono); font-size: 11px; color: var(--fg3); }
+
+  .stat--ok .stat__band { background: linear-gradient(135deg,#10B981,#047857); }
+  .stat--ok .pill { background: var(--success-50); border-color: #BBF7D0; color: var(--success-700); }
+  .stat--warn .stat__band { background: linear-gradient(135deg,#F59E0B,#B45309); }
+  .stat--warn .pill { background: var(--warning-50); border-color: #FDE68A; color: var(--warning-700); }
+  .stat--bad .stat__band { background: linear-gradient(135deg,#EF4444,#B91C1C); }
+  .stat--bad .pill { background: var(--danger-50); border-color: #FECACA; color: var(--danger-700); }
+  .stat--info .stat__band { background: linear-gradient(135deg,#3B82F6,#1D4ED8); }
+  .stat--info .pill { background: var(--info-50); border-color: #BFDBFE; color: var(--info-700); }
+
+  /* live pulse */
+  @keyframes pulseRing {
+    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, .55); }
+    70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+  }
+  .stat--ok .pill .dot { animation: pulseRing 1.6s var(--ease-out) infinite; }
+</style>
+</head>
+<body>
+<div class="pv-shell">
+  <div class="pv-head">
+    <div>
+      <p class="pv-eyebrow">Colors · Status</p>
+      <h1 class="pv-title">Status palette</h1>
+      <p class="pv-sub">Status earns saturation. Calm slate ramps elsewhere mean these four colors do the heavy lifting in dashboards & alerts.</p>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="stat stat--ok">
+      <div class="stat__band">Success</div>
+      <div class="stat__bd">
+        <span class="pill"><span class="dot"></span> Actif · 12 s</span>
+        <div class="desc">Live device, gateway connected, biometric enrolment validated.</div>
+        <code>#10B981 · success-500</code>
+      </div>
+    </div>
+    <div class="stat stat--warn">
+      <div class="stat__band">Warning</div>
+      <div class="stat__bd">
+        <span class="pill"><span class="dot"></span> Retard · 14 min</span>
+        <div class="desc">Late clock-in, slow heartbeat, planning conflict pending.</div>
+        <code>#F59E0B · warning-500</code>
+      </div>
+    </div>
+    <div class="stat stat--bad">
+      <div class="stat__band">Danger</div>
+      <div class="stat__bd">
+        <span class="pill"><span class="dot"></span> Hors ligne</span>
+        <div class="desc">Device offline, sync failed, badge refused. User action required.</div>
+        <code>#EF4444 · danger-500</code>
+      </div>
+    </div>
+    <div class="stat stat--info">
+      <div class="stat__band">Info</div>
+      <div class="stat__bd">
+        <span class="pill"><span class="dot"></span> Mise à jour 6.2.4</span>
+        <div class="desc">Neutral information, firmware updates, system advisories.</div>
+        <code>#3B82F6 · info-500</code>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>

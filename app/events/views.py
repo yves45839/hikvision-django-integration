@@ -13,9 +13,9 @@ class AttendanceEventViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        # Scoping tenant : un utilisateur ne voit que les events des tenants
+        # dont il est membre (BACKLOG 4.5). Les superusers/staff voient tout.
         queryset = AttendanceEvent.objects.all().order_by("-id")
-        queryset = scope_queryset_to_user_tenants(queryset, self.request.user, tenant_field="tenant_id")
-        user = self.request.user
-        if user.is_superuser or user.is_staff:
-            return queryset
-        return queryset.filter(device__owner=user)
+        return scope_queryset_to_user_tenants(
+            queryset, self.request.user, tenant_field="tenant_id"
+        )

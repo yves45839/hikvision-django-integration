@@ -19,6 +19,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from employees.models import (
+    Department,
     Organization,
     OrganizationInvitation,
     OrganizationMembership,
@@ -226,6 +227,15 @@ def client_signup_api(request):
                 tenant=tenant,
                 name=organization_name,
                 code=_unique_org_code(tenant, organization_name),
+            )
+
+            # Departement par defaut: porte le nom de l'organisation pour qu'un
+            # employe ajoute juste apres le signup soit rattache d'office a un
+            # departement sans setup prealable.
+            Department.objects.create(
+                tenant=tenant,
+                organization=organization,
+                name=organization.name,
             )
 
             TenantMembership.objects.create(

@@ -34,3 +34,8 @@ README_PHASES6_11.txt
 RISKS_AND_MITIGATIONS.md
 app/db.sqlite3-wal
 app/db.sqlite3-shm
+
+# Déploiement beta (secrets + fichiers générés)
+.env.production
+deploy/_active-nginx.conf.bak
+backups/

@@ -310,6 +310,10 @@ PAYMENT_WEBHOOK_TOKEN = os.getenv("PAYMENT_WEBHOOK_TOKEN", "")
 # --- Stripe billing ---
 # Test mode keys come from https://dashboard.stripe.com/test/apikeys
 # Switch to live keys in production by overriding the env vars at deploy time.
+# Beta mode — quand activé : signup public ouvert, Stripe court-circuité,
+# bandeau "Beta gratuite" exposé au frontend via /api/beta/info/.
+BETA_MODE = _env_bool("BETA_MODE", False)
+
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
 # Generated when you run `stripe listen` or by adding an endpoint in the

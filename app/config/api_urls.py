@@ -17,6 +17,7 @@ from employees.views import (
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 from config.home_views import home_summary_api
+from config.beta_views import beta_info
 
 router = DefaultRouter()
 router.register(r'tenants', TenantViewSet)
@@ -40,6 +41,7 @@ urlpatterns = [
     path('', include('hik_gateway.urls')),
     path('billing/', include('billing.urls')),
     path('home/summary/', home_summary_api, name='home-summary-api'),
+    path('beta/info/', beta_info, name='beta-info'),
     path('auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('', include(router.urls)),

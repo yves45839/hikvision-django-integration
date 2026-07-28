@@ -18,9 +18,6 @@ from hik_gateway.services.webhook_ingest import ingest_acs_event
 logger = logging.getLogger(__name__)
 
 
-INITIAL_CATCHUP_START = datetime(1970, 1, 1, tzinfo=dt_timezone.utc)
-
-
 def _format_gateway_datetime(value: datetime) -> str:
     """
     The gateway rejects timestamps containing timezone offsets in AcsEventCond.

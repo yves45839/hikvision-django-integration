@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.urls import path, include
+from config.admin_dashboard import AdminDashboardView
 from config.health_views import health_check, readiness_check
 from config.legal_views import terms_of_service, privacy_policy
 
@@ -10,5 +11,7 @@ urlpatterns = [
     path('legal/privacy/', privacy_policy, name='legal-privacy'),
     path('api/', include('config.api_urls')),
     path('i18n/', include('django.conf.urls.i18n')),
+    # Avant l'include admin/ : son catch-all intercepterait la route sinon.
+    path('admin/dashboard/metrics/', AdminDashboardView.as_view(), name='admin-dashboard-metrics'),
     path('admin/', admin.site.urls),
 ]

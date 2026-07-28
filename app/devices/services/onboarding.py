@@ -103,8 +103,11 @@ def create_job(
 def process_job(*, job_id: int, ehome_key: str) -> DeviceOnboardingJob:
     with transaction.atomic():
         job = (
+            # requested_by est nullable (LEFT OUTER JOIN) et Postgres refuse
+            # FOR UPDATE sur le côté nullable d'une jointure ; l'accès à
+            # job.requested_by plus bas fait une requête paresseuse à la place.
             DeviceOnboardingJob.objects.select_for_update()
-            .select_related("tenant", "organization", "requested_by")
+            .select_related("tenant", "organization")
             .get(id=job_id)
         )
         if job.status != DeviceOnboardingJob.STATUS_PENDING:

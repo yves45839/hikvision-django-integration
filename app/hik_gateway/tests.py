@@ -2516,10 +2516,13 @@ class HikCatchupServiceTests(APITestCase):
             status="online",
         )
 
+    @patch("hik_gateway.services.catchup.timezone.now")
     @patch("hik_gateway.services.catchup.ingest_acs_event")
     @patch("hik_gateway.services.catchup.get_shared_gateway_client")
-    def test_initial_catchup_uses_full_history_window(self, mock_get_client, mock_ingest):
+    def test_initial_catchup_uses_lookback_window(self, mock_get_client, mock_ingest, mock_now):
         from hik_gateway.services.catchup import catchup_device
+
+        mock_now.return_value = datetime(2026, 3, 22, 12, 0, 0, tzinfo=dt_timezone.utc)
 
         mock_client = mock_get_client.return_value
         mock_client.acs_event_search.side_effect = [
@@ -2536,8 +2539,11 @@ class HikCatchupServiceTests(APITestCase):
         processed = catchup_device(self.device, max_results=50)
 
         self.assertEqual(processed, 0)
+        # Sans curseur, la fenêtre démarre à now - HIK_CATCHUP_LOOKBACK_HOURS
+        # (24 h par défaut), au format naïf UTC accepté par la gateway.
         first_call_condition = mock_client.acs_event_search.call_args_list[0].args[1]
-        self.assertEqual(first_call_condition["AcsEventCond"]["startTime"], "1970-01-01T00:00:00+00:00")
+        self.assertEqual(first_call_condition["AcsEventCond"]["startTime"], "2026-03-21T12:00:00")
+        self.assertEqual(first_call_condition["AcsEventCond"]["endTime"], "2026-03-22T12:00:00")
 
     @patch("hik_gateway.services.catchup.ingest_acs_event")
     @patch("hik_gateway.services.catchup.get_shared_gateway_client")
@@ -2631,7 +2637,11 @@ class HikCatchupServiceTests(APITestCase):
         )
 
         mock_client = mock_get_client.return_value
+        # Le tail-resync ne se déclenche que si la gateway a rejeté la
+        # recherche fenêtrée (repli badJsonContent) et que le curseur n'a pas
+        # avancé : la première réponse est donc une erreur sur l'appel fenêtré.
         mock_client.acs_event_search.side_effect = [
+            requests.HTTPError("Gateway error 400: badJsonContent"),
             {
                 "AcsEvent": {
                     "totalMatches": 1,

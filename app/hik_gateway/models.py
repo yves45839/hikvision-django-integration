@@ -5,7 +5,15 @@ from tenants.models import Tenant
 
 
 class Gateway(models.Model):
+    KIND_HIKVISION = "hikvision"
+    KIND_MOBILE_VIRTUAL = "mobile_virtual"
+    KIND_CHOICES = (
+        (KIND_HIKVISION, "Hikvision"),
+        (KIND_MOBILE_VIRTUAL, "Mobile virtual"),
+    )
+
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="hik_gateways")
+    kind = models.CharField(max_length=32, choices=KIND_CHOICES, default=KIND_HIKVISION)
     base_url = models.URLField()
     username = models.CharField(max_length=255)
     password = models.CharField(max_length=255)
@@ -15,13 +23,36 @@ class Gateway(models.Model):
     class Meta:
         indexes = [models.Index(fields=["tenant"]) ]
 
+    # Capacités dérivées du kind : les services sélectionnent par capacité,
+    # jamais par exclusion d'URL — un appareil virtuel (pointage mobile) n'est
+    # ni synchronisable ni joignable en HTTP.
+    @property
+    def supports_sync(self) -> bool:
+        return self.kind == self.KIND_HIKVISION
+
+    @property
+    def supports_health_check(self) -> bool:
+        return self.kind == self.KIND_HIKVISION
+
+    @property
+    def supports_remote_commands(self) -> bool:
+        return self.kind == self.KIND_HIKVISION
+
     def __str__(self):
         return f"Gateway<{self.tenant_id}:{self.base_url}>"
 
 
 class Device(models.Model):
+    KIND_HIKVISION = "hikvision"
+    KIND_MOBILE_VIRTUAL = "mobile_virtual"
+    KIND_CHOICES = (
+        (KIND_HIKVISION, "Hikvision"),
+        (KIND_MOBILE_VIRTUAL, "Mobile virtual"),
+    )
+
     gateway = models.ForeignKey(Gateway, on_delete=models.CASCADE, related_name="devices")
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="hik_devices")
+    kind = models.CharField(max_length=32, choices=KIND_CHOICES, default=KIND_HIKVISION)
     serial_number = models.CharField(max_length=128)
     dev_index = models.CharField(max_length=64)
     device_id = models.CharField(max_length=128, blank=True, default="")
@@ -86,9 +117,11 @@ class RawEvent(models.Model):
 class AttendanceLog(models.Model):
     SOURCE_REALTIME = "realtime"
     SOURCE_CATCHUP = "catchup"
+    SOURCE_MOBILE = "mobile"
     SOURCE_CHOICES = [
         (SOURCE_REALTIME, "Realtime"),
         (SOURCE_CATCHUP, "Catchup"),
+        (SOURCE_MOBILE, "Mobile"),
     ]
     ACTION_CHECK_IN = "CHECK_IN"
     ACTION_CHECK_OUT = "CHECK_OUT"

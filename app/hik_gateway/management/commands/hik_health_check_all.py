@@ -41,7 +41,7 @@ class Command(BaseCommand):
         update_db = options.get("update", False)
 
         # Récupérer les gateways
-        gateways_qs = Gateway.objects.select_related("tenant")
+        gateways_qs = Gateway.objects.select_related("tenant").filter(kind=Gateway.KIND_HIKVISION)
         if tenant_code:
             gateways_qs = gateways_qs.filter(tenant__code__iexact=tenant_code)
         if gateway_id:

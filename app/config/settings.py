@@ -188,6 +188,12 @@ CELERY_BROKER_URL = (
 CELERY_RESULT_BACKEND = None
 CELERY_TASK_IGNORE_RESULT = True
 CELERY_TASK_ALWAYS_EAGER = os.getenv("CELERY_TASK_ALWAYS_EAGER", "0").strip().lower() in {"1", "true", "yes", "on"}
+# --- Pointage mobile (géorepérage) ---
+MOBILE_PUNCH_MAX_ACCURACY_M = int(os.getenv("MOBILE_PUNCH_MAX_ACCURACY_M", "150"))
+MOBILE_PUNCH_BORDERLINE_GRACE_M = int(os.getenv("MOBILE_PUNCH_BORDERLINE_GRACE_M", "20"))
+MOBILE_PUNCH_BORDERLINE_MAX_ACCURACY_M = int(os.getenv("MOBILE_PUNCH_BORDERLINE_MAX_ACCURACY_M", "50"))
+MOBILE_PUNCH_MIN_INTERVAL_SECONDS = int(os.getenv("MOBILE_PUNCH_MIN_INTERVAL_SECONDS", "60"))
+
 CELERY_BEAT_SCHEDULE = {
     "hik-catchup-every-minute": {
         "task": "hik_gateway.tasks.hik_catchup_all",

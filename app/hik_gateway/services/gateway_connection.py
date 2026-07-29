@@ -21,7 +21,7 @@ def get_shared_gateway_client(*, tenant_code: str | None = None) -> HikGatewayCl
     if base_url and username and password:
         return HikGatewayClient(base_url, username, password)
 
-    gateways = Gateway.objects.select_related("tenant").order_by("id")
+    gateways = Gateway.objects.select_related("tenant").filter(kind=Gateway.KIND_HIKVISION).order_by("id")
     if tenant_code:
         gateways = gateways.filter(tenant__code__iexact=tenant_code)
 

@@ -126,3 +126,44 @@ class SiteViewSet(AuditLogMixin, viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         self._require_org_admin(instance.tenant)
         super().perform_destroy(instance)
+
+
+@api_view(["GET", "PUT"])
+@permission_classes([IsAuthenticated])
+def punch_notification_settings_api(request):
+    """Réglages des rappels de pointage du tenant (lecture/écriture tenant_admin)."""
+    from presence.notifications import get_tenant_notification_settings
+    from tenants.services import resolve_tenant
+
+    tenant_code = str(
+        request.query_params.get("tenant") or request.headers.get("X-Tenant-Code") or ""
+    ).strip()
+    if not tenant_code:
+        return Response(
+            {"code": "TENANT_REQUIRED", "detail": "Le paramètre tenant est requis."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    tenant = resolve_tenant(tenant_code)
+    if tenant is None:
+        return Response({"detail": "Tenant inconnu."}, status=status.HTTP_404_NOT_FOUND)
+    if not has_tenant_role(request.user, tenant, TenantRole.TENANT_ADMIN):
+        return Response(
+            {"detail": "Rôle tenant_admin requis."}, status=status.HTTP_403_FORBIDDEN
+        )
+
+    obj = get_tenant_notification_settings(tenant)
+    fields = [
+        "reminders_enabled",
+        "warning_enabled",
+        "late_enabled",
+        "push_enabled",
+        "email_enabled",
+        "sms_enabled",
+    ]
+    if request.method == "PUT":
+        for field in fields:
+            if field in request.data:
+                setattr(obj, field, bool(request.data[field]))
+        obj.save()
+        record_audit(request, "update_punch_notification_settings", tenant, tenant_code=tenant.code)
+    return Response({field: getattr(obj, field) for field in fields})

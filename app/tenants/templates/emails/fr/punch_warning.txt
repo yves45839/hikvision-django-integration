@@ -1,0 +1,11 @@
+{% extends "emails/base.txt" %}
+
+{% block content %}
+RAPPEL DE POINTAGE — {{ tenant_name }}
+--------------------------------------
+
+Bonjour{% if employee_name %} {{ employee_name }}{% endif %},
+
+Votre service commence à {{ expected_time }}.
+Pensez à pointer votre arrivée depuis l'application LR Time dès que vous êtes sur site.
+{% endblock %}

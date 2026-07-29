@@ -1,0 +1,21 @@
+{% extends "emails/base.html" %}
+
+{% block subject %}Pointage dans 15 minutes — {{ tenant_name }}{% endblock %}
+{% block preheader %}Votre service commence à {{ expected_time }}.{% endblock %}
+{% block header_tag %}Rappel de pointage{% endblock %}
+
+{% block content %}
+<tr>
+  <td style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:22px;font-weight:600;color:#1A2238;line-height:30px;padding-bottom:16px;">
+    Votre service commence bientôt
+  </td>
+</tr>
+<tr>
+  <td style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:24px;color:#4A5572;padding-bottom:24px;">
+    Bonjour{% if employee_name %} {{ employee_name }}{% endif %},<br><br>
+    Votre service chez <strong style="color:#243C8C;">{{ tenant_name }}</strong> commence à
+    <strong>{{ expected_time }}</strong>. Pensez à pointer votre arrivée depuis
+    l'application LR Time dès que vous êtes sur site.
+  </td>
+</tr>
+{% endblock %}

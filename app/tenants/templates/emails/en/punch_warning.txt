@@ -1,0 +1,11 @@
+{% extends "emails/base.txt" %}
+
+{% block content %}
+CLOCK-IN REMINDER — {{ tenant_name }}
+-------------------------------------
+
+Hello{% if employee_name %} {{ employee_name }}{% endif %},
+
+Your shift starts at {{ expected_time }}.
+Remember to clock in from the LR Time app as soon as you are on site.
+{% endblock %}

@@ -347,3 +347,42 @@ def mobile_history_api(request):
     )
     results = [_serialize_punch(log) for log in logs]
     return Response({"count": len(results), "results": results})
+
+
+@api_view(["POST", "DELETE"])
+@permission_classes([IsAuthenticated])
+def mobile_push_token_api(request):
+    employee = _get_linked_employee(request)
+    if employee is None:
+        return _profile_not_linked()
+
+    from presence.models import EmployeePushToken
+
+    token = str(request.data.get("token") or "").strip()
+    if not token:
+        return Response(
+            {"code": "MISSING_TOKEN", "detail": "token est requis."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if request.method == "DELETE":
+        EmployeePushToken.objects.filter(employee=employee, token=token).update(is_active=False)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    installation_id = str(request.data.get("installation_id") or "").strip()[:64]
+    defaults = {
+        "employee": employee,
+        "platform": str(request.data.get("platform") or "unknown")[:16],
+        "installation_id": installation_id,
+        "app_version": str(request.data.get("app_version") or "")[:64],
+        "locale": str(request.data.get("locale") or "")[:8],
+        "timezone": str(request.data.get("timezone") or "")[:64],
+        "is_active": True,
+    }
+    obj, created = EmployeePushToken.objects.update_or_create(token=token, defaults=defaults)
+    # Une installation qui obtient un nouveau token invalide les anciens.
+    if installation_id:
+        EmployeePushToken.objects.filter(
+            employee=employee, installation_id=installation_id, is_active=True
+        ).exclude(token=token).update(is_active=False)
+    return Response(status=status.HTTP_204_NO_CONTENT)

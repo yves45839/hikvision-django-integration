@@ -199,7 +199,18 @@ CELERY_BEAT_SCHEDULE = {
         "task": "hik_gateway.tasks.hik_catchup_all",
         "schedule": 60.0,
     },
+    "check-punch-reminders": {
+        "task": "presence.tasks.check_punch_reminders",
+        "schedule": 60.0,
+    },
 }
+
+# --- Rappels de pointage ---
+PUNCH_WARNING_MINUTES = int(os.getenv("PUNCH_WARNING_MINUTES", "15"))
+PUNCH_LATE_MINUTES = int(os.getenv("PUNCH_LATE_MINUTES", "5"))
+PUNCH_LATE_CUTOFF_MINUTES = int(os.getenv("PUNCH_LATE_CUTOFF_MINUTES", "60"))
+SMS_BACKEND = os.getenv("SMS_BACKEND", "presence.sms.NoopSmsBackend")
+EXPO_PUSH_URL = os.getenv("EXPO_PUSH_URL", "https://exp.host/--/api/v2/push/send")
 
 
 def _configure_sqlite_pragmas(sender, connection, **kwargs):

@@ -97,3 +97,85 @@ class Site(models.Model):
 
     def __str__(self) -> str:
         return f"{self.tenant_id}:{self.name}"
+
+
+class EmployeePushToken(models.Model):
+    """Jeton push Expo d'une installation de l'app (un employé peut avoir
+    plusieurs téléphones ; un téléphone réinstallé change de token)."""
+
+    PLATFORM_CHOICES = (("ios", "iOS"), ("android", "Android"), ("unknown", "Unknown"))
+
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name="push_tokens")
+    token = models.CharField(max_length=255, unique=True)
+    platform = models.CharField(max_length=16, choices=PLATFORM_CHOICES, default="unknown")
+    installation_id = models.CharField(max_length=64, blank=True, default="")
+    app_version = models.CharField(max_length=64, blank=True, default="")
+    locale = models.CharField(max_length=8, blank=True, default="")
+    timezone = models.CharField(max_length=64, blank=True, default="")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_seen_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["employee", "is_active"]),
+            models.Index(fields=["installation_id"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.employee_id}:{self.platform}:{self.token[:16]}"
+
+
+class PunchReminderLog(models.Model):
+    """Journal d'idempotence des rappels de pointage — au plus un envoi par
+    (employé, date locale, type), avec statut par canal pour le diagnostic."""
+
+    KIND_PRE_START_WARNING = "pre_start_warning"
+    KIND_LATE_REMINDER = "late_reminder"
+    KIND_CHOICES = (
+        (KIND_PRE_START_WARNING, "Pre-start warning"),
+        (KIND_LATE_REMINDER, "Late reminder"),
+    )
+
+    CHANNEL_SENT = "sent"
+    CHANNEL_FAILED = "failed"
+    CHANNEL_SKIPPED = "skipped"
+
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name="punch_reminders")
+    date = models.DateField()
+    kind = models.CharField(max_length=32, choices=KIND_CHOICES)
+    expected_start_at = models.DateTimeField(null=True, blank=True)
+    sent_at = models.DateTimeField(auto_now_add=True)
+    push_status = models.CharField(max_length=16, default=CHANNEL_SKIPPED)
+    email_status = models.CharField(max_length=16, default=CHANNEL_SKIPPED)
+    sms_status = models.CharField(max_length=16, default=CHANNEL_SKIPPED)
+    errors = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["employee", "date", "kind"], name="uq_punch_reminder_once"
+            ),
+        ]
+        indexes = [models.Index(fields=["date", "kind"])]
+
+    def __str__(self) -> str:
+        return f"{self.employee_id}:{self.date}:{self.kind}"
+
+
+class TenantNotificationSettings(models.Model):
+    """Canaux de rappel de pointage activés pour le tenant."""
+
+    tenant = models.OneToOneField(
+        Tenant, on_delete=models.CASCADE, related_name="punch_notification_settings"
+    )
+    reminders_enabled = models.BooleanField(default=True)
+    warning_enabled = models.BooleanField(default=True)
+    late_enabled = models.BooleanField(default=True)
+    push_enabled = models.BooleanField(default=True)
+    email_enabled = models.BooleanField(default=True)
+    sms_enabled = models.BooleanField(default=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return f"NotifSettings<{self.tenant_id}>"

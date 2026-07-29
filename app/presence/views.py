@@ -1,14 +1,18 @@
-"""Endpoints publics d'invitation mobile (preview + acceptation)."""
-from rest_framework import status
+"""Endpoints du pointage mobile : invitations publiques + CRUD des sites."""
+from rest_framework import status, viewsets
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from audit.mixins import record_audit
+from audit.mixins import AuditLogMixin, record_audit
+from presence.models import Site
+from presence.serializers import SiteSerializer
 from presence.services import InvitationError, accept_mobile_invitation, get_invitation_by_secret
-from tenants.models import TenantMembership
+from tenants.models import TenantMembership, TenantRole
+from tenants.services import has_tenant_role, scope_queryset_to_user_tenants
 from tenants.serializers import AuthUserSerializer
 
 
@@ -86,3 +90,39 @@ def mobile_invitation_accept_api(request):
         },
         status=status.HTTP_201_CREATED,
     )
+
+
+class SiteViewSet(AuditLogMixin, viewsets.ModelViewSet):
+    """CRUD des sites de pointage. Lecture : membres admin du tenant ;
+    écritures : rôle ≥ org_admin."""
+
+    queryset = Site.objects.select_related("tenant").order_by("name")
+    serializer_class = SiteSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = scope_queryset_to_user_tenants(super().get_queryset(), self.request.user)
+        tenant_code = str(self.request.query_params.get("tenant") or "").strip()
+        if tenant_code:
+            queryset = queryset.filter(tenant__code__iexact=tenant_code)
+        return queryset
+
+    def _require_org_admin(self, tenant):
+        if not has_tenant_role(self.request.user, tenant, TenantRole.ORG_ADMIN):
+            raise PermissionDenied("Rôle org_admin minimum requis pour gérer les sites.")
+
+    def perform_create(self, serializer):
+        self._require_org_admin(serializer.validated_data.get("tenant"))
+        super().perform_create(serializer)
+
+    def perform_update(self, serializer):
+        instance = serializer.instance
+        tenant = serializer.validated_data.get("tenant", instance.tenant)
+        self._require_org_admin(tenant)
+        if serializer.validated_data.get("tenant") is not None and tenant.id != instance.tenant_id:
+            raise PermissionDenied("Changing tenant is not allowed for this resource.")
+        super().perform_update(serializer)
+
+    def perform_destroy(self, instance):
+        self._require_org_admin(instance.tenant)
+        super().perform_destroy(instance)

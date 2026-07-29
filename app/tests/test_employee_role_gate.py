@@ -39,6 +39,7 @@ ROUTER_EXPECTATIONS: dict[str, str] = {
     "work-shifts": "empty",
     "access-groups": "empty",
     "leave-requests": "empty",
+    "punch-sites": "empty",
 }
 
 # Endpoints hors routeur qui doivent refuser un compte employee.

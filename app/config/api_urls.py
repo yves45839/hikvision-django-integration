@@ -16,6 +16,7 @@ from employees.views import (
 
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
+from presence.views import SiteViewSet
 from config.home_views import home_summary_api
 from config.beta_views import beta_info
 
@@ -32,6 +33,7 @@ router.register(r'planning-assignments', PlanningAssignmentViewSet)
 router.register(r'work-shifts', WorkShiftViewSet)
 router.register(r'access-groups', AccessGroupViewSet)
 router.register(r'leave-requests', LeaveRequestViewSet)
+router.register(r'punch-sites', SiteViewSet)
 
 urlpatterns = [
     path('schema/', SpectacularAPIView.as_view(), name='schema'),

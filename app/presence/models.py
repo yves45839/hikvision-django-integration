@@ -68,3 +68,32 @@ class EmployeeInvitation(models.Model):
 
     def __str__(self) -> str:
         return f"{self.employee_id}:{self.email}:{self.status}"
+
+
+class Site(models.Model):
+    """Site de pointage : zone géographique où le pointage mobile est valide.
+
+    V1 : tout site actif du tenant vaut pour tous ses employés.
+    # future: M2M site↔department pour restreindre par équipe.
+    """
+
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="punch_sites")
+    name = models.CharField(max_length=255)
+    address = models.CharField(max_length=255, blank=True, default="")
+    latitude = models.DecimalField(max_digits=9, decimal_places=6)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6)
+    radius_m = models.PositiveIntegerField(default=100)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["tenant", "name"], name="uq_punch_site_tenant_name"),
+        ]
+        indexes = [
+            models.Index(fields=["tenant", "is_active"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.tenant_id}:{self.name}"

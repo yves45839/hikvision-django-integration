@@ -23,21 +23,6 @@ services:
     networks:
       - lrtime_net
 
-  redis:
-    image: redis:7-alpine
-    container_name: lrtime_redis
-    restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
-    volumes:
-      - redisdata:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - lrtime_net
-
   web:
     build:
       context: ..
@@ -48,8 +33,6 @@ services:
       DJANGO_DEBUG: "0"
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:?ALLOWED_HOSTS is required}
       DATABASE_URL: "postgres://${POSTGRES_USER:-lrtime}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-lrtime}"
-      REDIS_URL: "redis://redis:6379/0"
-      CELERY_BROKER_URL: "redis://redis:6379/1"
       LANGUAGE_CODE: ${LANGUAGE_CODE:-fr}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       KMS_KEY: ${KMS_KEY:?KMS_KEY (Fernet) is required}
@@ -89,11 +72,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      redis:
-        condition: service_healthy
     command: >
       sh -c "
       python manage.py migrate --noinput &&
+      python manage.py createcachetable &&
       python manage.py collectstatic --noinput &&
       gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120 --access-logfile - --error-logfile -
       "
@@ -120,11 +102,13 @@ services:
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:?NEXT_PUBLIC_API_BASE_URL is required}
         NEXT_PUBLIC_EMPLOYEE_API_BASE_URL: ${NEXT_PUBLIC_EMPLOYEE_API_BASE_URL:-${NEXT_PUBLIC_API_BASE_URL}}
         NEXT_PUBLIC_BETA_MODE: "1"
+        NEXT_PUBLIC_EMPLOYEE_API_ENABLED: "true"
     container_name: lrtime_frontend
     environment:
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:?NEXT_PUBLIC_API_BASE_URL is required}
       NEXT_PUBLIC_EMPLOYEE_API_BASE_URL: ${NEXT_PUBLIC_EMPLOYEE_API_BASE_URL:-${NEXT_PUBLIC_API_BASE_URL}}
       NEXT_PUBLIC_BETA_MODE: "1"
+      NEXT_PUBLIC_EMPLOYEE_API_ENABLED: "true"
       NODE_ENV: production
     expose:
       - "3000"
@@ -143,7 +127,6 @@ services:
       DJANGO_DEBUG: "0"
       ALLOWED_HOSTS: ${ALLOWED_HOSTS}
       DATABASE_URL: "postgres://${POSTGRES_USER:-lrtime}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-lrtime}"
-      REDIS_URL: "redis://redis:6379/0"
       KMS_KEY: ${KMS_KEY}
       HIK_DEVICE_GATEWAY_BASE_URL: ${HIK_DEVICE_GATEWAY_BASE_URL}
       HIK_DEVICE_GATEWAY_USERNAME: ${HIK_DEVICE_GATEWAY_USERNAME}
@@ -161,6 +144,32 @@ services:
         sleep 30;
       done
       "
+    healthcheck:
+      disable: true
+    restart: unless-stopped
+    networks:
+      - lrtime_net
+
+  qcluster:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: lrtime_qcluster
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DJANGO_DEBUG: "0"
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      DATABASE_URL: "postgres://${POSTGRES_USER:-lrtime}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-lrtime}"
+      KMS_KEY: ${KMS_KEY}
+      HIK_DEVICE_GATEWAY_BASE_URL: ${HIK_DEVICE_GATEWAY_BASE_URL}
+      HIK_DEVICE_GATEWAY_USERNAME: ${HIK_DEVICE_GATEWAY_USERNAME}
+      HIK_DEVICE_GATEWAY_PASSWORD: ${HIK_DEVICE_GATEWAY_PASSWORD}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      BETA_MODE: "1"
+    depends_on:
+      web:
+        condition: service_healthy
+    command: ["python", "manage.py", "qcluster"]
     healthcheck:
       disable: true
     restart: unless-stopped
@@ -199,7 +208,6 @@ services:
 
 volumes:
   pgdata:
-  redisdata:
   staticfiles:
   mediafiles:
   certbot-www:

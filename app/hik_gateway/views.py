@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import requests
 import time as pytime
 import xml.etree.ElementTree as ET
 import csv
@@ -29,7 +30,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from hik_gateway.client import HikGatewayClient  # backward-compatible import for tests
-from hik_gateway.models import AttendanceCorrection, AttendanceCorrectionLog, AttendanceLog, Device
+from hik_gateway.models import AttendanceCorrection, AttendanceCorrectionLog, AttendanceLog, Device, Gateway
 from hik_gateway.services.device_payload import extract_devices, normalize_device
 from hik_gateway.services.device_dispatch import dispatch_hik_devices_to_core_devices
 from hik_gateway.services.device_sync import sync_all_gateways
@@ -1217,7 +1218,14 @@ def hik_sync_devices_api(request: HttpRequest) -> Response:
 
     dispatch_core_devices = _to_bool(request.data.get("dispatch_core_devices", True))
     try:
-        synced = sync_all_gateways()
+        try:
+            synced = sync_all_gateways()
+        except (requests.RequestException, Gateway.DoesNotExist) as exc:
+            logger.warning("Device sync failed: gateway unreachable or not configured", exc_info=True)
+            return Response(
+                {"detail": "Hik gateway unreachable or not configured", "error": str(exc)[:200]},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
         dispatched = dispatch_hik_devices_to_core_devices() if dispatch_core_devices else 0
         return Response(
             {

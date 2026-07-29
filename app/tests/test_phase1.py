@@ -208,7 +208,12 @@ class TestDockerfileExists(TestCase):
 
 
 class TestDockerComposeHasRedis(TestCase):
-    """1.1: Test that docker-compose has Redis service."""
+    """1.1 (révisé 2026-07-29) : plus de Redis — broker/cache = Postgres.
+
+    La décision d'architecture (STATUS.md §2) remplace Redis par le cache
+    DatabaseCache et Django-Q2 (broker ORM). Ce test verrouille l'absence
+    de Redis pour éviter sa réintroduction accidentelle.
+    """
 
     def test_docker_compose_exists(self):
         """Test that docker-compose.yml exists."""
@@ -218,16 +223,21 @@ class TestDockerComposeHasRedis(TestCase):
         )
         self.assertTrue(os.path.exists(compose_path))
 
-    def test_docker_compose_has_redis(self):
-        """Test that docker-compose.yml has redis service."""
+    def test_docker_compose_has_no_redis(self):
+        """Le compose de dev ne doit plus déclarer de service Redis."""
         import os
         compose_path = os.path.join(
             os.path.dirname(__file__), "..", "..", "docker-compose.yml"
         )
         with open(compose_path, "r") as f:
             content = f.read()
-            self.assertIn("redis", content)
-            self.assertIn("redis:7-alpine", content)
+            self.assertNotIn("redis", content.lower())
+
+    def test_settings_use_orm_broker_for_tasks(self):
+        """Django-Q2 doit utiliser la base de données comme broker."""
+        from django.conf import settings
+        self.assertEqual(settings.Q_CLUSTER.get("orm"), "default")
+        self.assertIn("django_q", settings.INSTALLED_APPS)
 
     def test_docker_compose_healthchecks(self):
         """Test that docker-compose services have healthchecks."""

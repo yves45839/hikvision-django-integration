@@ -89,6 +89,7 @@ INSTALLED_APPS = [
     'employees',
     'hik_gateway',
     'billing',
+    'django_q',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -251,6 +252,37 @@ AUTHENTICATION_BACKENDS = [
     'axes.backends.AxesStandaloneBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
+
+# Cache partagé entre workers (throttling DRF, verrous applicatifs).
+# En production : table Postgres (créée par `manage.py createcachetable`,
+# lancé avec les migrations au démarrage). En DEBUG : LocMem suffit
+# (runserver mono-process) et évite toute étape de setup en dev.
+if _env_bool("DJANGO_DEBUG", True):
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+            "LOCATION": "django_cache",
+        }
+    }
+
+# File de tâches asynchrones (onboarding d'appareils) : Django-Q2 avec la
+# base de données comme broker — pas de Redis à opérer. En DEBUG/tests,
+# Q_CLUSTER_SYNC=1 exécute les tâches en ligne, sans process qcluster.
+Q_CLUSTER = {
+    "name": "lrtime",
+    "workers": int(os.getenv("Q_CLUSTER_WORKERS", "2")),
+    "timeout": 120,
+    "retry": 180,
+    "max_attempts": 3,
+    "orm": "default",
+    "sync": _env_bool("Q_CLUSTER_SYNC", _env_bool("DJANGO_DEBUG", True)),
+}
 
 # 0.6: Encryption configuration for device credentials
 KMS_KEY = os.getenv("KMS_KEY", "")

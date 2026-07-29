@@ -60,7 +60,7 @@ class Command(BaseCommand):
             org, o_created = Organization.objects.get_or_create(
                 tenant=tenant,
                 code="SIEGE",
-                defaults={"name": ORG_NAME, "is_active": True},
+                defaults={"name": ORG_NAME},
             )
             self.stdout.write(
                 self.style.SUCCESS(

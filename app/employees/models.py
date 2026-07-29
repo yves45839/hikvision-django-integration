@@ -648,6 +648,15 @@ class Employee(models.Model):
     )
 
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="employees")
+    # Compte de connexion de l'employé (app mobile). Nullable : la fiche RH
+    # existe indépendamment de tout compte.
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="employee_profile",
+        null=True,
+        blank=True,
+    )
     department = models.ForeignKey(
         Department,
         on_delete=models.SET_NULL,

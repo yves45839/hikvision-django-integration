@@ -17,3 +17,4 @@ sentry-sdk[django]>=2.0
 tenacity>=8.2
 pybreaker>=1.0
 stripe>=10.0
+celery[redis]>=5.4

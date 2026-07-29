@@ -182,7 +182,9 @@ class ScheduleResolver:
 
         return candidates
 
-    def _resolve_employee_timezone(self, employee: Employee):
+    def resolve_employee_timezone(self, employee: Employee):
+        """Fuseau effectif de l'employé (fuseau du planning, sinon celui du
+        serveur). API publique — utilisée par le pointage mobile et les rappels."""
         planning = self.resolve_effective_planning(employee)
         timezone_name = str(getattr(planning, "timezone", "") or "").strip()
         if timezone_name:
@@ -191,6 +193,9 @@ class ScheduleResolver:
             except ZoneInfoNotFoundError:
                 pass
         return timezone.get_current_timezone()
+
+    # Rétro-compatibilité interne.
+    _resolve_employee_timezone = resolve_employee_timezone
 
     def resolve_assignment(self, employee: Employee, target_date: date | None = None) -> dict:
         target_date = target_date or date.today()

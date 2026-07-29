@@ -89,6 +89,7 @@ INSTALLED_APPS = [
     'employees',
     'hik_gateway',
     'billing',
+    'presence',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -149,6 +150,67 @@ import dj_database_url as _dj_db_url
 _db_url = os.getenv("DATABASE_URL")
 if _db_url:
     DATABASES["default"] = _dj_db_url.parse(_db_url, conn_max_age=600)
+
+# Cache partagé (throttling DRF multi-worker, verrous Celery). Redis quand
+# REDIS_URL est défini, sinon LocMem (dev/tests sans Redis).
+REDIS_URL = os.getenv("REDIS_URL", "").strip()
+
+
+def _redis_db_url(base_url: str, db_index: int) -> str:
+    """redis://host:port -> redis://host:port/<db> ; URL avec db explicite inchangée."""
+    stripped = base_url.rstrip("/")
+    scheme_less = stripped.split("://", 1)[-1]
+    if "/" in scheme_less:
+        return stripped
+    return f"{stripped}/{db_index}"
+
+
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": _redis_db_url(REDIS_URL, 2),
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "lr-time-default",
+        }
+    }
+
+# --- Celery (tâches asynchrones + périodiques) ---
+CELERY_BROKER_URL = (
+    os.getenv("CELERY_BROKER_URL", "").strip()
+    or (_redis_db_url(REDIS_URL, 1) if REDIS_URL else "redis://localhost:6379/1")
+)
+CELERY_RESULT_BACKEND = None
+CELERY_TASK_IGNORE_RESULT = True
+CELERY_TASK_ALWAYS_EAGER = os.getenv("CELERY_TASK_ALWAYS_EAGER", "0").strip().lower() in {"1", "true", "yes", "on"}
+# --- Pointage mobile (géorepérage) ---
+MOBILE_PUNCH_MAX_ACCURACY_M = int(os.getenv("MOBILE_PUNCH_MAX_ACCURACY_M", "150"))
+MOBILE_PUNCH_BORDERLINE_GRACE_M = int(os.getenv("MOBILE_PUNCH_BORDERLINE_GRACE_M", "20"))
+MOBILE_PUNCH_BORDERLINE_MAX_ACCURACY_M = int(os.getenv("MOBILE_PUNCH_BORDERLINE_MAX_ACCURACY_M", "50"))
+MOBILE_PUNCH_MIN_INTERVAL_SECONDS = int(os.getenv("MOBILE_PUNCH_MIN_INTERVAL_SECONDS", "60"))
+
+CELERY_BEAT_SCHEDULE = {
+    "hik-catchup-every-minute": {
+        "task": "hik_gateway.tasks.hik_catchup_all",
+        "schedule": 60.0,
+    },
+    "check-punch-reminders": {
+        "task": "presence.tasks.check_punch_reminders",
+        "schedule": 60.0,
+    },
+}
+
+# --- Rappels de pointage ---
+PUNCH_WARNING_MINUTES = int(os.getenv("PUNCH_WARNING_MINUTES", "15"))
+PUNCH_LATE_MINUTES = int(os.getenv("PUNCH_LATE_MINUTES", "5"))
+PUNCH_LATE_CUTOFF_MINUTES = int(os.getenv("PUNCH_LATE_CUTOFF_MINUTES", "60"))
+SMS_BACKEND = os.getenv("SMS_BACKEND", "presence.sms.NoopSmsBackend")
+EXPO_PUSH_URL = os.getenv("EXPO_PUSH_URL", "https://exp.host/--/api/v2/push/send")
 
 
 def _configure_sqlite_pragmas(sender, connection, **kwargs):
@@ -230,6 +292,8 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'anon': '100/hour',
         'user': '1000/hour',
+        'invitation_accept': '10/hour',
+        'mobile_punch': '12/hour',
     }
 }
 

@@ -1,0 +1,120 @@
+{
+  "info": {
+    "name": "LR Time — Pointage mobile",
+    "description": "Invitations employé, sites de pointage, punch géolocalisé et rappels.\n\nVariables : {{base_url}} (ex. http://localhost:8000), {{admin_token}} (JWT admin), {{employee_token}} (JWT compte employé), {{invitation_token}} (secret reçu par email).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Invitations",
+      "item": [
+        {
+          "name": "Inviter un employé sur mobile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{admin_token}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "url": "{{base_url}}/api/employees/1/invite-mobile/",
+            "body": {"mode": "raw", "raw": "{\n  \"email\": \"employe@example.com\"\n}"}
+          }
+        },
+        {
+          "name": "Prévisualiser une invitation (public)",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/auth/employee-invitations/preview/?token={{invitation_token}}"
+          }
+        },
+        {
+          "name": "Accepter une invitation (public)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": "{{base_url}}/api/auth/employee-invitations/accept/",
+            "body": {"mode": "raw", "raw": "{\n  \"token\": \"{{invitation_token}}\",\n  \"password\": \"MotDePasse!Fort2026\"\n}"}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sites de pointage (admin)",
+      "item": [
+        {
+          "name": "Lister les sites",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}],
+            "url": "{{base_url}}/api/punch-sites/"
+          }
+        },
+        {
+          "name": "Créer un site",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{admin_token}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "url": "{{base_url}}/api/punch-sites/",
+            "body": {"mode": "raw", "raw": "{\n  \"name\": \"Siège\",\n  \"address\": \"Abidjan, Plateau\",\n  \"latitude\": \"5.348500\",\n  \"longitude\": \"-4.027700\",\n  \"radius_m\": 120\n}"}
+          }
+        },
+        {
+          "name": "Réglages de notification du tenant",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}],
+            "url": "{{base_url}}/api/punch-notification-settings/"
+          }
+        }
+      ]
+    },
+    {
+      "name": "API mobile (compte employé)",
+      "item": [
+        {
+          "name": "Me — planning et action suggérée",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{employee_token}}"}],
+            "url": "{{base_url}}/api/mobile/me/"
+          }
+        },
+        {
+          "name": "Pointer (punch GPS)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{employee_token}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "url": "{{base_url}}/api/mobile/punch/",
+            "body": {"mode": "raw", "raw": "{\n  \"latitude\": 5.3485,\n  \"longitude\": -4.0277,\n  \"accuracy_m\": 12,\n  \"idempotency_key\": \"{{$guid}}\",\n  \"client_reported_at\": \"2026-07-29T08:00:00Z\",\n  \"app_version\": \"1.0.0\"\n}"}
+          }
+        },
+        {
+          "name": "Historique de pointage",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{employee_token}}"}],
+            "url": "{{base_url}}/api/mobile/history/"
+          }
+        },
+        {
+          "name": "Enregistrer un push token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{employee_token}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "url": "{{base_url}}/api/mobile/push-token/",
+            "body": {"mode": "raw", "raw": "{\n  \"token\": \"ExponentPushToken[xxxxxxxx]\",\n  \"platform\": \"android\",\n  \"installation_id\": \"{{$guid}}\",\n  \"app_version\": \"1.0.0\",\n  \"locale\": \"fr\",\n  \"timezone\": \"Africa/Abidjan\"\n}"}
+          }
+        }
+      ]
+    }
+  ]
+}

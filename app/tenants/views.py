@@ -1,8 +1,9 @@
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import viewsets
 
-from tenants.models import Tenant, TenantMembership
+from tenants.models import Tenant
 from tenants.serializers import TenantSerializer
+from tenants.services import get_admin_tenant_ids
 
 
 class TenantViewSet(viewsets.ModelViewSet):
@@ -15,5 +16,4 @@ class TenantViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.is_superuser or user.is_staff:
             return queryset
-        tenant_ids = TenantMembership.objects.filter(user=user).values_list("tenant_id", flat=True)
-        return queryset.filter(id__in=tenant_ids)
+        return queryset.filter(id__in=get_admin_tenant_ids(user))

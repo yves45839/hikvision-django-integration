@@ -1,0 +1,24 @@
+{% extends "emails/base.txt" %}
+
+{% block content %}
+MOBILE CLOCK-IN — {{ tenant_name }}
+-----------------------------------
+
+Hello{% if employee_name %} {{ employee_name }}{% endif %},
+
+{{ tenant_name }} invites you to create your LR Time account so you can clock
+in and out from your phone.
+
+1. Install the LR Time app on your phone.
+2. Open this link from your phone:
+   {{ deep_link }}
+
+If the link does not open the app:
+   {{ web_fallback_url }}
+
+Or enter this invitation code in the app:
+   {{ invitation_token }}
+
+This invitation expires on {{ expires_at|date:"Y-m-d H:i" }}.
+If this invitation is not meant for you, simply ignore this email.
+{% endblock %}

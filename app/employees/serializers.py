@@ -152,6 +152,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
     effective_planning = serializers.SerializerMethodField(read_only=True)
     effective_work_shift = serializers.SerializerMethodField(read_only=True)
     effective_work_shifts = serializers.SerializerMethodField(read_only=True)
+    mobile_status = serializers.SerializerMethodField(read_only=True)
     require_credential = serializers.BooleanField(write_only=True, required=False, default=False)
 
     class Meta:
@@ -189,6 +190,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
             "extended_door_open_time",
             "is_blocklisted",
             "is_visitor",
+            "mobile_status",
             "is_device_operator",
             "custom_profile",
             "only_authenticate",
@@ -220,6 +222,17 @@ class EmployeeSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             "name": {"allow_blank": False},
         }
+
+    def get_mobile_status(self, obj) -> str:
+        """linked (compte actif) | invited (invitation en attente) | none."""
+        if obj.user_id is not None:
+            return "linked"
+        pending = getattr(obj, "_pending_mobile_invitations", None)
+        if pending is None:
+            pending = obj.mobile_invitations.filter(status="pending").exists()
+        else:
+            pending = bool(pending)
+        return "invited" if pending else "none"
 
     def get_effective_planning(self, obj):
         planning = obj.effective_planning

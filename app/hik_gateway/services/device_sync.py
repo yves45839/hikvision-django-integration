@@ -158,7 +158,7 @@ def sync_gateway_devices(tenant=None) -> int:
     response = client.device_list_all()
     items = extract_devices(response)
 
-    gateway = Gateway.objects.filter(tenant=tenant).order_by("id").first()
+    gateway = Gateway.objects.filter(tenant=tenant, kind=Gateway.KIND_HIKVISION).order_by("id").first()
     if gateway is None:
         base_url = (getattr(settings, "HIK_DEVICE_GATEWAY_BASE_URL", "") or "").strip()
         username = (getattr(settings, "HIK_DEVICE_GATEWAY_USERNAME", "") or "").strip()
@@ -200,8 +200,9 @@ def sync_all_gateways() -> int:
     # When using settings-based singleton credentials (no Gateway row), sync every
     # tenant because each tenant still needs local Device mapping.
     total = 0
-    if Tenant.objects.filter(hik_gateways__isnull=False).exists():
-        tenants = Tenant.objects.filter(hik_gateways__isnull=False).distinct()
+    hik_tenants = Tenant.objects.filter(hik_gateways__kind=Gateway.KIND_HIKVISION)
+    if hik_tenants.exists():
+        tenants = hik_tenants.distinct()
     else:
         tenants = Tenant.objects.all()
 

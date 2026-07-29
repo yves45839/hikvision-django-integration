@@ -1,0 +1,12 @@
+{% extends "emails/base.txt" %}
+
+{% block content %}
+POINTAGE D'ARRIVÉE MANQUANT — {{ tenant_name }}
+-----------------------------------------------
+
+Bonjour{% if employee_name %} {{ employee_name }}{% endif %},
+
+Votre service a commencé à {{ expected_time }} et aucun pointage d'arrivée
+n'est enregistré. Si vous êtes sur site, pointez dès maintenant depuis
+l'application LR Time ; sinon, prévenez votre responsable.
+{% endblock %}

@@ -1,0 +1,4 @@
+[submodule "v0-secure-point-dashboard-design"]
+	path = v0-secure-point-dashboard-design
+	url = https://github.com/yves45839/v0.git
+	branch = main

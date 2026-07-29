@@ -1,0 +1,12 @@
+{% extends "emails/base.txt" %}
+
+{% block content %}
+MISSING CLOCK-IN — {{ tenant_name }}
+------------------------------------
+
+Hello{% if employee_name %} {{ employee_name }}{% endif %},
+
+Your shift started at {{ expected_time }} and no clock-in has been recorded.
+If you are on site, clock in now from the LR Time app; otherwise let your
+manager know.
+{% endblock %}

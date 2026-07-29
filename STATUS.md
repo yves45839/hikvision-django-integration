@@ -26,14 +26,14 @@
 ## 2. Ce qui reste à faire pour que le pointage tourne tout seul
 
 ### P0 — Automatisation pointage (bloquants production)
-1. **Celery + Beat** : créer `app/config/celery.py`, ajouter services `worker` et `beat` dans `docker-compose.yml`, planifier la mgmt command `hik_catchup_acs_events` toutes les 30 s par tenant actif. Aujourd'hui les events Hik ne remontent que si quelqu'un appelle manuellement `/api/hikgateway/catchup-acs-events/` ou la mgmt command.
+1. ~~Celery + Beat~~ **Résolu autrement (2026-07-29, décision : pas de Redis/Celery)** : le catch-up est planifié par le service `catchup` de `deploy/docker-compose.prod.yml` (boucle 30 s sur `hik_catchup_acs_events`), et l'asynchrone (onboarding) passe par **Django-Q2** (broker = Postgres, service `qcluster`). Reste à dupliquer le service `catchup` dans le compose de dev si besoin.
 2. **Câbler la résilience Hik** : `app/hik_gateway/services/gateway_connection.py` doit faire passer ses appels par `resilient_gateway_call(...)`. Sinon le module `app/hik_gateway/resilience.py` est code mort et les appels gateway sont nus (pas de retry, pas de circuit breaker).
 
 ### P1 — Qualité avant prod
 3. Tests isolation multi-tenant (Phase 4.2 du BACKLOG, jamais faite).
 4. Tests Stripe (Phase 3.17, jamais faits).
 5. Compléter handlers webhook Stripe : `customer.subscription.{created,updated,deleted}`, `invoice.{paid,payment_failed,upcoming}` + sync `Tenant.is_active`.
-6. Migrer `onboarding.schedule_job` du `threading.Thread` (`app/devices/services/onboarding.py:233`) vers Celery.
+6. ~~Migrer `onboarding.schedule_job` vers Celery~~ **Fait (2026-07-29)** : `schedule_job` passe par `django_q.tasks.async_task` (sync en DEBUG, cluster `qcluster` en prod).
 
 ### P2 — Reste de la commercialisation
 Phase 3 Stripe restante (feature gating, quotas, trial/dunning, TVA, PDF facture, coupons), Phase 9 (wizard, sample data, SSO), Phase 12 (squash migrations, backups Postgres, E2E Playwright, load test). Voir `BACKLOG.md`.
@@ -48,11 +48,11 @@ Phase 3 Stripe restante (feature gating, quotas, trial/dunning, TVA, PDF facture
 | `audit/` | ✅ | |
 | `employees/` | ✅ | biométrie chiffrée Fernet |
 | `events/` | ✅ | scoping tenant corrigé 2026-05-06 |
-| `devices/` | ⚠️ | onboarding via `threading.Thread` à migrer Celery |
+| `devices/` | ✅ | onboarding async via Django-Q2 (`qcluster`) |
 | `hik_gateway/` | ⚠️ | services connection/payload OK, endpoints reports/events/devices/catchup tous présents, **résilience non câblée**, **catchup non Beat-planifié** |
 | `billing/` (Stripe) | ⚠️ | modèles + checkout + portal + webhook URL ✅ ; handlers webhook squelette |
 | `reports/` | — | dossier vide, **non utilisé** : les rapports vivent dans `hik_gateway` |
-| `config/` | ⚠️ | settings/health/sentry ✅, **pas de Celery** |
+| `config/` | ✅ | settings/health/sentry ✅, cache DB + Django-Q2 configurés (décision : pas de Redis/Celery) |
 | `tests/` | ⚠️ | 5 fichiers ; rien sur billing ni isolation tenant |
 
 ---

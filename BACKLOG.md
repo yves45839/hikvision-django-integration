@@ -24,11 +24,11 @@
 
 ## Phase 2 — Async & email
 
-- [x] **2.1 — Celery + Redis + Beat** · Squelette + worker docker-compose ; tâche `ping` testée.
+- [x] **2.1 — ~~Celery + Redis + Beat~~ Django-Q2 + boucle catchup** · Décision 2026-07-29 : pas de Redis. Broker = Postgres (`django_q`), service `qcluster` en prod ; catch-up via le service `catchup` (boucle 30 s).
 - [x] **2.2 — Email async** · `_send_auth_email` → tâche Celery avec retry exponential.
 - [x] **2.3 — Push gateway async** · `_auto_sync_employees_queryset` → tâche Celery.
-- [x] **2.4 — Onboarding async** · Remplacer `threading.Thread` (`app/devices/services/onboarding.py:233`) par Celery.
-- [x] **2.5 — Catchup ACS planifié** · `hik_catchup_acs_events` → Celery Beat (toutes les 30 s par tenant actif).
+- [x] **2.4 — Onboarding async** · `threading.Thread` remplacé par `django_q.tasks.async_task` (2026-07-29).
+- [x] **2.5 — Catchup ACS planifié** · service `catchup` de `deploy/docker-compose.prod.yml` (boucle 30 s), pas de Beat.
 - [x] **2.6 — Provider email pro** · `django-anymail` + Postmark/SES + templates HTML branded i18n FR/EN.
 
 ## Phase 3 — Stripe (cœur commercial)

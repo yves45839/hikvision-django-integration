@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import threading
 
 from django.conf import settings
-from django.db import transaction, close_old_connections
+from django.db import transaction
 from django.utils import timezone
 
 from devices.models import Device, DeviceOnboardingJob, DeviceOrganizationBinding
@@ -234,13 +233,16 @@ def process_job(*, job_id: int, ehome_key: str) -> DeviceOnboardingJob:
 
 
 def schedule_job(*, job_id: int, ehome_key: str):
-    def _runner():
-        close_old_connections()
-        try:
-            process_job(job_id=job_id, ehome_key=ehome_key)
-        finally:
-            close_old_connections()
+    """Planifie le traitement du job via Django-Q2 (broker = base de données).
 
-    thread = threading.Thread(target=_runner, name=f"device-onboarding-{job_id}", daemon=True)
-    thread.start()
-    return thread
+    Contrairement à l'ancien threading.Thread daemon, la tâche survit à un
+    redémarrage du process web et bénéficie des retries du cluster.
+    En mode sync (DEBUG/tests), la tâche s'exécute immédiatement.
+    """
+    from django_q.tasks import async_task
+
+    return async_task(
+        "devices.services.onboarding.process_job",
+        job_id=job_id,
+        ehome_key=ehome_key,
+    )

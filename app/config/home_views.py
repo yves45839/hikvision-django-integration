@@ -20,9 +20,9 @@ def _resolve_lang(request) -> str:
     if lang in {"fr", "en"}:
         return lang
     accept = str(request.headers.get("Accept-Language") or "").lower()
-    if accept.startswith("en"):
-        return "en"
-    return "fr"
+    if accept.startswith("fr"):
+        return "fr"
+    return "en"
 
 
 @api_view(["GET"])

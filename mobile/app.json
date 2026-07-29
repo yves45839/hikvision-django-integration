@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "LR Time",
+    "slug": "lr-time",
+    "version": "1.0.0",
+    "scheme": "lrtime",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0b0f14",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "bundleIdentifier": "com.labelci.lrtime",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "LR Time utilise votre position uniquement au moment du pointage afin de vérifier que vous êtes bien sur votre site de travail. / LR Time uses your location only at the moment you clock in or out, to verify that you are at your work site."
+      }
+    },
+    "android": {
+      "package": "com.labelci.lrtime",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "POST_NOTIFICATIONS"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "LR Time utilise votre position uniquement au moment du pointage afin de vérifier que vous êtes bien sur votre site de travail. / LR Time uses your location only at the moment you clock in or out, to verify that you are at your work site."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#f97316"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 from datetime import datetime, timezone as dt_timezone
 
 from django.db import IntegrityError, transaction
@@ -12,6 +13,8 @@ from employees.models import Employee, EmployeeCard
 from hik_gateway.models import AttendanceLog, Device, DeviceReaderConfig, RawEvent
 from hik_gateway.services.device_sync import sync_gateway_devices
 from tenants.models import Tenant
+
+logger = logging.getLogger(__name__)
 
 ATTENDANCE_DIRECTION_MAP = {
     "checkin": "IN",
@@ -426,10 +429,16 @@ def _get_or_resync_device(dev_index: str, tenant: Tenant | None = None) -> Devic
         return device
 
     if tenant is not None:
-        sync_gateway_devices(tenant)
-        device = Device.objects.filter(tenant=tenant, dev_index=dev_index).filter(_connected_status_filter()).first()
-        if device:
-            return device
+        # La resync est opportuniste : gateway absente ou injoignable ne doit
+        # jamais faire échouer l'ingestion du webhook (l'event serait perdu en 500).
+        try:
+            sync_gateway_devices(tenant)
+        except Exception:
+            logger.warning("Device resync failed during webhook ingest", exc_info=True)
+        else:
+            device = Device.objects.filter(tenant=tenant, dev_index=dev_index).filter(_connected_status_filter()).first()
+            if device:
+                return device
 
     return queryset.first()
 

@@ -407,6 +407,37 @@ class HikWebhookTenantRoutingTests(APITestCase):
         self.assertEqual(RawEvent.objects.count(), 0)
         self.assertEqual(AttendanceLog.objects.count(), 0)
 
+    def test_webhook_survives_unknown_device_without_configured_gateway(self):
+        # Régression : un devIndex inconnu déclenchait une resync gateway qui
+        # levait Gateway.DoesNotExist (aucune gateway env configurée) → 500 et
+        # event perdu. Le webhook doit stocker le RawEvent malgré tout.
+        Gateway.objects.all().delete()
+        Device.objects.all().delete()
+        payload = {
+            "EventNotificationAlert": {
+                "eventType": "AccessControllerEvent",
+                "devIndex": "IDX-INCONNU",
+                "dateTime": "2026-02-01T08:00:00Z",
+                "AccessControllerEvent": {
+                    "attendanceStatus": "checkin",
+                    "employeeNoString": "E1001",
+                    "serialNo": "100",
+                    "subEventType": 1,
+                },
+            }
+        }
+
+        response = self.client.post(
+            "/api/hikvision/events",
+            payload,
+            format="json",
+            HTTP_X_TENANT_CODE="tenant-a",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(RawEvent.objects.count(), 1)
+        self.assertEqual(RawEvent.objects.get().tenant, self.tenant_a)
+
     def test_webhook_dedupe_is_scoped_per_tenant(self):
         payload = {
             "EventNotificationAlert": {

@@ -14,6 +14,9 @@ class TenantRole(models.TextChoices):
     ORG_ADMIN = "org_admin", "Organization admin"
     OPERATOR = "operator", "Operator"
     VIEWER = "viewer", "Viewer"
+    # Rôle app mobile : peut pointer et consulter son propre planning, mais ne
+    # doit JAMAIS accéder aux données du tenant (voir get_admin_tenant_ids).
+    EMPLOYEE = "employee", "Employee"
 
 
 class PaymentStatus(models.TextChoices):

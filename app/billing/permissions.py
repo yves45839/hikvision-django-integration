@@ -31,21 +31,17 @@ def get_request_tenant(request) -> Tenant:
         or ""
     ).strip()
 
+    # Le rôle "employee" (app mobile) n'a aucun accès à la facturation.
+    memberships = (
+        TenantMembership.objects
+        .select_related("tenant")
+        .filter(user=user)
+        .exclude(role=TenantRole.EMPLOYEE)
+    )
     if code:
-        membership = (
-            TenantMembership.objects
-            .select_related("tenant")
-            .filter(user=user, tenant__code=code)
-            .first()
-        )
+        membership = memberships.filter(tenant__code=code).first()
     else:
-        membership = (
-            TenantMembership.objects
-            .select_related("tenant")
-            .filter(user=user)
-            .order_by("-is_primary", "id")
-            .first()
-        )
+        membership = memberships.order_by("-is_primary", "id").first()
 
     if not membership:
         raise PermissionDenied("You have no tenant membership.")

@@ -5,6 +5,7 @@ from tenants.models import Tenant, TenantMembership, TenantRole
 
 
 ROLE_RANK = {
+    TenantRole.EMPLOYEE: 5,
     TenantRole.VIEWER: 10,
     TenantRole.OPERATOR: 20,
     TenantRole.ORG_ADMIN: 30,
@@ -16,11 +17,28 @@ def resolve_tenant(tenant_code: str) -> Tenant | None:
     return Tenant.objects.filter(code__iexact=str(tenant_code or "").strip()).first()
 
 
-def get_user_tenant_ids(user) -> list[int]:
+def get_admin_tenant_ids(user) -> list[int]:
+    """Tenants où l'utilisateur a un rôle d'administration/consultation
+    (viewer et plus). Le rôle ``employee`` (app mobile) est EXCLU : un compte
+    employé ne doit jamais voir les données du tenant via les ViewSets admin."""
     if not user or not user.is_authenticated:
         return []
     return list(
         TenantMembership.objects.filter(user=user)
+        .exclude(role=TenantRole.EMPLOYEE)
+        .order_by("tenant_id")
+        .values_list("tenant_id", flat=True)
+    )
+
+
+def get_employee_tenant_ids(user) -> list[int]:
+    """Tenants où l'utilisateur a le rôle ``employee`` (surface /api/mobile/*).
+    Fonction distincte et nommée : toute élévation de portée doit être un choix
+    visible dans le code, jamais un paramètre optionnel."""
+    if not user or not user.is_authenticated:
+        return []
+    return list(
+        TenantMembership.objects.filter(user=user, role=TenantRole.EMPLOYEE)
         .order_by("tenant_id")
         .values_list("tenant_id", flat=True)
     )
@@ -29,7 +47,7 @@ def get_user_tenant_ids(user) -> list[int]:
 def scope_queryset_to_user_tenants(queryset, user, *, tenant_field: str = "tenant_id"):
     if user and user.is_authenticated and (user.is_superuser or user.is_staff):
         return queryset
-    tenant_ids = get_user_tenant_ids(user)
+    tenant_ids = get_admin_tenant_ids(user)
     if not tenant_ids:
         return queryset.none()
     return queryset.filter(**{f"{tenant_field}__in": tenant_ids})

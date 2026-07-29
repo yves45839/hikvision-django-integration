@@ -1,0 +1,53 @@
+{% extends "emails/base.html" %}
+
+{% block subject %}Activate mobile clock-in — {{ tenant_name }}{% endblock %}
+{% block preheader %}Create your LR Time account to clock in from your phone.{% endblock %}
+{% block header_tag %}Mobile clock-in{% endblock %}
+
+{% block content %}
+<tr>
+  <td style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:22px;font-weight:600;color:#1A2238;line-height:30px;padding-bottom:16px;">
+    Welcome to mobile clock-in
+  </td>
+</tr>
+<tr>
+  <td style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:24px;color:#4A5572;padding-bottom:24px;">
+    Hello{% if employee_name %} {{ employee_name }}{% endif %},<br><br>
+    <strong style="color:#243C8C;">{{ tenant_name }}</strong> invites you to create your
+    LR Time account so you can clock in and out from your phone.
+    Install the LR Time app, then open the link below from your phone.
+  </td>
+</tr>
+<tr>
+  <td align="center" style="padding-bottom:24px;">
+    <a href="{{ deep_link }}"
+       style="display:inline-block;background-color:#243C8C;color:#FFFFFF;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:10px;">
+      Activate my mobile account
+    </a>
+  </td>
+</tr>
+<tr>
+  <td style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;color:#6B7488;padding-bottom:12px;">
+    If the button does not open the app, use this link:
+    <a href="{{ web_fallback_url }}" style="color:#243C8C;">{{ web_fallback_url }}</a><br><br>
+    Or enter this invitation code in the app:
+  </td>
+</tr>
+<tr>
+  <td align="center" style="padding-bottom:24px;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="background-color:#F4F6FA;border:1px solid #E5E8F0;border-radius:10px;">
+      <tr>
+        <td style="padding:14px 24px;font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:14px;font-weight:600;color:#243C8C;word-break:break-all;">
+          {{ invitation_token }}
+        </td>
+      </tr>
+    </table>
+  </td>
+</tr>
+<tr>
+  <td style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;color:#6B7488;">
+    This invitation expires on <strong>{{ expires_at|date:"Y-m-d H:i" }}</strong>.
+    If this invitation is not meant for you, simply ignore this email.
+  </td>
+</tr>
+{% endblock %}

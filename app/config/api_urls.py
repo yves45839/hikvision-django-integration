@@ -40,6 +40,7 @@ urlpatterns = [
     path('', include('tenants.auth_urls')),
     path('', include('hik_gateway.urls')),
     path('', include('audit.urls')),
+    path('', include('presence.urls')),
     path('billing/', include('billing.urls')),
     path('home/summary/', home_summary_api, name='home-summary-api'),
     path('beta/info/', beta_info, name='beta-info'),

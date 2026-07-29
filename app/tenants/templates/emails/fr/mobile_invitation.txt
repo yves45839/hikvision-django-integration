@@ -1,0 +1,24 @@
+{% extends "emails/base.txt" %}
+
+{% block content %}
+POINTAGE MOBILE — {{ tenant_name }}
+-----------------------------------
+
+Bonjour{% if employee_name %} {{ employee_name }}{% endif %},
+
+{{ tenant_name }} vous invite à créer votre compte LR Time pour pointer vos
+arrivées et départs depuis votre téléphone.
+
+1. Installez l'application LR Time sur votre téléphone.
+2. Ouvrez ce lien depuis votre téléphone :
+   {{ deep_link }}
+
+Si le lien ne s'ouvre pas dans l'application :
+   {{ web_fallback_url }}
+
+Ou saisissez ce code d'invitation dans l'application :
+   {{ invitation_token }}
+
+Cette invitation expire le {{ expires_at|date:"d/m/Y H:i" }}.
+Si vous n'êtes pas concerné par cette invitation, ignorez simplement cet email.
+{% endblock %}

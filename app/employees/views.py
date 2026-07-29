@@ -18,7 +18,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from audit.mixins import AuditLogMixin
+from audit.mixins import AuditLogMixin, record_audit
 from devices.models import Device
 from employees.models import (
     AccessGroup,
@@ -635,7 +635,17 @@ class EmployeeViewSet(AuditLogMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        from django.db.models import Exists, OuterRef
+        from presence.models import EmployeeInvitation
+
         queryset = _scope_to_request_tenants(super().get_queryset(), self.request, tenant_field="tenant_id")
+        queryset = queryset.annotate(
+            _pending_mobile_invitations=Exists(
+                EmployeeInvitation.objects.filter(
+                    employee=OuterRef("pk"), status=EmployeeInvitation.STATUS_PENDING
+                )
+            )
+        )
         tenant_code = str(self.request.query_params.get("tenant") or "").strip()
         if tenant_code:
             queryset = queryset.filter(tenant__code__iexact=tenant_code)
@@ -1000,6 +1010,37 @@ class EmployeeViewSet(AuditLogMixin, viewsets.ModelViewSet):
                         name="plan_template_no",
                         defaults={"value": plan_template_no},
                     )
+
+    @action(detail=True, methods=["post"], url_path="invite-mobile")
+    def invite_mobile(self, request, pk=None):
+        """Invite l'employé à créer son compte app mobile (rôle ≥ org_admin)."""
+        from presence.services import InvitationError, create_mobile_invitation
+
+        employee = self.get_object()
+        _require_tenant_scope(self.request, employee.tenant, minimum_role=TenantRole.ORG_ADMIN)
+        email = str(request.data.get("email") or "").strip() or None
+        try:
+            created = create_mobile_invitation(
+                employee=employee, invited_by=request.user, email=email
+            )
+        except InvitationError as exc:
+            return Response({"code": exc.code, "detail": exc.detail}, status=exc.http_status)
+        record_audit(
+            self.request,
+            "invite_employee_mobile",
+            employee,
+            invitation_id=str(created.invitation.public_id),
+        )
+        return Response(
+            {
+                "id": str(created.invitation.public_id),
+                "email": created.invitation.email,
+                "status": created.invitation.status,
+                "expires_at": created.invitation.expires_at,
+                "email_sent": created.email_sent,
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
     @action(detail=True, methods=["get"], url_path="schedule")
     def schedule(self, request, pk=None):

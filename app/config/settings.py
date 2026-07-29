@@ -89,6 +89,7 @@ INSTALLED_APPS = [
     'employees',
     'hik_gateway',
     'billing',
+    'presence',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -274,6 +275,8 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'anon': '100/hour',
         'user': '1000/hour',
+        'invitation_accept': '10/hour',
+        'mobile_punch': '12/hour',
     }
 }
 

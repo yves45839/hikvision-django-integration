@@ -29,8 +29,9 @@ from .serializers import (
 from .services.onboarding import create_job, process_job, schedule_job
 
 
+from audit.mixins import AuditLogMixin
 from audit.utils import audit_log
-class DeviceViewSet(viewsets.ModelViewSet):
+class DeviceViewSet(AuditLogMixin, viewsets.ModelViewSet):
     @staticmethod
     def _to_bool(value, default: bool = False) -> bool:
         if value is None:

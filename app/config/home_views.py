@@ -1,10 +1,18 @@
 from django.utils import timezone
+from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from devices.models import Device
 from employees.models import Employee
 from hik_gateway.models import AttendanceLog
+from tenants.models import TenantRole
+from tenants.services import has_tenant_role, resolve_tenant
+
+
+def _is_admin_request(request) -> bool:
+    user = request.user
+    return bool(user and user.is_authenticated and (user.is_staff or user.is_superuser))
 
 
 def _resolve_lang(request) -> str:
@@ -21,6 +29,21 @@ def _resolve_lang(request) -> str:
 def home_summary_api(request):
     lang = _resolve_lang(request)
     tenant_code = str(request.query_params.get("tenant") or "").strip()
+
+    if not _is_admin_request(request):
+        if not tenant_code:
+            return Response(
+                {"detail": "Le paramètre tenant est requis."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        tenant = resolve_tenant(tenant_code)
+        if tenant is None:
+            return Response({"detail": "Tenant inconnu."}, status=status.HTTP_404_NOT_FOUND)
+        if not has_tenant_role(request.user, tenant, TenantRole.VIEWER):
+            return Response(
+                {"detail": "Portée tenant insuffisante pour ce tenant."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
     employees_qs = Employee.objects.all()
     devices_qs = Device.objects.all()

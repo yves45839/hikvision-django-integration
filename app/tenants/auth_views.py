@@ -18,6 +18,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from audit.mixins import record_audit
 from employees.models import (
     Department,
     Organization,
@@ -888,6 +889,16 @@ def login_api(request):
         TenantMembership.objects.select_related("tenant")
         .filter(user=user)
         .order_by("tenant_id")
+    )
+    record_audit(
+        request,
+        "login",
+        user,
+        actor=user,
+        tenant_code=next(
+            (membership.tenant.code for membership in tenant_memberships if membership.is_primary),
+            tenant_memberships[0].tenant.code if tenant_memberships else "",
+        ),
     )
     return Response(
         {

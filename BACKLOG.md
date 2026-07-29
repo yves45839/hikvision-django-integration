@@ -137,6 +137,26 @@
 
 ---
 
+## Phase 14 — Pointage mobile géolocalisé
+
+> App employé Expo (`mobile/`) + app Django `presence`. Positionnement v1 assumé :
+> **contrôle de proximité, pas antifraude** (GPS client, drapeau `mocked` journalisé
+> comme indice seulement).
+
+- [~] **14.1 — Celery + Redis + Beat** · Infra async réelle (`config/celery.py`, services `worker`/`beat`) ; règle le P0 catchup : tâche beat `hik_catchup_all` toutes les 60 s avec verrou cache.
+- [~] **14.2 — Rôle `employee` verrouillé** · `TenantRole.EMPLOYEE` (rang 5) ; scoping explicite `get_admin_tenant_ids` / `get_employee_tenant_ids` ; test-balai généré du routeur DRF (toute route non classifiée = échec).
+- [~] **14.3 — Invitations mobiles** · `Employee.user` OneToOne ; `EmployeeInvitation` (token haché SHA-256, deep link `lrtime://`) ; accept = auto-login rôle employee, jamais de rétrogradation.
+- [~] **14.4 — Sites de pointage** · `presence.Site` (lat/lng/rayon 30–2000 m) ; CRUD `punch-sites` audité ≥ org_admin ; onglet Réglages → Sites côté v0.
+- [~] **14.5 — API punch géolocalisée** · Moteur pur `evaluate_mobile_punch` (inside/borderline/outside) ; heure serveur faisant foi ; idempotence par clé cliente (retry = même réponse 200) ; appareil virtuel par `kind`/capacités ; `source="mobile"` dans les rapports existants.
+- [~] **14.6 — Rappels programmés** · Beat 60 s : avertissement T−15, rappel T+5 (masqué par un CHECK_IN dans la fenêtre du shift) ; `PunchReminderLog` unique = au-plus-une-fois avec rattrapage ; statuts par canal push/email/SMS ; réglages par tenant ; commande `send_punch_reminders --at --dry-run`.
+- [~] **14.7 — App Expo** · Login, acceptation d'invitation (deep link), pointage GPS avec erreurs typées, historique, réglages FR/EN, push token par installation.
+- [ ] **14.8 — SMS payant** · Brancher un vrai backend (`SMS_BACKEND` : stub Twilio fourni, Orange à écrire) + facturation du coût au tenant.
+- [ ] **14.9 — Restriction site↔département** · Un site limité à certains départements/employés (v1 : tout site actif vaut pour tout le tenant).
+- [ ] **14.10 — Rappels multi-créneaux** · Rappel de reprise après pause et second shift (v1 : premier créneau du jour uniquement).
+- [ ] **14.11 — Durcissement antifraude** · Attestation d'intégrité (Play Integrity / DeviceCheck), détection mock avancée, biométrie au pointage.
+
+---
+
 ## Légende & flux
 
 ```

@@ -144,10 +144,12 @@ Ce qui démarre :
 | Service | Rôle |
 |---|---|
 | `db` | Postgres 16 (volume persistant `pgdata`) |
-| `redis` | Cache + futur broker Celery |
+| `redis` | Cache + broker/résultats Celery |
 | `web` | Django + gunicorn (3 workers) — migrations auto, collectstatic auto |
 | `frontend` | Next.js 16 build production |
-| `catchup` | Boucle `hik_catchup_acs_events` toutes les 30 s (remplace Celery Beat pour la beta) |
+| `worker` | Celery worker — rattrapage Hikvision, rappels de pointage mobile, tâches async |
+| `beat` | Celery Beat — planning statique (`hik-catchup-all` et `check-punch-reminders`, toutes les 60 s) |
+| `catchup` | Boucle legacy `hik_catchup_acs_events` — redondante avec la tâche beat, à retirer après une semaine d'exécutions beat propres |
 | `nginx` | Reverse proxy + TLS termination |
 | `certbot` | Renouvellement auto du cert toutes les 12 h |
 
@@ -272,7 +274,8 @@ Quand tu seras prêt à activer Stripe :
 
 | Domaine | État | Impact beta |
 |---|---|---|
-| Celery + Beat propre | absent (remplacé par la boucle `catchup`) | Acceptable pour la beta. À remettre en place pour la GA. |
+| Celery + Beat propre | **en place** (`worker` + `beat`, planning statique) | La boucle `catchup` legacy reste une semaine en doublon, puis à retirer. |
+| SMS de rappel de pointage | backend Noop par défaut (`SMS_BACKEND`) | Jamais gratuit — brancher Twilio/Orange plus tard si souhaité ; push + email actifs. |
 | Résilience Hik (`resilient_gateway_call`) | non câblée | Si la gateway flanche, l'appel échoue sans retry. À surveiller. |
 | Tests Stripe / isolation tenant | partiels | Sans impact tant que Stripe est off. |
 | Squash migrations | non fait | OK pour beta. À faire avant GA. |

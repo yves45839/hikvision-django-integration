@@ -43,7 +43,7 @@ services:
       context: ..
       dockerfile: Dockerfile
     container_name: lrtime_web
-    environment:
+    environment: &backend-env
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY is required}
       DJANGO_DEBUG: "0"
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:?ALLOWED_HOSTS is required}
@@ -132,7 +132,38 @@ services:
     networks:
       - lrtime_net
 
-  # ---- Catchup Hikvision (cron léger, pas de Celery requis pour la beta) ----
+  # ---- Worker & Beat Celery (tâches asynchrones + périodiques) ----
+  worker:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: lrtime_worker
+    environment: *backend-env
+    command: celery -A config worker -l info --concurrency 2
+    depends_on:
+      web:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - lrtime_net
+
+  beat:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: lrtime_beat
+    environment: *backend-env
+    command: celery -A config beat -l info --schedule=/tmp/celerybeat-schedule
+    depends_on:
+      web:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - lrtime_net
+
+  # ---- Catchup Hikvision (boucle shell héritée) ----
+  # REDONDANT avec la tâche beat hik_gateway.tasks.hik_catchup_all : à retirer
+  # après une semaine d'exécutions beat propres.
   catchup:
     build:
       context: ..

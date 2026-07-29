@@ -150,6 +150,50 @@ _db_url = os.getenv("DATABASE_URL")
 if _db_url:
     DATABASES["default"] = _dj_db_url.parse(_db_url, conn_max_age=600)
 
+# Cache partagé (throttling DRF multi-worker, verrous Celery). Redis quand
+# REDIS_URL est défini, sinon LocMem (dev/tests sans Redis).
+REDIS_URL = os.getenv("REDIS_URL", "").strip()
+
+
+def _redis_db_url(base_url: str, db_index: int) -> str:
+    """redis://host:port -> redis://host:port/<db> ; URL avec db explicite inchangée."""
+    stripped = base_url.rstrip("/")
+    scheme_less = stripped.split("://", 1)[-1]
+    if "/" in scheme_less:
+        return stripped
+    return f"{stripped}/{db_index}"
+
+
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": _redis_db_url(REDIS_URL, 2),
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "lr-time-default",
+        }
+    }
+
+# --- Celery (tâches asynchrones + périodiques) ---
+CELERY_BROKER_URL = (
+    os.getenv("CELERY_BROKER_URL", "").strip()
+    or (_redis_db_url(REDIS_URL, 1) if REDIS_URL else "redis://localhost:6379/1")
+)
+CELERY_RESULT_BACKEND = None
+CELERY_TASK_IGNORE_RESULT = True
+CELERY_TASK_ALWAYS_EAGER = os.getenv("CELERY_TASK_ALWAYS_EAGER", "0").strip().lower() in {"1", "true", "yes", "on"}
+CELERY_BEAT_SCHEDULE = {
+    "hik-catchup-every-minute": {
+        "task": "hik_gateway.tasks.hik_catchup_all",
+        "schedule": 60.0,
+    },
+}
+
 
 def _configure_sqlite_pragmas(sender, connection, **kwargs):
     if connection.vendor != "sqlite":
